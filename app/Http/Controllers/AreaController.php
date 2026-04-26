@@ -10,43 +10,45 @@ class AreaController extends Controller
 {
     public function index()
     {
-        return Inertia::render('Areas/Index', [
-            'areas' => Area::with('pic')->latest()->paginate(10),
+        $areas = Area::select('id', 'area')
+            ->latest()
+            ->paginate(10);
+        
+        return Inertia::render('areas/Index', [
+            'areas' => $areas
         ]);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'area' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:areas,area',
         ]);
 
-        Area::create($validated);
+        Area::create([
+            'area' => $validated['name'],
+        ]);
 
-        return redirect()
-            ->route('areas.index')
-            ->with('success', 'Area created successfully');
+        return redirect()->route('areas.index');
     }
 
     public function update(Request $request, Area $area)
     {
         $validated = $request->validate([
-            'area' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:areas,area,' . $area->id,
         ]);
 
-        $area->update($validated);
+        $area->update([
+            'area' => $validated['name'],
+        ]);
 
-        return redirect()
-            ->route('areas.index')
-            ->with('success', 'Area updated successfully');
+        return redirect()->route('areas.index');
     }
 
     public function destroy(Area $area)
     {
         $area->delete();
 
-        return redirect()
-            ->route('areas.index')
-            ->with('success', 'Area deleted successfully');
+        return redirect()->route('areas.index');
     }
 }

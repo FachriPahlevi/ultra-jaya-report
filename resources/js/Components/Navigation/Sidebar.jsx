@@ -11,7 +11,6 @@ import {
     LogOut,
     Sun,
     Moon,
-    Monitor,
 } from 'lucide-react';
 import { updateAppearance } from '@/lib/theme';
 
@@ -26,7 +25,6 @@ const NAV_ITEMS = [
 
 const THEME_OPTIONS = [
     { value: 'light', icon: Sun, label: 'Light' },
-    { value: 'system', icon: Monitor, label: 'System' },
     { value: 'dark', icon: Moon, label: 'Dark' },
 ];
 
@@ -61,9 +59,9 @@ const Sidebar = ({ sidebarOpen, closeSidebar }) => {
 
     const [currentAppearance, setCurrentAppearance] = useState(() => {
         if (typeof window !== 'undefined') {
-            return localStorage.getItem('appearance') ?? 'system';
+            return localStorage.getItem('appearance') ?? 'light';
         }
-        return 'system';
+        return 'light';
     });
 
     const setTheme = (value) => {

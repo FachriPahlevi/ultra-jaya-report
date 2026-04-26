@@ -8,9 +8,10 @@ return new class extends Migration
 {
     public function up(): void
     {
-         Schema::create('activities', function (Blueprint $table) {
+        Schema::create('activities', function (Blueprint $table) {
             $table->id();
-            $table->string('description');
+            $table->string('name');
+            $table->text('description')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

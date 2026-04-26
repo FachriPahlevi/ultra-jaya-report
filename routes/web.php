@@ -41,9 +41,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('activities')->group(function () {
         Route::get('/', [ActivityController::class, 'index'])->name('activities.index');
         Route::post('/', [ActivityController::class, 'store'])->name('activities.store');
-        Route::get('/{activity}', [ActivityController::class, 'show'])->name('activities.show')->whereNumber('activity');
-        Route::put('/{activity}', [ActivityController::class, 'update'])->name('activities.update')->whereNumber('activity');
-        Route::delete('/{activity}', [ActivityController::class, 'destroy'])->name('activities.destroy')->whereNumber('activity');
+        Route::put('/{activity}', [ActivityController::class, 'update'])->name('activities.update');
+        Route::delete('/{activity}', [ActivityController::class, 'destroy'])->name('activities.destroy');
     });
 
     Route::prefix('roles')->group(function () {
@@ -53,7 +52,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/{role}', [RoleController::class, 'update'])->name('roles.update')->whereNumber('role');
         Route::delete('/{role}', [RoleController::class, 'destroy'])->name('roles.destroy')->whereNumber('role');
     });
-
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

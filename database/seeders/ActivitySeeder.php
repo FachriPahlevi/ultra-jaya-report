@@ -10,10 +10,10 @@ class ActivitySeeder extends Seeder
     public function run(): void
     {
         Activity::insert([
-            ['description' => 'Pendampingan'],
-            ['description' => 'Kontrol'],
-            ['description' => 'Tracking'],
-            ['description' => 'Verifikasi'],
+            ['name' => 'Pendampingan', 'description' => 'Kegiatan pendampingan lapangan'],
+            ['name' => 'Kontrol', 'description' => 'Kegiatan kontrol dan monitoring'],
+            ['name' => 'Tracking', 'description' => 'Kegiatan tracking dan pelacakan'],
+            ['name' => 'Verifikasi', 'description' => 'Kegiatan verifikasi data'],
         ]);
     }
 }

@@ -1,12 +1,12 @@
-import Checkbox from '@/Components/Checkbox';
-import InputError from '@/Components/InputError';
-import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
-import TextInput from '@/Components/TextInput';
-import GuestLayout from '@/Layouts/GuestLayout';
+import { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
+import { HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff } from 'react-icons/hi';
+import BtnDefault from '@/Components/Button/BtnDefault';
+import InputText from '@/Components/Input/InputText';
+import GuestLayout from '@/Layouts/GuestLayout';
 
 export default function Login({ status, canResetPassword }) {
+    const [showPassword, setShowPassword] = useState(false);
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',
         password: '',
@@ -15,7 +15,6 @@ export default function Login({ status, canResetPassword }) {
 
     const submit = (e) => {
         e.preventDefault();
-
         post(route('login'), {
             onFinish: () => reset('password'),
         });
@@ -25,75 +24,109 @@ export default function Login({ status, canResetPassword }) {
         <GuestLayout>
             <Head title="Log in" />
 
+            {/* Status Message */}
             {status && (
-                <div className="mb-4 text-sm font-medium text-green-600">
-                    {status}
+                <div className="mb-6 rounded-lg bg-green-50 border border-green-200 p-4">
+                    <p className="text-sm text-green-700">{status}</p>
                 </div>
             )}
 
-            <form onSubmit={submit}>
+            <form onSubmit={submit} className="space-y-6">
+                {/* Email Field */}
                 <div>
-                    <InputLabel htmlFor="email" value="Email" />
-
-                    <TextInput
+                    <InputText
                         id="email"
                         type="email"
-                        name="email"
+                        label="Email Address"
+                        placeholder="Enter your email"
                         value={data.email}
-                        className="mt-1 block w-full"
-                        autoComplete="username"
-                        isFocused={true}
                         onChange={(e) => setData('email', e.target.value)}
+                        error={errors.email}
+                        required
+                        icon={HiOutlineMail}
+                        autoComplete="username"
+                        autoFocus
                     />
-
-                    <InputError message={errors.email} className="mt-2" />
                 </div>
 
-                <div className="mt-4">
-                    <InputLabel htmlFor="password" value="Password" />
-
-                    <TextInput
-                        id="password"
-                        type="password"
-                        name="password"
-                        value={data.password}
-                        className="mt-1 block w-full"
-                        autoComplete="current-password"
-                        onChange={(e) => setData('password', e.target.value)}
-                    />
-
-                    <InputError message={errors.password} className="mt-2" />
+                {/* Password Field */}
+                <div>
+                    <div className="relative">
+                        <InputText
+                            id="password"
+                            type={showPassword ? 'text' : 'password'}
+                            label="Password"
+                            placeholder="Enter your password"
+                            value={data.password}
+                            onChange={(e) => setData('password', e.target.value)}
+                            error={errors.password}
+                            required
+                            icon={HiOutlineLockClosed}
+                            autoComplete="current-password"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-[38px] text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
+                        >
+                            {showPassword ? (
+                                <HiOutlineEyeOff className="w-5 h-5" />
+                            ) : (
+                                <HiOutlineEye className="w-5 h-5" />
+                            )}
+                        </button>
+                    </div>
                 </div>
 
-                <div className="mt-4 block">
-                    <label className="flex items-center">
-                        <Checkbox
+                {/* Remember Me & Forgot Password */}
+                <div className="flex items-center justify-between">
+                    <label className="flex items-center cursor-pointer group">
+                        <input
+                            type="checkbox"
                             name="remember"
                             checked={data.remember}
-                            onChange={(e) =>
-                                setData('remember', e.target.checked)
-                            }
+                            onChange={(e) => setData('remember', e.target.checked)}
+                            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                         />
-                        <span className="ms-2 text-sm text-gray-600">
+                        <span className="ml-2 text-sm text-gray-600 group-hover:text-gray-900 transition-colors">
                             Remember me
                         </span>
                     </label>
-                </div>
 
-                <div className="mt-4 flex items-center justify-end">
-                    {canResetPassword && (
+                    {/* {canResetPassword && (
                         <Link
                             href={route('password.request')}
-                            className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                            className="text-sm text-blue-600 hover:text-blue-700 font-medium transition-colors focus:outline-none focus:underline"
                         >
-                            Forgot your password?
+                            Forgot password?
                         </Link>
-                    )}
-
-                    <PrimaryButton className="ms-4" disabled={processing}>
-                        Log in
-                    </PrimaryButton>
+                    )} */}
                 </div>
+
+                {/* Submit Button */}
+                <BtnDefault
+                    type="submit"
+                    disabled={processing}
+                    loading={processing}
+                    fullWidth
+                    size="lg"
+                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all duration-200"
+                >
+                    {processing ? 'Signing in...' : 'Sign in'}
+                </BtnDefault>
+
+                {/* Register Link */}
+                {/* <div className="text-center pt-4">
+                    <p className="text-sm text-gray-600">
+                        Don't have an account?{' '}
+                        <Link
+                            href={route('register')}
+                            className="text-blue-600 hover:text-blue-700 font-medium transition-colors focus:outline-none focus:underline"
+                        >
+                            Create account
+                        </Link>
+                    </p>
+                </div> */}
             </form>
         </GuestLayout>
     );

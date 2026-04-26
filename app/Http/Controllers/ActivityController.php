@@ -10,59 +10,49 @@ class ActivityController extends Controller
 {
     public function index()
     {
-        $activities = Activity::latest()->paginate(10);
+        $activities = Activity::select('id', 'name', 'description')
+            ->latest()
+            ->paginate(10);
+        
         return Inertia::render('activities/Index', [
-            'activities' => $activities,
+            'activities' => $activities
         ]);
-    }
-
-    public function create()
-    {
-        return Inertia::render('activities/Create');
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'name' => 'required|string|max:255|unique:activities,name',
+            'description' => 'nullable|string|max:500',
         ]);
 
-        Activity::create($validated);
-
-        return redirect()->route('master-activity.index');
-    }
-
-    public function show(Activity $activity)
-    {
-        return Inertia::render('activities/Show', [
-            'activity' => $activity,
+        Activity::create([
+            'name' => $validated['name'],
+            'description' => $validated['description'],
         ]);
-    }
 
-    public function edit(Activity $activity)
-    {
-        return Inertia::render('activities/Edit', [
-            'activity' => $activity,
-        ]);
+        return redirect()->route('activities.index');
     }
 
     public function update(Request $request, Activity $activity)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'name' => 'required|string|max:255|unique:activities,name,' . $activity->id,
+            'description' => 'nullable|string|max:500',
         ]);
 
-        $activity->update($validated);
+        $activity->update([
+            'name' => $validated['name'],
+            'description' => $validated['description'],
+        ]);
 
-        return redirect()->route('master-activity.index');
+        return redirect()->route('activities.index');
     }
 
     public function destroy(Activity $activity)
     {
         $activity->delete();
 
-        return redirect()->route('master-activity.index');
+        return redirect()->route('activities.index');
     }
 }

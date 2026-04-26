@@ -6,13 +6,14 @@ use App\Models\Activity;
 use App\Models\Area;
 use App\Models\Report;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class ReportController extends Controller
 {
     public function index()
     {
-        $user = auth()->user();
+        $user = Auth::user();
 
         $areaReports = Report::with(['author', 'area', 'activity'])
             ->whereHas('area', function ($query) use ($user) {
@@ -46,7 +47,8 @@ class ReportController extends Controller
             'issue' => 'required|string',
             'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
-
+        $user = Auth::user();
+        $user_id = $user->id;
         $photoFile = $request->file('photo');
         $photoBinary = file_get_contents($photoFile->getRealPath());
 
@@ -56,7 +58,7 @@ class ReportController extends Controller
             'activity' => $validated['activity'],
             'issue' => $validated['issue'],
             'photo_before' => $photoBinary,
-            'author_id' => auth()->id(),
+            'author_id' => $user_id,
             'finished_date' => null,
             'is_content_edited' => false,
         ]);

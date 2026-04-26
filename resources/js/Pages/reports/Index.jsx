@@ -4,8 +4,10 @@ import AppLayout from "@/Layouts/AppLayout";
 import { ROUTES } from "@/lib/constants.ts";
 import { formatDate } from "@/lib/format.ts";
 import BtnDefault from "@/Components/Button/BtnDefault";
+import InputText from "@/Components/Input/InputText";
+import InputDropdown from "@/Components/Input/InputDropdown";
 import ReportForm from "@/Components/Form/ReportForm";
-import { HiOutlineX, HiOutlineChevronDown, HiOutlinePlus } from "react-icons/hi";
+import { HiOutlineX, HiOutlineChevronDown, HiOutlinePlus, HiOutlineSearch } from "react-icons/hi";
 
 const TableHeader = ({ columns }) => (
   <thead>
@@ -110,25 +112,19 @@ const ReportTable = ({ title, subtitle, reports, columns, selectedId, onSelect, 
   </div>
 );
 
-export default function Index({ areaReports = { data: [], links: [], meta: {} }, myReports = { data: [], links: [], meta: {} }, areas = [], activities = [] }) {
+export default function Index({ areaReports = { data: [], links: [], meta: {} }, areas = [], activities = [] }) {
   const [selectedAreaReport, setSelectedAreaReport] = useState(null);
-  const [selectedMyReport, setSelectedMyReport] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
 
   const handleSelectAreaReport = (report) => {
     setSelectedAreaReport(selectedAreaReport?.id === report.id ? null : report);
   };
 
-  const handleSelectMyReport = (report) => {
-    setSelectedMyReport(selectedMyReport?.id === report.id ? null : report);
-  };
-
   const handleCloseAreaReport = () => {
     setSelectedAreaReport(null);
-  };
-
-  const handleCloseMyReport = () => {
-    setSelectedMyReport(null);
   };
 
   const handleGoSolve = () => {
@@ -136,16 +132,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
     router.visit(`${ROUTES.solveReport}/${selectedAreaReport.id}`);
   };
 
-  const handleGoEdit = () => {
-    if (!selectedMyReport) return;
-    router.visit(`/reports/${selectedMyReport.id}/edit`);
-  };
-
-  const handleAreaPageChange = (url) => {
-    router.visit(url, { preserveScroll: true });
-  };
-
-  const handleMyPageChange = (url) => {
+  const handlePageChange = (url) => {
     router.visit(url, { preserveScroll: true });
   };
 
@@ -155,6 +142,20 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
+  };
+
+  const handleSearch = () => {
+    router.get("/reports", 
+      { search, status: statusFilter, type: typeFilter }, 
+      { preserveState: true }
+    );
+  };
+
+  const handleReset = () => {
+    setSearch("");
+    setStatusFilter("");
+    setTypeFilter("");
+    router.get("/reports", {}, { preserveState: true });
   };
 
   const renderAreaReportRow = (report, index, selectedId, onSelect) => {
@@ -203,41 +204,18 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
     );
   };
 
-  const renderMyReportRow = (report, index, selectedId, onSelect) => {
-    const handleRowClick = () => {
-      onSelect(report);
-    };
-    
-    return (
-      <tr
-        key={report.id}
-        className={`cursor-pointer transition-all duration-150 hover:bg-muted/50 ${
-          selectedId === report.id ? "bg-primary/5 border-l-2 border-l-primary" : ""
-        }`}
-        onClick={handleRowClick}
-      >
-        <td className="p-3 text-[13px] text-muted-foreground font-semibold">{(myReports.meta?.from ?? 0) + index}</td>
-        <td className="p-3 text-[13px] text-foreground">{formatDate(report.created_at)}</td>
-        <td className="p-3 text-[13px] text-foreground">{formatDate(report.updated_at)}</td>
-        <td className="p-3 text-[13px] font-semibold text-foreground">{report.area ?? "-"}</td>
-        <td className="p-3 text-[13px] text-foreground">
-          <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[11.5px] font-semibold">
-            {report.type ?? "-"}
-          </span>
-        </td>
-        <td className="p-3 text-[13px] text-foreground">{report.activity ?? "-"}</td>
-        <td className="p-3 text-[13px] text-foreground max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">{report.issue ?? "-"}</td>
-        <td className="p-3 text-[13px] text-foreground">
-          {report.photo ? (
-            <a href={report.photo} target="_blank" rel="noreferrer" className="text-primary text-xs font-medium no-underline hover:underline">View</a>
-          ) : <span className="text-muted-foreground">-</span>}
-        </td>
-      </tr>
-    );
-  };
-
   const areaReportColumns = ["No", "Created", "Updated", "Submitted By", "Type", "Activity", "Issue", "Photo", "Photo After", "Finished"];
-  const myReportColumns = ["No", "Created", "Updated", "Area", "Type", "Activity", "Issue", "Photo"];
+  
+  const statusOptions = [
+    { label: "All", value: "" },
+    { label: "Pending", value: "pending" },
+    { label: "Solved", value: "solved" }
+  ];
+
+  const typeOptions = activities.map(activity => ({
+    label: activity.name || activity.description,
+    value: activity.id
+  }));
 
   return (
     <AppLayout title="Report Lists">
@@ -253,6 +231,42 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
           </BtnDefault>
         </div>
 
+        {/* Filter Section */}
+        <div className="bg-card rounded-2xl border border-border p-4 shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <InputText
+              placeholder="Search by issue or submitter..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+            />
+            
+            <InputDropdown
+              placeholder="Status"
+              value={statusFilter}
+              setObject={(item) => setStatusFilter(item.value)}
+              itemList={statusOptions}
+            />
+            
+            <InputDropdown
+              placeholder="Type Activity"
+              value={typeFilter}
+              setObject={(item) => setTypeFilter(item.value)}
+              itemList={typeOptions}
+            />
+            
+            <div className="flex gap-2">
+              <BtnDefault onClick={handleSearch} className="gap-2 flex-1">
+                <HiOutlineSearch className="w-4 h-4" />
+                Search
+              </BtnDefault>
+              <BtnDefault outline onClick={handleReset} className="flex-1">
+                Reset
+              </BtnDefault>
+            </div>
+          </div>
+        </div>
+
         <ReportTable
           title="Area Report"
           subtitle="area yang ditangani akun ini (PIC)"
@@ -262,19 +276,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
           onSelect={handleSelectAreaReport}
           renderRow={renderAreaReportRow}
           paginationLinks={areaReports.links}
-          onPageChange={handleAreaPageChange}
-        />
-
-        <ReportTable
-          title="My Report"
-          subtitle="report yang pernah disubmit akun ini"
-          reports={myReports}
-          columns={myReportColumns}
-          selectedId={selectedMyReport?.id}
-          onSelect={handleSelectMyReport}
-          renderRow={renderMyReportRow}
-          paginationLinks={myReports.links}
-          onPageChange={handleMyPageChange}
+          onPageChange={handlePageChange}
         />
 
         <ActionBar
@@ -290,15 +292,6 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
               <span className="text-amber-400">● Pending</span>
             )
           }
-        />
-
-        <ActionBar
-          selected={selectedMyReport}
-          onClose={handleCloseMyReport}
-          onAction={handleGoEdit}
-          actionLabel="Edit"
-          showAction={true}
-          statusText={<span className="text-amber-400">Status: edited</span>}
         />
 
         <ReportForm
