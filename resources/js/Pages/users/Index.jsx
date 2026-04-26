@@ -2,37 +2,57 @@ import React, { useState } from "react";
 import { router } from "@inertiajs/react";
 import axios from "axios";
 import AppLayout from "@/Layouts/AppLayout";
-import { ROLES } from "@/lib/constants.js";
 import InputText from "@/Components/Input/InputText";
 import InputDropdown from "@/Components/Input/InputDropdown";
 import BtnDefault from "@/Components/Button/BtnDefault";
+import ModalOverlay from "@/Components/Modal/ModalOverlay";
+import StatusModal from "@/Components/Modal/StatusModal";
+import { HiOutlineUserAdd, HiOutlinePencil, HiOutlineTrash, HiOutlineX } from "react-icons/hi";
 
-export default function Index({ users = { data: [], links: [], meta: {} } }) {
-    const [search, setSearch] = useState("");
-    const [roleFilter, setRoleFilter] = useState("");
+const getInitials = (name) => {
+    return name?.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") ?? "U";
+};
+
+export default function Index({ users = { data: [], links: [], meta: {} }, roles = [] }) {
     const [editTarget, setEditTarget] = useState(null);
     const [processing, setProcessing] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [statusModal, setStatusModal] = useState({
+        isOpen: false,
+        type: "success",
+        title: "Tes",
+        message: ""
+    });
 
     const [form, setForm] = useState({
         name: "",
         email: "",
-        role: "",
+        role_id: "",
         password: ""
     });
 
-    const roleMap = {
-        1: { label: "Admin", variant: "danger", color: "#ef4444", bg: "#fef2f2" },
-        2: { label: "Supervisor", variant: "primary", color: "#3b82f6", bg: "#eff6ff" },
-        3: { label: "Manager", variant: "warning", color: "#f59e0b", bg: "#fffbeb" }
+    const roleOptions = roles.map(role => ({
+        label: role.role_name,
+        value: role.id
+    }));
+
+    const showStatusModal = (type, title, message) => {
+        setStatusModal({
+            isOpen: true,
+            type,
+            title,
+            message
+        });
     };
 
-    const getInitials = (name) => {
-        return name?.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") ?? "U";
+    const closeStatusModal = () => {
+        setStatusModal(prev => ({ ...prev, isOpen: false }));
     };
 
     const openAdd = () => {
         setEditTarget(null);
-        setForm({ name: "", email: "", role: "", password: "" });
+        setForm({ name: "", email: "", role_id: "", password: "" });
+        setIsModalOpen(true);
     };
 
     const openEdit = (user) => {
@@ -40,9 +60,16 @@ export default function Index({ users = { data: [], links: [], meta: {} } }) {
         setForm({
             name: user.name,
             email: user.email,
-            role: user.role ?? "",
+            role_id: user.role_id?.toString() || "",
             password: ""
         });
+        setIsModalOpen(true);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setEditTarget(null);
+        setForm({ name: "", email: "", role_id: "", password: "" });
     };
 
     const handleFormChange = (key, value) => {
@@ -51,16 +78,36 @@ export default function Index({ users = { data: [], links: [], meta: {} } }) {
 
     const submit = async () => {
         setProcessing(true);
+        
+        const submitData = {
+            name: form.name,
+            email: form.email,
+            role_id: parseInt(form.role_id),
+            password: form.password
+        };
+
+        if (editTarget && !form.password) {
+            delete submitData.password;
+        }
+
         try {
             if (editTarget) {
-                await axios.put(`/users/${editTarget.id}`, form);
+                await axios.put(`/users/${editTarget.id}`, submitData);
+                showStatusModal("success", "Success", `User "${form.name}" has been updated`);
             } else {
-                await axios.post("/users", form);
+                await axios.post("/users", submitData);
+                showStatusModal("success", "Success", `User "${form.name}" has been created`);
             }
             router.reload({ only: ["users"] });
-            openAdd();
+            closeModal();
         } catch (error) {
-            console.error(error);
+            if (error.response?.status === 422) {
+                const errors = error.response.data.errors;
+                const firstError = Object.values(errors)[0];
+                showStatusModal("error", "Validation Error", Array.isArray(firstError) ? firstError[0] : firstError);
+            } else {
+                showStatusModal("error", "Error", "Something went wrong. Please try again.");
+            }
         } finally {
             setProcessing(false);
         }
@@ -70,216 +117,206 @@ export default function Index({ users = { data: [], links: [], meta: {} } }) {
         if (!window.confirm(`Delete user "${user.name}"?`)) return;
         try {
             await axios.delete(`/users/${user.id}`);
+            showStatusModal("success", "Success", `User "${user.name}" has been deleted`);
             router.reload({ only: ["users"] });
         } catch (error) {
-            console.error(error);
+            showStatusModal("error", "Error", "Failed to delete user");
         }
     };
 
-    const applyFilter = () => {
-        router.get("/users", { search, role: roleFilter }, { preserveState: true });
+    const isAdmin = (role_id) => {
+        const adminRole = roles.find(r => r.role_name === "Admin");
+        return adminRole && role_id === adminRole.id;
     };
 
-    const isAdmin = (role_id) => role_id === 1;
+    const getRoleName = (roleId) => {
+        const role = roles.find(r => r.id === roleId);
+        return role?.role_name || "Unknown";
+    };
 
     return (
         <AppLayout title="Users">
-            <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div className="flex flex-col gap-6">
+                <div className="flex items-center justify-between flex-wrap gap-3">
                     <div>
-                        <h1 style={{ fontSize: "1.25rem", fontWeight: 600, color: "var(--foreground)", margin: 0 }}>Users</h1>
-                        <p style={{ fontSize: "0.875rem", color: "var(--muted-foreground)", margin: "0.25rem 0 0 0" }}>
-                            Manage system users and permissions
-                        </p>
+                        <h1 className="text-2xl font-bold text-foreground tracking-[-0.5px] m-0">Users</h1>
+                        <p className="text-sm text-muted-foreground mt-1">Manage system users and permissions</p>
                     </div>
+                    <BtnDefault onClick={openAdd} size="md" className="gap-2 shadow-sm">
+                        <HiOutlineUserAdd className="w-4 h-4" />
+                        Add User
+                    </BtnDefault>
                 </div>
 
-                <style dangerouslySetInnerHTML={{ __html: `
-                    @media (min-width: 1280px) {
-                        .users-grid { display: grid !important; grid-template-columns: 1fr 320px !important; gap: 1.25rem !important; }
-                    }
-                `}} />
-
-                <div className="users-grid" style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1.25rem", alignItems: "start" }}>
-                    <div style={{ display: "contents" }}>
-                        <div style={{ display: "block", width: "100%" }}>
-                            <div style={{ background: "var(--card)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)", overflow: "hidden" }}>
-                                <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: "0.75rem", padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)", background: "var(--muted)" }}>
-                                    <div style={{ flex: 1, minWidth: "180px", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                                        <InputText
-                                            placeholder="Search by name or email..."
-                                            value={search}
-                                            onChange={(e) => setSearch(e.target.value)}
-                                        />
-                                    </div>
-
-                                    <div style={{ width: "160px", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                                        <InputDropdown
-                                            placeholder="All roles"
-                                            value={roleFilter}
-                                            onChange={(e) => setRoleFilter(e.target.value)}
-                                            options={ROLES.map(r => ({ label: r, value: r }))}
-                                        />
-                                    </div>
-
-                                    <BtnDefault outline onClick={applyFilter} style={{ height: "38px" }}>
-                                        <svg style={{ width: "0.875rem", height: "0.875rem" }} viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                                        </svg>
-                                        Search
-                                    </BtnDefault>
-                                </div>
-
-                                <div style={{ overflowX: "auto" }}>
-                                    <table style={{ width: "100%", fontSize: "0.875rem" }}>
-                                        <thead>
-                                            <tr style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.05em", background: "color-mix(in srgb, var(--muted) 50%, transparent)" }}>
-                                                <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", width: "3rem" }}>No</th>
-                                                <th style={{ padding: "0.75rem 1.25rem", textAlign: "left" }}>User</th>
-                                                <th style={{ padding: "0.75rem 1.25rem", textAlign: "left" }}>Email</th>
-                                                <th style={{ padding: "0.75rem 1.25rem", textAlign: "left" }}>Role</th>
-                                                <th style={{ padding: "0.75rem 1.25rem", textAlign: "left", width: "7rem" }}>Actions</th>
-                                            </tr>
-                                        </thead>
-
-                                        <tbody style={{ borderCollapse: "collapse" }}>
-                                            {users.data.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan="5" style={{ padding: "3rem 1.25rem", textAlign: "center", fontSize: "0.875rem", color: "var(--muted-foreground)" }}>
-                                                        No users found
-                                                    </td>
-                                                </tr>
-                                            ) : (
-                                                users.data.map((user, i) => (
-                                                    <tr key={user.id} style={{ borderBottom: "1px solid color-mix(in srgb, var(--border) 50%, transparent)", transition: "background 0.1s" }}>
-                                                        <td style={{ padding: "0.875rem 1.25rem", fontSize: "0.75rem", color: "var(--muted-foreground)", fontVariantNumeric: "tabular-nums" }}>
-                                                            {(users.meta?.from ?? 1) + i}
-                                                        </td>
-                                                        <td style={{ padding: "0.875rem 1.25rem" }}>
-                                                            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                                                                <div style={{ width: "2rem", height: "2rem", borderRadius: "9999px", background: "var(--accent)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", fontWeight: 600, flexShrink: 0, userSelect: "none" }}>
-                                                                    {getInitials(user.name)}
-                                                                </div>
-                                                                <span style={{ fontWeight: 500, color: "var(--foreground)", lineHeight: 1.25 }}>
-                                                                    {user.name}
-                                                                </span>
-                                                            </div>
-                                                        </td>
-                                                        <td style={{ padding: "0.875rem 1.25rem", color: "var(--muted-foreground)", fontSize: "0.75rem" }}>
-                                                            {user.email}
-                                                        </td>
-                                                        <td style={{ padding: "0.875rem 1.25rem" }}>
-                                                            <span style={{ display: "inline-flex", alignItems: "center", padding: "0.125rem 0.5rem", borderRadius: "9999px", fontSize: "0.75rem", fontWeight: 500, backgroundColor: roleMap[user.role_id]?.bg ?? "var(--muted)", color: roleMap[user.role_id]?.color ?? "var(--muted-foreground)" }}>
-                                                                {roleMap[user.role_id]?.label ?? "Unknown"}
-                                                            </span>
-                                                        </td>
-                                                        <td style={{ padding: "0.875rem 1.25rem" }}>
-                                                            {isAdmin(user.role_id) ? (
-                                                                <span style={{ fontSize: "0.75rem", color: "var(--muted-foreground)" }}>—</span>
-                                                            ) : (
-                                                                <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                                                                    <button
-                                                                        onClick={() => openEdit(user)}
-                                                                        style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--primary)", background: "none", border: "none", cursor: "pointer", transition: "color 0.12s" }}
-                                                                    >
-                                                                        Edit
-                                                                    </button>
-                                                                    <span style={{ color: "var(--border)" }}>·</span>
-                                                                    <button
-                                                                        onClick={() => confirmDelete(user)}
-                                                                        style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--destructive)", background: "none", border: "none", cursor: "pointer", transition: "opacity 0.12s" }}
-                                                                    >
-                                                                        Delete
-                                                                    </button>
-                                                                </div>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                {users.links?.length > 3 && (
-                                    <div style={{ display: "flex", alignItems: "center", gap: "0.375rem", padding: "0.875rem 1.25rem", borderTop: "1px solid var(--border)", background: "var(--muted)", flexWrap: "wrap" }}>
-                                        {users.links.map((link, idx) => (
-                                            <BtnDefault
-                                                key={idx}
-                                                size="sm"
-                                                outline={!link.active}
-                                                disabled={!link.url}
-                                                onClick={() => link.url && router.visit(link.url)}
-                                            >
-                                                <span dangerouslySetInnerHTML={{ __html: link.label }} />
-                                            </BtnDefault>
-                                        ))}
-                                    </div>
+                <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                            <thead>
+                                <tr className="text-left text-[11px] font-semibold text-muted-foreground tracking-wide uppercase border-b border-border bg-muted/20">
+                                    <th className="p-3 w-12">No</th>
+                                    <th className="p-3">User</th>
+                                    <th className="p-3">Email</th>
+                                    <th className="p-3">Role</th>
+                                    <th className="p-3 w-24">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {users.data.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="5" className="py-12 text-center text-muted-foreground">
+                                            No users found
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    users.data.map((user, i) => (
+                                        <tr key={user.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                                            <td className="p-3 text-xs text-muted-foreground font-mono">
+                                                {(users.meta?.from ?? 1) + i}
+                                            </td>
+                                            <td className="p-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
+                                                        {getInitials(user.name)}
+                                                    </div>
+                                                    <span className="font-medium text-foreground">
+                                                        {user.name}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="p-3 text-muted-foreground text-xs">
+                                                {user.email}
+                                            </td>
+                                            <td className="p-3">
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                                                    {getRoleName(user.role_id)}
+                                                </span>
+                                            </td>
+                                            <td className="p-3">
+                                                {isAdmin(user.role_id) ? (
+                                                    <span className="text-xs text-muted-foreground">—</span>
+                                                ) : (
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => openEdit(user)}
+                                                            className="text-primary hover:text-primary/80 transition-colors p-1"
+                                                            title="Edit"
+                                                        >
+                                                            <HiOutlinePencil className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => confirmDelete(user)}
+                                                            className="text-destructive hover:text-destructive/80 transition-colors p-1"
+                                                            title="Delete"
+                                                        >
+                                                            <HiOutlineTrash className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))
                                 )}
-                            </div>
-                        </div>
-
-                        <div style={{ display: "block", width: "100%" }}>
-                            <div style={{ background: "var(--card)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", boxShadow: "0 1px 2px 0 rgba(0, 0, 0, 0.05)", overflow: "hidden" }}>
-                                <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)", background: "var(--muted)" }}>
-                                    <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--foreground)", margin: 0 }}>
-                                        {editTarget ? "Edit User" : "Add New User"}
-                                    </p>
-                                    <p style={{ fontSize: "0.75rem", color: "var(--muted-foreground)", margin: "0.125rem 0 0 0" }}>
-                                        {editTarget ? `Editing ${editTarget.name}` : "Fill in the details below"}
-                                    </p>
-                                </div>
-
-                                <div style={{ padding: "1.25rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
-                                        <InputText
-                                            label="Full Name"
-                                            placeholder="Enter full name"
-                                            value={form.name}
-                                            onChange={(e) => handleFormChange("name", e.target.value)}
-                                        />
-
-                                        <InputText
-                                            label="Email Address"
-                                            type="email"
-                                            placeholder="Enter email address"
-                                            value={form.email}
-                                            onChange={(e) => handleFormChange("email", e.target.value)}
-                                        />
-
-                                        <InputDropdown
-                                            label="Role"
-                                            placeholder="Select a role"
-                                            value={form.role}
-                                            onChange={(e) => handleFormChange("role", e.target.value)}
-                                            options={ROLES && ROLES.filter((r) => r !== "Admin")}
-                                        />
-
-                                        <InputText
-                                            label={editTarget ? "New Password (optional)" : "Password"}
-                                            type="password"
-                                            placeholder={editTarget ? "Leave blank to keep current" : "Enter password"}
-                                            value={form.password}
-                                            onChange={(e) => handleFormChange("password", e.target.value)}
-                                        />
-
-                                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", paddingTop: "0.25rem" }}>
-                                        <BtnDefault outline onClick={openAdd}>
-                                            Cancel
-                                        </BtnDefault>
-                                        <BtnDefault
-                                            fullWidth
-                                            onClick={submit}
-                                            loading={processing}
-                                        >
-                                            {processing ? "Saving..." : editTarget ? "Update User" : "Create User"}
-                                        </BtnDefault>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                            </tbody>
+                        </table>
                     </div>
+
+                    {users.links?.length > 3 && (
+                        <div className="px-4 py-3 border-t border-border bg-muted/30 flex gap-1 flex-wrap">
+                            {users.links.map((link, idx) => (
+                                <BtnDefault
+                                    key={idx}
+                                    size="sm"
+                                    outline={!link.active}
+                                    disabled={!link.url}
+                                    onClick={() => link.url && router.visit(link.url)}
+                                    className="min-w-[32px] px-2"
+                                >
+                                    <span dangerouslySetInnerHTML={{ __html: link.label }} />
+                                </BtnDefault>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
+
+            <ModalOverlay isOpen={isModalOpen} onClose={closeModal}>
+                <div className="bg-card rounded-2xl border border-border shadow-xl w-full max-w-[500px]">
+                    <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl">
+                        <div>
+                            <h2 className="text-xl font-bold text-foreground tracking-[-0.5px] m-0">
+                                {editTarget ? "Edit User" : "Add New User"}
+                            </h2>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                                {editTarget ? `Editing ${editTarget.name}` : "Fill in the details below"}
+                            </p>
+                        </div>
+                        <button
+                            onClick={closeModal}
+                            className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md"
+                            aria-label="Close"
+                        >
+                            <HiOutlineX className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <div className="p-6 flex flex-col gap-4">
+                        <InputText
+                            label="Full Name"
+                            placeholder="Enter full name"
+                            value={form.name}
+                            onChange={(e) => handleFormChange("name", e.target.value)}
+                            required
+                        />
+
+                        <InputText
+                            label="Email Address"
+                            type="email"
+                            placeholder="Enter email address"
+                            value={form.email}
+                            onChange={(e) => handleFormChange("email", e.target.value)}
+                            required
+                        />
+
+                        <InputDropdown
+                            label="Role"
+                            placeholder="Select a role"
+                            value={form.role_id}
+                            setObject={(item) => handleFormChange("role_id", item.value)}
+                            itemList={roleOptions}
+                            required
+                        />
+
+                        <InputText
+                            label={editTarget ? "New Password (optional)" : "Password"}
+                            type="password"
+                            placeholder={editTarget ? "Leave blank to keep current" : "Enter password"}
+                            value={form.password}
+                            onChange={(e) => handleFormChange("password", e.target.value)}
+                        />
+
+                        <div className="flex items-center gap-3 pt-4">
+                            <BtnDefault outline onClick={closeModal} className="flex-1">
+                                Cancel
+                            </BtnDefault>
+                            <BtnDefault
+                                onClick={submit}
+                                loading={processing}
+                                className="flex-[2]"
+                            >
+                                {processing ? "Saving..." : editTarget ? "Update User" : "Create User"}
+                            </BtnDefault>
+                        </div>
+                    </div>
+                </div>
+            </ModalOverlay>
+
+            <StatusModal
+                isOpen={statusModal.isOpen}
+                onClose={closeStatusModal}
+                type={statusModal.type}
+                title={statusModal.title}
+                message={statusModal.message}
+            />
         </AppLayout>
     );
 }

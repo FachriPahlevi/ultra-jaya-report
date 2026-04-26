@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
@@ -11,15 +12,18 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::select('id','name','email','role_id')->latest()->paginate(10);
+        $users = User::select('id', 'name', 'email', 'role_id')
+            ->with('role')
+            ->latest()
+            ->paginate(10);
+        
+        // Ambil data roles untuk dropdown
+        $roles = Role::select('id', 'role_name')->get();
+        
         return Inertia::render('users/Index', [
-            'users' => $users
+            'users' => $users,
+            'roles' => $roles
         ]);
-    }
-
-    public function create()
-    {
-        return Inertia::render('users/Create');
     }
 
     public function store(Request $request)
@@ -27,30 +31,16 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
-            'role_id' => 'required|integer',
+            'role_id' => 'required|integer|exists:roles,id',
             'password' => 'required|string|min:6',
         ]);
 
         $validated['password'] = Hash::make($validated['password']);
-        $validated['is_active'] = 1;
+        $validated['is_active'] = true;
 
         User::create($validated);
 
-        return redirect()->route('user.index');
-    }
-
-    public function show(User $user)
-    {
-        return Inertia::render('users/Show', [
-            'user' => $user,
-        ]);
-    }
-
-    public function edit(User $user)
-    {
-        return Inertia::render('users/Edit', [
-            'user' => $user,
-        ]);
+        return redirect()->route('users.index');
     }
 
     public function update(Request $request, User $user)
@@ -58,7 +48,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'role_id' => 'required|integer',
+            'role_id' => 'required|integer|exists:roles,id',
             'password' => 'nullable|string|min:6',
         ]);
 
@@ -70,13 +60,13 @@ class UserController extends Controller
 
         $user->update($validated);
 
-        return redirect()->route('user.index');
+        return redirect()->route('users.index');
     }
 
     public function destroy(User $user)
     {
         $user->delete();
 
-        return redirect()->route('user.index');
+        return redirect()->route('users.index');
     }
 }
