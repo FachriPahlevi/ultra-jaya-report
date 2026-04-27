@@ -61,6 +61,10 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
 
     const submit = async (e) => {
         e.preventDefault();
+        e.stopPropagation();
+
+        if (processing) return;
+
         setProcessing(true);
         setErrors({});
 
@@ -82,8 +86,11 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
                     `Area "${form.name}" has been created`,
                 );
             }
-            router.reload({ only: ["areas"] });
-            closeModal();
+
+            setTimeout(() => {
+                router.reload();
+                closeModal();
+            }, 1500);
         } catch (error) {
             if (error.response?.status === 422) {
                 setErrors(error.response.data.errors || {});
@@ -94,11 +101,11 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
                     Array.isArray(firstError) ? firstError[0] : firstError,
                 );
             } else {
-                showStatusModal(
-                    "error",
-                    "Error",
-                    "Something went wrong. Please try again.",
-                );
+                const errorMessage =
+                    error.response?.data?.message ||
+                    error.message ||
+                    "Something went wrong. Please try again.";
+                showStatusModal("error", "Error", errorMessage);
             }
         } finally {
             setProcessing(false);
@@ -121,13 +128,15 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
                                 "Success",
                                 `Area "${area.area}" has been deleted`,
                             );
+                            setTimeout(() => {
+                                router.reload();
+                            }, 1500);
                         },
                         onError: (error) => {
-                            showStatusModal(
-                                "error",
-                                "Error",
-                                "Failed to delete area",
-                            );
+                            const errorMessage =
+                                error.response?.data?.message ||
+                                "Failed to delete area";
+                            showStatusModal("error", "Error", errorMessage);
                         },
                     });
                 },
@@ -139,6 +148,19 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
     const deleteArea = (area) => {
         confirmDelete(area);
     };
+
+    if (!areas || !areas.data) {
+        return (
+            <AppLayout title="Master Area">
+                <div className="flex items-center justify-center h-64">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                        <p className="mt-4 text-muted-foreground">Loading...</p>
+                    </div>
+                </div>
+            </AppLayout>
+        );
+    }
 
     return (
         <AppLayout title="Master Area">

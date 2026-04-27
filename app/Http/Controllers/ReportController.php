@@ -7,6 +7,7 @@ use App\Models\Area;
 use App\Models\Report;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class ReportController extends Controller
@@ -22,17 +23,11 @@ class ReportController extends Controller
             ->latest()
             ->paginate(10);
 
-        $myReports = Report::with(['area', 'activity'])
-            ->where('author_id', $user->id)
-            ->latest()
-            ->paginate(10);
-
         $areas = Area::select('id', 'area')->get();
         $activities = Activity::select('id', 'description')->get();
 
         return Inertia::render('reports/Index', [
             'areaReports' => $areaReports,
-            'myReports' => $myReports,
             'areas' => $areas,
             'activities' => $activities,
         ]);
@@ -47,18 +42,16 @@ class ReportController extends Controller
             'issue' => 'required|string',
             'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
-        $user = Auth::user();
-        $user_id = $user->id;
-        $photoFile = $request->file('photo');
-        $photoBinary = file_get_contents($photoFile->getRealPath());
+
+        $photoPath = $request->file('photo')->store('reports/photos', 'public');
 
         Report::create([
             'activity_id' => $validated['type_activity'],
             'area_id' => $validated['area_activity'],
             'activity' => $validated['activity'],
             'issue' => $validated['issue'],
-            'photo_before' => $photoBinary,
-            'author_id' => $user_id,
+            'photo_before' => $photoPath,
+            'author_id' => Auth::id(),
             'finished_date' => null,
             'is_content_edited' => false,
         ]);
@@ -72,11 +65,10 @@ class ReportController extends Controller
             'photo_after' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        $photoFile = $request->file('photo_after');
-        $photoAfterBinary = file_get_contents($photoFile->getRealPath());
+        $photoPath = $request->file('photo_after')->store('reports/photos-after', 'public');
 
         $report->update([
-            'photo_after' => $photoAfterBinary,
+            'photo_after' => $photoPath,
             'finished_date' => now(),
         ]);
 
@@ -96,9 +88,11 @@ class ReportController extends Controller
         $updateData = ['is_content_edited' => true];
 
         if ($request->hasFile('photo')) {
-            $photoFile = $request->file('photo');
-            $photoBinary = file_get_contents($photoFile->getRealPath());
-            $updateData['photo_before'] = $photoBinary;
+            if ($report->photo_before) {
+                Storage::disk('public')->delete($report->photo_before);
+            }
+            $photoPath = $request->file('photo')->store('reports/photos', 'public');
+            $updateData['photo_before'] = $photoPath;
         }
 
         if (isset($validated['type_activity'])) {
@@ -124,6 +118,13 @@ class ReportController extends Controller
 
     public function destroy(Report $report)
     {
+        if ($report->photo_before) {
+            Storage::disk('public')->delete($report->photo_before);
+        }
+        if ($report->photo_after) {
+            Storage::disk('public')->delete($report->photo_after);
+        }
+
         $report->delete();
 
         return redirect()->back();

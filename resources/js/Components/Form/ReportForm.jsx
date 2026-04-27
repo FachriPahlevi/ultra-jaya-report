@@ -1,10 +1,10 @@
 import { useForm, usePage } from "@inertiajs/react";
 import { useState } from "react";
-import { ROUTES } from "@/lib/constants.js";
 import InputText from "@/Components/Input/InputText";
 import InputDropdown from "@/Components/Input/InputDropdown";
 import BtnDefault from "@/Components/Button/BtnDefault";
 import ModalOverlay from "@/Components/Modal/ModalOverlay";
+import { useStatusModal } from "@/Components/Context/StatusModalContext";
 import { HiOutlinePhotograph, HiOutlineX } from "react-icons/hi";
 
 export default function ReportForm({
@@ -13,6 +13,7 @@ export default function ReportForm({
     areas = [],
     activities = [],
 }) {
+    const { setStatusModalProps } = useStatusModal();
     const { auth } = usePage().props;
     const currentUser = auth?.user;
     const [photoPreview, setPhotoPreview] = useState(null);
@@ -24,6 +25,16 @@ export default function ReportForm({
         issue: "",
         photo: null,
     });
+
+    const showStatusModal = (type, title, message) => {
+        setStatusModalProps({
+            isOpen: true,
+            type,
+            title,
+            message,
+            button1: { text: "OK" },
+        });
+    };
 
     const handlePhotoChange = (e) => {
         const file = e.target.files[0];
@@ -56,12 +67,16 @@ export default function ReportForm({
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        post(ROUTES.issueReport, {
+        post("/reports", {
             forceFormData: true,
             onSuccess: () => {
+                showStatusModal("success", "Success", "Report has been created");
                 reset();
                 setPhotoPreview(null);
                 onClose();
+            },
+            onError: (error) => {
+                showStatusModal("error", "Error", "Failed to create report");
             },
         });
     };

@@ -10,28 +10,53 @@ class AreaSeeder extends Seeder
 {
     public function run(): void
     {
-        // Pastikan UserSeeder sudah dijalankan
-        $this->call(UserSeeder::class);
-        
-        $users = User::pluck('id', 'email');
+        // Ambil user dengan role SUPERVISOR
+        $supervisors = User::whereHas('role', function($query) {
+            $query->where('role_name', 'SUPERVISOR');
+        })->get();
 
-        $areaData = [
-            'spv1@example.com' => 'Fresh Milk Reception',
-            'spv2@example.com' => 'Processing',
-            'spv3@example.com' => 'CIP Kitchen',
-            'spv4@example.com' => 'Filling',
-            'spv5@example.com' => 'Packing',
+        if ($supervisors->isEmpty()) {
+            // Jika tidak ada supervisor, buat dummy
+            $this->createDummySupervisors();
+            $supervisors = User::whereHas('role', function($query) {
+                $query->where('role_name', 'SUPERVISOR');
+            })->get();
+        }
+
+        $areas = [
+            ['area' => 'Fresh Milk Reception'],
+            ['area' => 'Processing'],
+            ['area' => 'CIP Kitchen'],
+            ['area' => 'Filling'],
+            ['area' => 'Packing'],
         ];
 
-        foreach ($areaData as $email => $areaName) {
-            $userId = $users->get($email);
+        foreach ($areas as $index => $area) {
+            // Assign pic_user_id secara bergantian ke supervisor yang ada
+            $picUserId = $supervisors[$index % $supervisors->count()]->id;
             
-            if ($userId) {
-                Area::updateOrCreate(
-                    ['area' => $areaName],
-                    ['area' => $areaName, 'pic_user_id' => $userId]
-                );
-            }
+            Area::updateOrCreate(
+                ['area' => $area['area']],
+                ['area' => $area['area'], 'pic_user_id' => $picUserId]
+            );
+        }
+    }
+
+    private function createDummySupervisors()
+    {
+        $roleId = \App\Models\Role::where('role_name', 'SUPERVISOR')->first()->id;
+        
+        for ($i = 1; $i <= 5; $i++) {
+            User::updateOrCreate(
+                ['email' => "spv{$i}@example.com"],
+                [
+                    'name' => "Supervisor {$i}",
+                    'email' => "spv{$i}@example.com",
+                    'password' => bcrypt('password'),
+                    'role_id' => $roleId,
+                    'is_active' => true,
+                ]
+            );
         }
     }
 }

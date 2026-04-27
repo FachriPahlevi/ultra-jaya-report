@@ -7,13 +7,27 @@ import InputDropdown from "@/Components/Input/InputDropdown";
 import BtnDefault from "@/Components/Button/BtnDefault";
 import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import StatusModal from "@/Components/Modal/StatusModal";
-import { HiOutlineUserAdd, HiOutlinePencil, HiOutlineTrash, HiOutlineX } from "react-icons/hi";
+import {
+    HiOutlineUserAdd,
+    HiOutlinePencil,
+    HiOutlineTrash,
+    HiOutlineX,
+} from "react-icons/hi";
 
 const getInitials = (name) => {
-    return name?.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") ?? "U";
+    return (
+        name
+            ?.split(" ")
+            .slice(0, 2)
+            .map((w) => w[0]?.toUpperCase())
+            .join("") ?? "U"
+    );
 };
 
-export default function Index({ users = { data: [], links: [], meta: {} }, roles = [] }) {
+export default function Index({
+    users = { data: [], links: [], meta: {} },
+    roles = [],
+}) {
     const [editTarget, setEditTarget] = useState(null);
     const [processing, setProcessing] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,19 +35,19 @@ export default function Index({ users = { data: [], links: [], meta: {} }, roles
         isOpen: false,
         type: "success",
         title: "Tes",
-        message: ""
+        message: "",
     });
 
     const [form, setForm] = useState({
         name: "",
         email: "",
         role_id: "",
-        password: ""
+        password: "",
     });
 
-    const roleOptions = roles.map(role => ({
+    const roleOptions = roles.map((role) => ({
         label: role.role_name,
-        value: role.id
+        value: role.id,
     }));
 
     const showStatusModal = (type, title, message) => {
@@ -41,12 +55,12 @@ export default function Index({ users = { data: [], links: [], meta: {} }, roles
             isOpen: true,
             type,
             title,
-            message
+            message,
         });
     };
 
     const closeStatusModal = () => {
-        setStatusModal(prev => ({ ...prev, isOpen: false }));
+        setStatusModal((prev) => ({ ...prev, isOpen: false }));
     };
 
     const openAdd = () => {
@@ -61,7 +75,7 @@ export default function Index({ users = { data: [], links: [], meta: {} }, roles
             name: user.name,
             email: user.email,
             role_id: user.role_id?.toString() || "",
-            password: ""
+            password: "",
         });
         setIsModalOpen(true);
     };
@@ -78,12 +92,12 @@ export default function Index({ users = { data: [], links: [], meta: {} }, roles
 
     const submit = async () => {
         setProcessing(true);
-        
+
         const submitData = {
             name: form.name,
             email: form.email,
             role_id: parseInt(form.role_id),
-            password: form.password
+            password: form.password,
         };
 
         if (editTarget && !form.password) {
@@ -93,10 +107,18 @@ export default function Index({ users = { data: [], links: [], meta: {} }, roles
         try {
             if (editTarget) {
                 await axios.put(`/users/${editTarget.id}`, submitData);
-                showStatusModal("success", "Success", `User "${form.name}" has been updated`);
+                showStatusModal(
+                    "success",
+                    "Success",
+                    `User "${form.name}" has been updated`,
+                );
             } else {
                 await axios.post("/users", submitData);
-                showStatusModal("success", "Success", `User "${form.name}" has been created`);
+                showStatusModal(
+                    "success",
+                    "Success",
+                    `User "${form.name}" has been created`,
+                );
             }
             router.reload({ only: ["users"] });
             closeModal();
@@ -104,9 +126,17 @@ export default function Index({ users = { data: [], links: [], meta: {} }, roles
             if (error.response?.status === 422) {
                 const errors = error.response.data.errors;
                 const firstError = Object.values(errors)[0];
-                showStatusModal("error", "Validation Error", Array.isArray(firstError) ? firstError[0] : firstError);
+                showStatusModal(
+                    "error",
+                    "Validation Error",
+                    Array.isArray(firstError) ? firstError[0] : firstError,
+                );
             } else {
-                showStatusModal("error", "Error", "Something went wrong. Please try again.");
+                showStatusModal(
+                    "error",
+                    "Error",
+                    "Something went wrong. Please try again.",
+                );
             }
         } finally {
             setProcessing(false);
@@ -117,7 +147,11 @@ export default function Index({ users = { data: [], links: [], meta: {} }, roles
         if (!window.confirm(`Delete user "${user.name}"?`)) return;
         try {
             await axios.delete(`/users/${user.id}`);
-            showStatusModal("success", "Success", `User "${user.name}" has been deleted`);
+            showStatusModal(
+                "success",
+                "Success",
+                `User "${user.name}" has been deleted`,
+            );
             router.reload({ only: ["users"] });
         } catch (error) {
             showStatusModal("error", "Error", "Failed to delete user");
@@ -125,57 +159,77 @@ export default function Index({ users = { data: [], links: [], meta: {} }, roles
     };
 
     const isAdmin = (role_id) => {
-        const adminRole = roles.find(r => r.role_name === "Admin");
+        const adminRole = roles.find((r) => r.role_name === "Admin");
         return adminRole && role_id === adminRole.id;
     };
 
     const getRoleName = (roleId) => {
-        const role = roles.find(r => r.id === roleId);
+        const role = roles.find((r) => r.id === roleId);
         return role?.role_name || "Unknown";
     };
+    console.log(roles);
 
     return (
         <AppLayout title="Users">
-            <div className="flex flex-col gap-6">
-                <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex flex-col gap-8">
+                <div className="flex items-end justify-between flex-wrap gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-foreground tracking-[-0.5px] m-0">Users</h1>
-                        <p className="text-sm text-muted-foreground mt-1">Manage system users and permissions</p>
+                        <h1 className="text-[22px] font-semibold text-foreground tracking-tight">
+                            Users
+                        </h1>
+                        <p className="text-sm text-muted-foreground mt-1">
+                            Manage system users and permissions
+                        </p>
                     </div>
-                    <BtnDefault onClick={openAdd} size="md" className="gap-2 shadow-sm">
+
+                    <BtnDefault
+                        onClick={openAdd}
+                        size="md"
+                        className="gap-2 shadow-sm px-4"
+                    >
                         <HiOutlineUserAdd className="w-4 h-4" />
                         Add User
                     </BtnDefault>
                 </div>
 
-                <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
+                <div className="bg-card rounded-2xl border border-border shadow-sm">
                     <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                             <thead>
-                                <tr className="text-left text-[11px] font-semibold text-muted-foreground tracking-wide uppercase border-b border-border bg-muted/20">
-                                    <th className="p-3 w-12">No</th>
-                                    <th className="p-3">User</th>
-                                    <th className="p-3">Email</th>
-                                    <th className="p-3">Role</th>
-                                    <th className="p-3 w-24">Actions</th>
+                                <tr className="text-left text-[11px] font-semibold text-muted-foreground uppercase tracking-wide border-b border-border bg-muted/30">
+                                    <th className="px-5 py-3 w-12">No</th>
+                                    <th className="px-5 py-3">User</th>
+                                    <th className="px-5 py-3">Email</th>
+                                    <th className="px-5 py-3">Role</th>
+                                    <th className="px-5 py-3 w-28 text-right">
+                                        Actions
+                                    </th>
                                 </tr>
                             </thead>
+
                             <tbody>
                                 {users.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan="5" className="py-12 text-center text-muted-foreground">
+                                        <td
+                                            colSpan="5"
+                                            className="py-16 text-center text-muted-foreground text-sm"
+                                        >
                                             No users found
                                         </td>
                                     </tr>
                                 ) : (
                                     users.data.map((user, i) => (
-                                        <tr key={user.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                                            <td className="p-3 text-xs text-muted-foreground font-mono">
+                                        <tr
+                                            key={user.id}
+                                            className="border-b border-border/50 hover:bg-muted/40 transition-colors"
+                                        >
+                                            <td className="px-5 py-4 text-xs text-muted-foreground font-mono">
                                                 {(users.meta?.from ?? 1) + i}
                                             </td>
-                                            <td className="p-3">
+
+                                            <td className="px-5 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
+                                                    <div className="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
                                                         {getInitials(user.name)}
                                                     </div>
                                                     <span className="font-medium text-foreground">
@@ -183,30 +237,40 @@ export default function Index({ users = { data: [], links: [], meta: {} }, roles
                                                     </span>
                                                 </div>
                                             </td>
-                                            <td className="p-3 text-muted-foreground text-xs">
+
+                                            <td className="px-5 py-4 text-muted-foreground text-xs">
                                                 {user.email}
                                             </td>
-                                            <td className="p-3">
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+
+                                            <td className="px-5 py-4">
+                                                <span className="inline-flex items-center px-2.5 py-[2px] rounded-full text-[11px] font-medium bg-primary/10 text-primary">
                                                     {getRoleName(user.role_id)}
                                                 </span>
                                             </td>
-                                            <td className="p-3">
+
+                                            <td className="px-5 py-4">
                                                 {isAdmin(user.role_id) ? (
-                                                    <span className="text-xs text-muted-foreground">—</span>
+                                                    <div className="text-right text-xs text-muted-foreground">
+                                                        —
+                                                    </div>
                                                 ) : (
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center justify-end gap-2">
                                                         <button
-                                                            onClick={() => openEdit(user)}
-                                                            className="text-primary hover:text-primary/80 transition-colors p-1"
-                                                            title="Edit"
+                                                            onClick={() =>
+                                                                openEdit(user)
+                                                            }
+                                                            className="p-2 rounded-md hover:bg-muted transition-colors text-primary"
                                                         >
                                                             <HiOutlinePencil className="w-4 h-4" />
                                                         </button>
+
                                                         <button
-                                                            onClick={() => confirmDelete(user)}
-                                                            className="text-destructive hover:text-destructive/80 transition-colors p-1"
-                                                            title="Delete"
+                                                            onClick={() =>
+                                                                confirmDelete(
+                                                                    user,
+                                                                )
+                                                            }
+                                                            className="p-2 rounded-md hover:bg-muted transition-colors text-destructive"
                                                         >
                                                             <HiOutlineTrash className="w-4 h-4" />
                                                         </button>
@@ -221,24 +285,29 @@ export default function Index({ users = { data: [], links: [], meta: {} }, roles
                     </div>
 
                     {users.links?.length > 3 && (
-                        <div className="px-4 py-3 border-t border-border bg-muted/30 flex gap-1 flex-wrap">
+                        <div className="px-5 py-3 border-t border-border bg-muted/30 flex gap-1 flex-wrap">
                             {users.links.map((link, idx) => (
                                 <BtnDefault
                                     key={idx}
                                     size="sm"
                                     outline={!link.active}
                                     disabled={!link.url}
-                                    onClick={() => link.url && router.visit(link.url)}
-                                    className="min-w-[32px] px-2"
+                                    onClick={() =>
+                                        link.url && router.visit(link.url)
+                                    }
+                                    className="min-w-[34px] px-2"
                                 >
-                                    <span dangerouslySetInnerHTML={{ __html: link.label }} />
+                                    <span
+                                        dangerouslySetInnerHTML={{
+                                            __html: link.label,
+                                        }}
+                                    />
                                 </BtnDefault>
                             ))}
                         </div>
                     )}
                 </div>
             </div>
-
             <ModalOverlay isOpen={isModalOpen} onClose={closeModal}>
                 <div className="bg-card rounded-2xl border border-border shadow-xl w-full max-w-[500px]">
                     <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl">
@@ -247,7 +316,9 @@ export default function Index({ users = { data: [], links: [], meta: {} }, roles
                                 {editTarget ? "Edit User" : "Add New User"}
                             </h2>
                             <p className="text-xs text-muted-foreground mt-0.5">
-                                {editTarget ? `Editing ${editTarget.name}` : "Fill in the details below"}
+                                {editTarget
+                                    ? `Editing ${editTarget.name}`
+                                    : "Fill in the details below"}
                             </p>
                         </div>
                         <button
@@ -264,7 +335,9 @@ export default function Index({ users = { data: [], links: [], meta: {} }, roles
                             label="Full Name"
                             placeholder="Enter full name"
                             value={form.name}
-                            onChange={(e) => handleFormChange("name", e.target.value)}
+                            onChange={(e) =>
+                                handleFormChange("name", e.target.value)
+                            }
                             required
                         />
 
@@ -273,7 +346,9 @@ export default function Index({ users = { data: [], links: [], meta: {} }, roles
                             type="email"
                             placeholder="Enter email address"
                             value={form.email}
-                            onChange={(e) => handleFormChange("email", e.target.value)}
+                            onChange={(e) =>
+                                handleFormChange("email", e.target.value)
+                            }
                             required
                         />
 
@@ -281,21 +356,37 @@ export default function Index({ users = { data: [], links: [], meta: {} }, roles
                             label="Role"
                             placeholder="Select a role"
                             value={form.role_id}
-                            setObject={(item) => handleFormChange("role_id", item.value)}
+                            setObject={(item) =>
+                                handleFormChange("role_id", item.value)
+                            }
                             itemList={roleOptions}
                             required
                         />
 
                         <InputText
-                            label={editTarget ? "New Password (optional)" : "Password"}
+                            label={
+                                editTarget
+                                    ? "New Password (optional)"
+                                    : "Password"
+                            }
                             type="password"
-                            placeholder={editTarget ? "Leave blank to keep current" : "Enter password"}
+                            placeholder={
+                                editTarget
+                                    ? "Leave blank to keep current"
+                                    : "Enter password"
+                            }
                             value={form.password}
-                            onChange={(e) => handleFormChange("password", e.target.value)}
+                            onChange={(e) =>
+                                handleFormChange("password", e.target.value)
+                            }
                         />
 
                         <div className="flex items-center gap-3 pt-4">
-                            <BtnDefault outline onClick={closeModal} className="flex-1">
+                            <BtnDefault
+                                outline
+                                onClick={closeModal}
+                                className="flex-1"
+                            >
                                 Cancel
                             </BtnDefault>
                             <BtnDefault
@@ -303,7 +394,11 @@ export default function Index({ users = { data: [], links: [], meta: {} }, roles
                                 loading={processing}
                                 className="flex-[2]"
                             >
-                                {processing ? "Saving..." : editTarget ? "Update User" : "Create User"}
+                                {processing
+                                    ? "Saving..."
+                                    : editTarget
+                                      ? "Update User"
+                                      : "Create User"}
                             </BtnDefault>
                         </div>
                     </div>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Area;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Validation\ValidationException;
 
 class AreaController extends Controller
 {
@@ -21,34 +22,69 @@ class AreaController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:areas,area',
-        ]);
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255|unique:areas,area',
+            ]);
 
-        Area::create([
-            'area' => $validated['name'],
-        ]);
+            $area = Area::create([
+                'area' => $validated['name'],
+                'pic_user_id' => auth()->id(),
+            ]);
 
-        return redirect()->route('areas.index');
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'data' => $area], 200);
+            }
+
+            return redirect()->route('areas.index');
+            
+        } catch (ValidationException $e) {
+            return response()->json(['errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
     }
 
     public function update(Request $request, Area $area)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:areas,area,' . $area->id,
-        ]);
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255|unique:areas,area,' . $area->id,
+            ]);
 
-        $area->update([
-            'area' => $validated['name'],
-        ]);
+            $area->update([
+                'area' => $validated['name'],
+            ]);
 
-        return redirect()->route('areas.index');
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true], 200);
+            }
+
+            return redirect()->route('areas.index');
+            
+        } catch (ValidationException $e) {
+            return response()->json(['errors' => $e->errors()], 422);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
     }
 
     public function destroy(Area $area)
     {
-        $area->delete();
-
-        return redirect()->route('areas.index');
+        try {
+            $area->delete();
+            
+            if (request()->wantsJson()) {
+                return response()->json(['success' => true], 200);
+            }
+            
+            return redirect()->route('areas.index');
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+                'error' => 'Failed to delete area'
+            ], 500);
+        }
     }
 }

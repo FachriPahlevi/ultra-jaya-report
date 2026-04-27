@@ -14,12 +14,19 @@ export default function InputText({
     ...props
 }) {
     return (
-        <div className={`flex flex-col gap-1.5 ${className}`}>
+        <div className={`flex flex-col gap-2 ${className}`}>
             {label && (
-                <label htmlFor={id} className="text-[13px] font-semibold text-foreground">
-                    {label} {required && <span className="text-destructive">*</span>}
+                <label
+                    htmlFor={id}
+                    className="text-[12px] font-medium text-muted-foreground"
+                >
+                    {label}
+                    {required && (
+                        <span className="text-destructive ml-0.5">*</span>
+                    )}
                 </label>
             )}
+
             <input
                 id={id}
                 type={type}
@@ -28,14 +35,26 @@ export default function InputText({
                 placeholder={placeholder}
                 required={required}
                 disabled={disabled}
-                className={`w-full px-3 py-2.5 border rounded-lg text-[13.5px] outline-none transition-colors font-inherit ${
-                    disabled
-                        ? "bg-muted text-muted-foreground cursor-not-allowed border-border"
-                        : "bg-background text-foreground focus:border-primary border-border"
-                } ${error ? "border-destructive focus:border-destructive" : ""}`}
+                className={`
+                    w-full h-10 px-3 rounded-lg text-[13px]
+                    bg-background border border-border
+                    outline-none transition-all duration-150
+                    placeholder:text-muted-foreground/70
+                    ${disabled
+                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        : "focus:ring-2 focus:ring-primary/20 focus:border-primary"}
+                    ${error
+                        ? "border-destructive focus:ring-destructive/20 focus:border-destructive"
+                        : ""}
+                `}
                 {...props}
             />
-            {error && <p className="text-xs text-destructive mt-0.5">{error}</p>}
+
+            {error && (
+                <span className="text-[11px] text-destructive">
+                    {error}
+                </span>
+            )}
         </div>
     );
 }

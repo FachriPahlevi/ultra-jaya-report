@@ -9,14 +9,11 @@ use App\Http\Controllers\ReportController;
 
 Route::inertia('/', 'Dashboard/Index')->name('dashboard');
 
-Route::middleware(['auth', 'verified'])->group(function () {
-
-    Route::inertia('/reports/issues', 'reports/Create')->name('reports.issue');
-    Route::inertia('/reports/solve', 'reports/Solve')->name('reports.solve');
-
-    Route::prefix('reports')->group(function () {
+    Route::middleware(['auth', 'verified'])->group(function () {
+        Route::prefix('reports')->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('reports.index');
         Route::post('/', [ReportController::class, 'store'])->name('reports.store');
+        Route::post('/{report}/solve', [ReportController::class, 'solve'])->name('reports.solve'); // Tambahkan ini
         Route::get('/{report}', [ReportController::class, 'show'])->name('reports.show')->whereNumber('report');
         Route::put('/{report}', [ReportController::class, 'update'])->name('reports.update')->whereNumber('report');
         Route::delete('/{report}', [ReportController::class, 'destroy'])->name('reports.destroy')->whereNumber('report');

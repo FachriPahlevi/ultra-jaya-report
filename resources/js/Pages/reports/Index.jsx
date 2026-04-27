@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { router } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
-import { ROUTES } from "@/lib/constants.ts";
 import { formatDate } from "@/lib/format.ts";
 import BtnDefault from "@/Components/Button/BtnDefault";
 import InputText from "@/Components/Input/InputText";
 import InputDropdown from "@/Components/Input/InputDropdown";
 import ReportForm from "@/Components/Form/ReportForm";
-import { HiOutlineX, HiOutlineChevronDown, HiOutlinePlus, HiOutlineSearch } from "react-icons/hi";
+import { useStatusModal } from "@/Components/Context/StatusModalContext";
+import { HiOutlineX, HiOutlinePlus, HiOutlineSearch } from "react-icons/hi";
+import ExpandableImage from "@/Components/UI/ExpandableImage";
 
 const TableHeader = ({ columns }) => (
   <thead>
@@ -15,7 +16,7 @@ const TableHeader = ({ columns }) => (
       {columns.map((col, idx) => (
         <th key={idx} className="p-3 whitespace-nowrap">{col}</th>
       ))}
-    </tr>
+     </tr>
   </thead>
 );
 
@@ -63,11 +64,7 @@ const ActionBar = ({ selected, onClose, onAction, actionLabel, showAction, statu
         </div>
       </div>
       {showAction && (
-        <BtnDefault 
-          size="sm" 
-          onClick={onAction}
-          className="shadow-lg"
-        >
+        <BtnDefault size="sm" onClick={onAction} className="shadow-lg">
           {actionLabel}
         </BtnDefault>
       )}
@@ -113,11 +110,22 @@ const ReportTable = ({ title, subtitle, reports, columns, selectedId, onSelect, 
 );
 
 export default function Index({ areaReports = { data: [], links: [], meta: {} }, areas = [], activities = [] }) {
+  const { setStatusModalProps } = useStatusModal();
   const [selectedAreaReport, setSelectedAreaReport] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+
+  const showStatusModal = (type, title, message) => {
+    setStatusModalProps({
+      isOpen: true,
+      type,
+      title,
+      message,
+      button1: { text: "OK" },
+    });
+  };
 
   const handleSelectAreaReport = (report) => {
     setSelectedAreaReport(selectedAreaReport?.id === report.id ? null : report);
@@ -129,7 +137,17 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
 
   const handleGoSolve = () => {
     if (!selectedAreaReport) return;
-    router.visit(`${ROUTES.solveReport}/${selectedAreaReport.id}`);
+    router.post(`/reports/${selectedAreaReport.id}/solve`, {}, {
+      onSuccess: () => {
+        showStatusModal("success", "Success", "Report has been solved");
+        setTimeout(() => {
+          router.reload();
+        }, 1500);
+      },
+      onError: (error) => {
+        showStatusModal("error", "Error", error.response?.data?.message || "Failed to solve report");
+      }
+    });
   };
 
   const handlePageChange = (url) => {
@@ -157,7 +175,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
     setTypeFilter("");
     router.get("/reports", {}, { preserveState: true });
   };
-
+  
   const renderAreaReportRow = (report, index, selectedId, onSelect) => {
     const isSolved = !!report.finished_date;
     const handleRowClick = () => {
@@ -175,22 +193,34 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
         <td className="p-3 text-[13px] text-muted-foreground font-semibold">{(areaReports.meta?.from ?? 0) + index}</td>
         <td className="p-3 text-[13px] text-foreground">{formatDate(report.created_at)}</td>
         <td className="p-3 text-[13px] text-foreground">{formatDate(report.updated_at)}</td>
-        <td className="p-3 text-[13px] font-semibold text-foreground">{report.submitted_by ?? "-"}</td>
+        <td className="p-3 text-[13px] font-semibold text-foreground">{report.author?.name ?? "-"}</td>
         <td className="p-3 text-[13px] text-foreground">
           <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[11.5px] font-semibold">
-            {report.type ?? "-"}
+            {report.activity?.description ?? report.activity?.name ?? "-"}
           </span>
         </td>
-        <td className="p-3 text-[13px] text-foreground">{report.activity ?? "-"}</td>
+        <td className="p-3 text-[13px] text-foreground">
+          {typeof report.activity === 'object' 
+            ? (report.activity?.description || report.activity?.name || "-")
+            : (report.activity || "-")}
+        </td>
         <td className="p-3 text-[13px] text-foreground max-w-[200px] overflow-hidden text-ellipsis whitespace-nowrap">{report.issue ?? "-"}</td>
         <td className="p-3 text-[13px] text-foreground">
-          {report.photo ? (
-            <a href={report.photo} target="_blank" rel="noreferrer" className="text-primary text-xs font-medium no-underline hover:underline">View</a>
+          {report.photo_before ? (
+            <ExpandableImage 
+              src={`/storage/${report.photo_before}`}
+              alt="Photo before"
+              className="w-16 h-16 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+            />
           ) : <span className="text-muted-foreground">-</span>}
         </td>
         <td className="p-3 text-[13px] text-foreground">
           {report.photo_after ? (
-            <a href={report.photo_after} target="_blank" rel="noreferrer" className="text-primary text-xs font-medium no-underline hover:underline">View</a>
+            <ExpandableImage 
+              src={`/storage/${report.photo_after}`}
+              alt="Photo after"
+              className="w-16 h-16 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+            />
           ) : <span className="text-muted-foreground">-</span>}
         </td>
         <td className="p-3 text-[13px] text-foreground">
@@ -213,7 +243,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   ];
 
   const typeOptions = activities.map(activity => ({
-    label: activity.name || activity.description,
+    label: activity.description,
     value: activity.id
   }));
 
@@ -231,7 +261,6 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
           </BtnDefault>
         </div>
 
-        {/* Filter Section */}
         <div className="bg-card rounded-2xl border border-border p-4 shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <InputText

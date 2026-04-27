@@ -1,12 +1,12 @@
 export const ROUTES = {
     dashboard:    '/dashboard',
-    reportList:   '/reports/lists',
-    issueReport:  '/reports/issues',
+    reportList:   '/reports',
+    issueReport:  '/reports',
     solveReport:  '/reports/solve',
-    masterArea:   '/master-area',
-    masterActivity: '/master-activity',
-    masterUser:   '/master-user',
-    masterRole:   '/master-role',
+    masterArea:   '/areas',
+    masterActivity: '/activities',
+    masterUser:   '/users',
+    masterRole:   '/roles',
 }
 
 export const ROLES = ['Admin', 'Manager', 'Supervisor', 'User']
