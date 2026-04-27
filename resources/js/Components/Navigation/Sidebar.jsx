@@ -2,22 +2,38 @@ import React from "react";
 import { usePage, Link } from "@inertiajs/react";
 import {
     LayoutDashboard,
-    Users,
     FileText,
     Map,
     Activity,
     LogOut,
+    Settings,
 } from "lucide-react";
 
 const NAV_ITEMS = [
-    { href: "/", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/users", label: "User", icon: Users },
-    { href: "/reports", label: "All reports", icon: FileText },
-    { href: "/areas", label: "Areas", icon: Map },
-    { href: "/activities", label: "Activities", icon: Activity },
+    { href: "/", label: "Dashboard", icon: LayoutDashboard, permission: null },
+    {
+        href: "/reports",
+        label: "All reports",
+        icon: FileText,
+        permission: "reports.view",
+    },
+    { href: "/areas", label: "Areas", icon: Map, permission: "areas.view" },
+    {
+        href: "/activities",
+        label: "Activities",
+        icon: Activity,
+        permission: "activities.view",
+    },
+    {
+        href: "/settings",
+        label: "Settings",
+        icon: Settings,
+        permission: "settings.view",
+    },
 ];
 
 const SidebarItem = ({ item, active, onClick }) => {
+    if (!item || !item.icon) return null;
     const Icon = item.icon;
 
     return (
@@ -47,6 +63,7 @@ const SidebarItem = ({ item, active, onClick }) => {
 const Sidebar = ({ sidebarOpen, closeSidebar }) => {
     const { props, url } = usePage();
     const currentUser = props.auth?.user;
+    const permissions = props.auth?.permissions || [];
 
     const isActive = (href) =>
         href === "/" ? url === "/" : url.startsWith(href);
@@ -57,6 +74,18 @@ const Sidebar = ({ sidebarOpen, closeSidebar }) => {
             .slice(0, 2)
             .map((w) => w[0]?.toUpperCase())
             .join("") ?? "U";
+
+    const getRoleName = () => {
+        const role = currentUser?.role;
+        if (!role) return "User";
+        if (typeof role === "string") return role;
+        return role.name || role.role_name || "User";
+    };
+
+    const filteredNavItems = NAV_ITEMS.filter((item) => {
+        if (!item.permission) return true;
+        return permissions.includes(item.permission);
+    });
 
     return (
         <aside
@@ -80,7 +109,7 @@ const Sidebar = ({ sidebarOpen, closeSidebar }) => {
             </div>
 
             <nav className="flex-1 py-4 space-y-[4px] overflow-y-auto">
-                {NAV_ITEMS.map((item) => (
+                {filteredNavItems.map((item) => (
                     <SidebarItem
                         key={item.label}
                         item={item}
@@ -101,7 +130,7 @@ const Sidebar = ({ sidebarOpen, closeSidebar }) => {
                             {currentUser?.name}
                         </div>
                         <div className="text-[11px] text-[var(--muted-foreground)] truncate">
-                            {currentUser?.role}
+                            {getRoleName()}
                         </div>
                     </div>
                 </div>
