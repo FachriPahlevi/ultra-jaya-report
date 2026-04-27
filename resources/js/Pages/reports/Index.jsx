@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { router } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
 import { formatDate } from "@/lib/format.ts";
@@ -6,9 +6,12 @@ import BtnDefault from "@/Components/Button/BtnDefault";
 import InputText from "@/Components/Input/InputText";
 import InputDropdown from "@/Components/Input/InputDropdown";
 import ReportForm from "@/Components/Form/ReportForm";
+import SolveForm from "@/Components/Form/SolveForm";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
-import { HiOutlineX, HiOutlinePlus, HiOutlineSearch } from "react-icons/hi";
+import { HiOutlineX, HiOutlinePlus } from "react-icons/hi";
 import ExpandableImage from "@/Components/UI/ExpandableImage";
+import { BsFileExcelFill } from "react-icons/bs";
+import { FaFilePdf } from "react-icons/fa";
 
 const TableHeader = ({ columns }) => (
   <thead>
@@ -92,14 +95,14 @@ const ReportTable = ({ title, subtitle, reports, columns, selectedId, onSelect, 
       <table className="w-full border-collapse">
         <TableHeader columns={columns} />
         <tbody>
-          {reports.data.length === 0 ? (
+          {reports.length === 0 ? (
             <tr>
               <td colSpan={columns.length} className="py-12 text-center text-muted-foreground text-[13px]">
                 No data found
               </td>
             </tr>
           ) : (
-            reports.data.map((report, i) => renderRow(report, i, selectedId, onSelect))
+            reports.map((report, i) => renderRow(report, i, selectedId, onSelect))
           )}
         </tbody>
       </table>
@@ -113,9 +116,33 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   const { setStatusModalProps } = useStatusModal();
   const [selectedAreaReport, setSelectedAreaReport] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showSolveModal, setShowSolveModal] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
+
+  const filteredReports = useMemo(() => {
+    let reports = areaReports.data;
+    
+    if (search) {
+      reports = reports.filter(report => 
+        report.issue?.toLowerCase().includes(search.toLowerCase()) ||
+        report.author?.name?.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+    
+    if (statusFilter === "pending") {
+      reports = reports.filter(report => !report.finished_date);
+    } else if (statusFilter === "solved") {
+      reports = reports.filter(report => report.finished_date);
+    }
+    
+    if (typeFilter) {
+      reports = reports.filter(report => report.activity_id === parseInt(typeFilter));
+    }
+    
+    return reports;
+  }, [areaReports.data, search, statusFilter, typeFilter]);
 
   const showStatusModal = (type, title, message) => {
     setStatusModalProps({
@@ -135,19 +162,13 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
     setSelectedAreaReport(null);
   };
 
-  const handleGoSolve = () => {
-    if (!selectedAreaReport) return;
-    router.post(`/reports/${selectedAreaReport.id}/solve`, {}, {
-      onSuccess: () => {
-        showStatusModal("success", "Success", "Report has been solved");
-        setTimeout(() => {
-          router.reload();
-        }, 1500);
-      },
-      onError: (error) => {
-        showStatusModal("error", "Error", error.response?.data?.message || "Failed to solve report");
-      }
-    });
+  const handleSolveClick = () => {
+    setShowSolveModal(true);
+  };
+
+  const handleCloseSolveModal = () => {
+    setShowSolveModal(false);
+    setSelectedAreaReport(null);
   };
 
   const handlePageChange = (url) => {
@@ -162,18 +183,10 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
     setIsModalOpen(false);
   };
 
-  const handleSearch = () => {
-    router.get("/reports", 
-      { search, status: statusFilter, type: typeFilter }, 
-      { preserveState: true }
-    );
-  };
-
   const handleReset = () => {
     setSearch("");
     setStatusFilter("");
     setTypeFilter("");
-    router.get("/reports", {}, { preserveState: true });
   };
   
   const renderAreaReportRow = (report, index, selectedId, onSelect) => {
@@ -190,7 +203,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
         } ${isSolved ? "bg-emerald-50/30 dark:bg-emerald-950/10" : ""}`}
         onClick={handleRowClick}
       >
-        <td className="p-3 text-[13px] text-muted-foreground font-semibold">{(areaReports.meta?.from ?? 0) + index}</td>
+        <td className="p-3 text-[13px] text-muted-foreground font-semibold">{index + 1}</td>
         <td className="p-3 text-[13px] text-foreground">{formatDate(report.created_at)}</td>
         <td className="p-3 text-[13px] text-foreground">{formatDate(report.updated_at)}</td>
         <td className="p-3 text-[13px] font-semibold text-foreground">{report.author?.name ?? "-"}</td>
@@ -244,7 +257,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
 
   const typeOptions = activities.map(activity => ({
     label: activity.description,
-    value: activity.id
+    value: activity.id.toString()
   }));
 
   return (
@@ -252,66 +265,104 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h2 className="text-2xl font-bold text-foreground tracking-[-0.5px] m-0">Report Lists</h2>
-            <p className="text-sm text-muted-foreground mt-1">Manage and track all reports</p>
+            <h2 className="text-2xl font-semibold text-foreground tracking-[-0.3px]">
+              Report Lists
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage and track all reports
+            </p>
           </div>
-          <BtnDefault onClick={handleOpenModal} size="md" className="gap-2 shadow-sm">
-            <HiOutlinePlus className="w-4 h-4" />
-            New Issue
-          </BtnDefault>
+
+          <div className="flex items-center gap-2">
+            <BtnDefault
+              onClick={handleOpenModal}
+              size="md"
+              className="gap-2 px-4 h-10 rounded-xl shadow-sm"
+            >
+              <HiOutlinePlus className="w-4 h-4" />
+              New Issue
+            </BtnDefault>
+          </div>
         </div>
 
         <div className="bg-card rounded-2xl border border-border p-4 shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <InputText
-              placeholder="Search by issue or submitter..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyPress={(e) => e.key === "Enter" && handleSearch()}
-            />
-            
-            <InputDropdown
-              placeholder="Status"
-              value={statusFilter}
-              setObject={(item) => setStatusFilter(item.value)}
-              itemList={statusOptions}
-            />
-            
-            <InputDropdown
-              placeholder="Type Activity"
-              value={typeFilter}
-              setObject={(item) => setTypeFilter(item.value)}
-              itemList={typeOptions}
-            />
-            
-            <div className="flex gap-2">
-              <BtnDefault onClick={handleSearch} className="gap-2 flex-1">
-                <HiOutlineSearch className="w-4 h-4" />
-                Search
-              </BtnDefault>
-              <BtnDefault outline onClick={handleReset} className="flex-1">
+          <div className="flex flex-col gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <InputText
+                placeholder="Search by issue or submitter..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+
+              <InputDropdown
+                placeholder="Status"
+                value={statusFilter}
+                setObject={(item) => setStatusFilter(item.value)}
+                itemList={statusOptions}
+              />
+
+              <InputDropdown
+                placeholder="Type Activity"
+                value={typeFilter}
+                setObject={(item) => setTypeFilter(item.value)}
+                itemList={typeOptions}
+              />
+
+              <BtnDefault
+                outline
+                onClick={handleReset}
+                className="h-10 rounded-xl"
+              >
                 Reset
               </BtnDefault>
+            </div>
+
+            <div className="flex items-center justify-between flex-wrap gap-2 pt-2">
+              <div className="flex items-center gap-2">
+                <BtnDefault
+                  outline
+                  className="gap-2 h-9 px-3 rounded-xl"
+                >
+                  <FaFilePdf className="w-4 h-4" />
+                  <span className="w-4 h-4 bg-blue-500/10 rounded flex items-center justify-center text-blue-600 text-xs font-bold">
+                    PDF
+                  </span>
+                  Export PDF
+                </BtnDefault>
+
+                <BtnDefault
+                  outline
+                  className="gap-2 h-9 px-3 rounded-xl"
+                >
+                  <BsFileExcelFill className="w-4 h-4" />
+                  <span className="w-4 h-4 bg-blue-500/10 rounded flex items-center justify-center text-blue-600 text-xs font-bold">
+                    XLS
+                  </span>
+                  Export Excel
+                </BtnDefault>
+              </div>
             </div>
           </div>
         </div>
 
-        <ReportTable
-          title="Area Report"
-          subtitle="area yang ditangani akun ini (PIC)"
-          reports={areaReports}
-          columns={areaReportColumns}
-          selectedId={selectedAreaReport?.id}
-          onSelect={handleSelectAreaReport}
-          renderRow={renderAreaReportRow}
-          paginationLinks={areaReports.links}
-          onPageChange={handlePageChange}
-        />
+        <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+          <ReportTable
+            title="Area Report"
+            subtitle=""
+            reports={filteredReports}
+            columns={areaReportColumns}
+            selectedId={selectedAreaReport?.id}
+            onSelect={handleSelectAreaReport}
+            renderRow={renderAreaReportRow}
+            paginationLinks={areaReports.links}
+            onPageChange={handlePageChange}
+          />
+        </div>
 
         <ActionBar
           selected={selectedAreaReport}
           onClose={handleCloseAreaReport}
-          onAction={handleGoSolve}
+          onAction={handleSolveClick}
           actionLabel="Solve"
           showAction={!selectedAreaReport?.finished_date}
           statusText={
@@ -328,6 +379,12 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
           onClose={handleCloseModal}
           areas={areas}
           activities={activities}
+        />
+
+        <SolveForm
+          isOpen={showSolveModal}
+          onClose={handleCloseSolveModal}
+          reportId={selectedAreaReport?.id}
         />
       </div>
     </AppLayout>

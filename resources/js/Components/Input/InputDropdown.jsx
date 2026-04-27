@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { HiMiniChevronDown } from "react-icons/hi2";
+import { HiChevronDown } from "react-icons/hi";
 
 export default function InputDropdown({
     id,
@@ -40,133 +40,96 @@ export default function InputDropdown({
                 setShowDropdown(false);
             }
         };
-
-        if (showDropdown) {
-            document.addEventListener("mousedown", handleClickOutside);
-        }
-
-        return () => {
-            document.removeEventListener("mousedown", handleClickOutside);
-        };
+        if (showDropdown) document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [showDropdown]);
 
     const handleSelectClick = () => {
-        if (!disabled) {
-            setShowDropdown(!showDropdown);
-        }
+        if (!disabled) setShowDropdown((prev) => !prev);
     };
 
     const handleOptionClick = (item) => {
         setValue(item.value);
         setText(item.label);
         setShowDropdown(false);
-        
-        if (setObjectGroup) {
-            setObjectGroup((prev) => ({
-                ...prev,
-                [id]: item.value,
-            }));
-        }
-        
-        if (setObject) {
-            setObject({ label: item.label, value: item.value });
-        }
+        if (setObjectGroup) setObjectGroup((prev) => ({ ...prev, [id]: item.value }));
+        if (setObject) setObject({ label: item.label, value: item.value });
     };
 
     const displayText = object ? object.label : text;
     const displayValue = object ? object.value : value;
 
     return (
-        <div className="w-full relative">
-            <label className="text-[13px] font-semibold text-foreground mb-1.5 block">
-                {label} {required && <span className="text-destructive">*</span>}
-            </label>
-            
-            <input 
-                id={componentId || id} 
-                className="sr-only" 
-                value={displayText} 
-                required={required} 
-                onChange={() => {}} 
-            />
-            
-            <div className="relative">
+        <div className="w-full flex flex-col gap-1.5 relative">
+            {label && (
+                <label className="text-[13px] font-semibold text-foreground">
+                    {label} {required && <span className="text-destructive">*</span>}
+                </label>
+            )}
+
+            <input id={componentId || id} className="sr-only" value={displayText} required={required} onChange={() => {}} />
+
+            <div ref={dropdownRef} className="relative">
                 {iconSrc && (
-                    <img 
-                        src={iconSrc} 
-                        alt="icon" 
-                        className="absolute w-5 h-5 top-1/2 -translate-y-1/2 left-3 z-10" 
-                    />
+                    <img src={iconSrc} alt="" className="absolute w-4 h-4 top-1/2 -translate-y-1/2 left-3.5 z-10 opacity-60" />
                 )}
-                
-                <input
-                    type="text"
-                    value={displayText}
-                    placeholder={placeholder}
-                    disabled={disabled}
-                    readOnly
-                    onClick={handleSelectClick}
-                    className={`w-full px-3 py-2.5 border rounded-lg text-[13.5px] outline-none transition-all cursor-pointer ${
-                        iconSrc ? "pl-9" : ""
-                    } ${
-                        disabled 
-                            ? "text-muted-foreground cursor-default border-border bg-muted" 
-                            : "text-foreground border-border bg-background focus:border-primary hover:border-primary/50"
-                    } ${error ? "border-destructive focus:border-destructive" : ""}`}
-                />
-                
+
                 <button
                     type="button"
                     onClick={handleSelectClick}
                     disabled={disabled}
-                    className={`absolute right-3 top-1/2 -translate-y-1/2 ${
-                        disabled ? "hidden" : "cursor-pointer"
-                    }`}
+                    className={`
+                        w-full h-10 px-3.5 rounded-xl text-[13.5px] text-left flex items-center justify-between gap-2
+                        border transition-all duration-150 outline-none
+                        ${iconSrc ? "pl-9" : ""}
+                        ${disabled
+                            ? "bg-muted text-muted-foreground cursor-not-allowed border-border"
+                            : "bg-card text-foreground border-border hover:border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/10"
+                        }
+                        ${error ? "border-destructive focus:border-destructive focus:ring-destructive/10" : ""}
+                        ${showDropdown ? "border-primary ring-2 ring-primary/10" : ""}
+                    `}
                 >
-                    <HiMiniChevronDown 
-                        className={`w-4 h-4 transition-transform duration-200 ${
-                            showDropdown ? "rotate-180" : ""
-                        } ${
-                            displayText ? "text-foreground" : "text-muted-foreground"
-                        }`}
+                    <span className={displayText ? "text-foreground" : "text-muted-foreground/60"}>
+                        {displayText || placeholder}
+                    </span>
+                    <HiChevronDown
+                        className={`w-4 h-4 shrink-0 transition-transform duration-200 ${showDropdown ? "rotate-180 text-primary" : "text-muted-foreground"}`}
                     />
                 </button>
-            </div>
-            
-            {showDropdown && (
-                <div 
-                    ref={dropdownRef} 
-                    className="absolute z-50 w-full mt-1 bg-white border border-border rounded-lg shadow-lg overflow-hidden"
-                >
-                    <div className="max-h-[200px] overflow-y-auto">
-                        {itemList.length === 0 ? (
-                            <div className="px-3 py-2 text-[13px] text-muted-foreground text-center">
-                                No options available
-                            </div>
-                        ) : (
-                            itemList.map((item, index) => {
-                                const isSelected = displayValue === item.value;
-                                return (
-                                    <button
-                                        key={index}
-                                        type="button"
-                                        onClick={() => handleOptionClick(item)}
-                                        className={`w-full text-left px-3 py-2 text-[13.5px] transition-all duration-75 ${
-                                            isSelected
-                                                ? "bg-primary/10 text-primary font-medium"
-                                                : "text-foreground hover:bg-primary hover:text-white"
-                                        }`}
-                                    >
-                                        {item.label}
-                                    </button>
-                                );
-                            })
-                        )}
+
+                {showDropdown && (
+                    <div className="absolute z-50 w-full mt-1.5 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+                        <div className="max-h-[200px] overflow-y-auto py-1">
+                            {itemList.length === 0 ? (
+                                <div className="px-4 py-3 text-[13px] text-muted-foreground text-center">
+                                    No options available
+                                </div>
+                            ) : (
+                                itemList.map((item, index) => {
+                                    const isSelected = displayValue === item.value;
+                                    return (
+                                        <button
+                                            key={index}
+                                            type="button"
+                                            onClick={() => handleOptionClick(item)}
+                                            className={`w-full text-left px-4 py-2.5 text-[13.5px] transition-colors duration-100 ${
+                                                isSelected
+                                                    ? "bg-primary/8 text-primary font-semibold"
+                                                    : "text-foreground hover:bg-muted"
+                                            }`}
+                                        >
+                                            {item.label}
+                                        </button>
+                                    );
+                                })
+                            )}
+                        </div>
                     </div>
-                </div>
-            )}
-            
-            {error && <p className="text-xs text-destructive mt-1">{error}</p>}
+                )}
+            </div>
+
+            {error && <p className="text-[11.5px] text-destructive">{error}</p>}
         </div>
     );
 }

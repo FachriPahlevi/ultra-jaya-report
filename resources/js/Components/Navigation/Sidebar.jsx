@@ -1,39 +1,24 @@
 import React from "react";
 import { usePage, Link } from "@inertiajs/react";
 import {
-    LayoutDashboard,
-    FileText,
-    Map,
-    Activity,
-    LogOut,
-    Settings,
-} from "lucide-react";
+    HiOutlineViewGrid,
+    HiOutlineDocumentReport,
+    HiOutlineMap,
+    HiOutlineLightningBolt,
+    HiOutlineCog,
+    HiOutlineLogout,
+} from "react-icons/hi";
 
 const NAV_ITEMS = [
-    { href: "/", label: "Dashboard", icon: LayoutDashboard, permission: null },
-    {
-        href: "/reports",
-        label: "All reports",
-        icon: FileText,
-        permission: "reports.view",
-    },
-    { href: "/areas", label: "Areas", icon: Map, permission: "areas.view" },
-    {
-        href: "/activities",
-        label: "Activities",
-        icon: Activity,
-        permission: "activities.view",
-    },
-    {
-        href: "/settings",
-        label: "Settings",
-        icon: Settings,
-        permission: "settings.view",
-    },
+    { href: "/", label: "Dashboard", icon: HiOutlineViewGrid, permission: null },
+    { href: "/reports", label: "All reports", icon: HiOutlineDocumentReport, permission: "reports.view" },
+    { href: "/areas", label: "Areas", icon: HiOutlineMap, permission: "areas.view" },
+    { href: "/activities", label: "Activities", icon: HiOutlineLightningBolt, permission: "activities.view" },
+    { href: "/settings", label: "Settings", icon: HiOutlineCog, permission: "settings.view" },
 ];
 
 const SidebarItem = ({ item, active, onClick }) => {
-    if (!item || !item.icon) return null;
+    if (!item?.icon) return null;
     const Icon = item.icon;
 
     return (
@@ -41,20 +26,14 @@ const SidebarItem = ({ item, active, onClick }) => {
             href={item.href}
             onClick={onClick}
             className={`
-                group flex items-center gap-3 px-4 py-[10px] mx-2 rounded-xl text-[13px]
-                transition-all duration-150
-                ${
-                    active
-                        ? "bg-[var(--sidebar-accent)] text-[var(--sidebar-primary)] font-semibold shadow-sm"
-                        : "text-[var(--sidebar-foreground)] hover:bg-[var(--muted)]"
+                flex items-center gap-3 px-3 py-2.5 mx-3 rounded-xl text-[13px] transition-all duration-150
+                ${active
+                    ? "bg-[var(--sidebar-accent)] text-[var(--sidebar-primary)] font-semibold"
+                    : "text-[var(--sidebar-foreground)] hover:bg-[var(--sidebar-muted)] hover:text-[var(--sidebar-foreground)]"
                 }
             `}
         >
-            <Icon
-                size={16}
-                strokeWidth={active ? 2 : 1.75}
-                className="opacity-70 group-hover:opacity-100"
-            />
+            <Icon className={`w-[18px] h-[18px] shrink-0 ${active ? "text-[var(--sidebar-primary)]" : "opacity-60"}`} />
             <span className="truncate">{item.label}</span>
         </Link>
     );
@@ -65,15 +44,10 @@ const Sidebar = ({ sidebarOpen, closeSidebar }) => {
     const currentUser = props.auth?.user;
     const permissions = props.auth?.permissions || [];
 
-    const isActive = (href) =>
-        href === "/" ? url === "/" : url.startsWith(href);
+    const isActive = (href) => (href === "/" ? url === "/" : url.startsWith(href));
 
-    const getInitial = (name) =>
-        name
-            ?.split(" ")
-            .slice(0, 2)
-            .map((w) => w[0]?.toUpperCase())
-            .join("") ?? "U";
+    const getInitials = (name) =>
+        name?.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") ?? "U";
 
     const getRoleName = () => {
         const role = currentUser?.role;
@@ -82,34 +56,30 @@ const Sidebar = ({ sidebarOpen, closeSidebar }) => {
         return role.name || role.role_name || "User";
     };
 
-    const filteredNavItems = NAV_ITEMS.filter((item) => {
-        if (!item.permission) return true;
-        return permissions.includes(item.permission);
-    });
+    const filteredNav = NAV_ITEMS.filter((item) =>
+        !item.permission ? true : permissions.includes(item.permission)
+    );
 
     return (
         <aside
             className={`
-                w-[240px] bg-[var(--sidebar-background)] border-r border-[var(--sidebar-border)]
-                fixed top-0 left-0 h-screen z-[50] flex flex-col
+                w-[220px] bg-[var(--sidebar-background)] border-r border-[var(--sidebar-border)]
+                fixed top-0 left-0 h-screen z-50 flex flex-col
                 transition-transform duration-300
                 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
             `}
         >
-            <div className="flex items-center gap-3 px-5 py-5 border-b border-[var(--sidebar-border)]">
-                <div className="w-10 h-10 rounded-xl bg-[var(--sidebar-accent)] flex items-center justify-center">
-                    <img
-                        src="/img/logo/logo_uj.png"
-                        className="w-6 h-6 object-contain"
-                    />
+            <div className="flex items-center gap-2.5 px-5 py-5 border-b border-[var(--sidebar-border)]">
+                <div className="w-9 h-9 rounded-xl bg-[var(--sidebar-accent)] flex items-center justify-center shrink-0">
+                    <img src="/img/logo/logo_uj.png" className="w-5 h-5 object-contain" alt="logo" />
                 </div>
-                <span className="text-[13px] font-semibold text-[var(--sidebar-foreground)] leading-tight">
+                <span className="text-[13px] font-bold text-[var(--sidebar-foreground)] leading-tight">
                     PT Ultra Jaya Milk
                 </span>
             </div>
 
-            <nav className="flex-1 py-4 space-y-[4px] overflow-y-auto">
-                {filteredNavItems.map((item) => (
+            <nav className="flex-1 py-4 space-y-0.5 overflow-y-auto">
+                {filteredNav.map((item) => (
                     <SidebarItem
                         key={item.label}
                         item={item}
@@ -119,17 +89,16 @@ const Sidebar = ({ sidebarOpen, closeSidebar }) => {
                 ))}
             </nav>
 
-            <div className="px-4 py-4 border-t border-[var(--sidebar-border)]">
-                <div className="flex items-center gap-3 px-2 py-2 rounded-xl bg-[var(--muted)]">
-                    <div className="w-9 h-9 rounded-full bg-[var(--sidebar-accent)] flex items-center justify-center text-xs font-semibold text-[var(--sidebar-primary)]">
-                        {getInitial(currentUser?.name)}
+            <div className="px-4 py-4 border-t border-[var(--sidebar-border)] space-y-2">
+                <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[var(--muted)]">
+                    <div className="w-8 h-8 rounded-full bg-[var(--sidebar-accent)] flex items-center justify-center text-[11px] font-bold text-[var(--sidebar-primary)] shrink-0">
+                        {getInitials(currentUser?.name)}
                     </div>
-
                     <div className="flex-1 min-w-0">
-                        <div className="text-[12px] font-semibold text-[var(--sidebar-foreground)] truncate">
+                        <div className="text-[12.5px] font-semibold text-[var(--sidebar-foreground)] truncate">
                             {currentUser?.name}
                         </div>
-                        <div className="text-[11px] text-[var(--muted-foreground)] truncate">
+                        <div className="text-[11px] text-[var(--muted-foreground)] truncate uppercase tracking-wide">
                             {getRoleName()}
                         </div>
                     </div>
@@ -139,9 +108,9 @@ const Sidebar = ({ sidebarOpen, closeSidebar }) => {
                     href="/logout"
                     method="post"
                     as="button"
-                    className="mt-3 flex items-center gap-2 px-3 py-2 text-[12px] text-[var(--destructive)] rounded-lg hover:bg-[var(--muted)] w-full transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 text-[12.5px] text-[var(--destructive)] rounded-lg hover:bg-red-50 w-full transition-colors"
                 >
-                    <LogOut size={14} />
+                    <HiOutlineLogout className="w-4 h-4" />
                     Log out
                 </Link>
             </div>

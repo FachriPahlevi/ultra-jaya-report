@@ -5,110 +5,84 @@ import {
     HiOutlineClock,
     HiOutlineCheckCircle,
     HiOutlineChartBar,
-    HiOutlineExternalLink,
     HiOutlineUser,
+    HiOutlineExternalLink,
+    HiArrowUp,
+    HiOutlinePlusCircle,
+    HiArrowRight,
 } from "react-icons/hi";
 
-const statusColor = (status) => {
-    if (!status) return "#6b7280";
-    if (status === "solved") return "#16a34a";
-    if (status === "pending") return "#d97706";
-    if (status === "in_progress") return "#2563eb";
-    return "#6b7280";
-};
-
-const statusLabel = (status) => {
-    if (!status) return "Open";
-    if (status === "solved") return "Solved";
-    if (status === "pending") return "Pending";
-    if (status === "in_progress") return "In Progress";
-    return status;
+const statusConfig = {
+    solved: { label: "Solved", color: "#16a34a", bg: "#f0fdf4" },
+    pending: { label: "Pending", color: "#d97706", bg: "#fffbeb" },
+    in_progress: { label: "In Progress", color: "#2563eb", bg: "#eff6ff" },
+    submitted: { label: "Submitted", color: "#6366f1", bg: "#eef2ff" },
 };
 
 const formatDate = (dateStr) => {
     if (!dateStr) return "-";
+    const now = new Date();
     const d = new Date(dateStr);
-    return d.toLocaleDateString("id-ID", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-    });
+    const diff = Math.floor((now - d) / 1000 / 60);
+    if (diff < 60) return `${diff}m ago`;
+    if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
+    return `${Math.floor(diff / 1440)}d ago`;
 };
-
-const polarToCartesian = (cx, cy, r, angleDeg) => {
-    const rad = ((angleDeg - 180) * Math.PI) / 180;
-    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
-};
-
-const describeArc = (cx, cy, r, startAngle, endAngle) => {
-    const s = polarToCartesian(cx, cy, r, startAngle);
-    const e = polarToCartesian(cx, cy, r, endAngle);
-    const large = endAngle - startAngle > 180 ? 1 : 0;
-    return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y}`;
-};
-
-const quickLinks = [
-    { href: "/areas", label: "Master Area", icon: HiOutlineDocumentReport },
-    { href: "/activities", label: "Master Activity", icon: HiOutlineChartBar },
-    { href: "/users", label: "Master User", icon: HiOutlineUser },
-    {
-        href: "/reports/issues",
-        label: "New Issue",
-        icon: HiOutlineDocumentReport,
-        primary: true,
-    },
-];
 
 const StatusBadge = ({ status }) => {
-    const sc = statusColor(status);
+    const cfg = statusConfig[status] || { label: status || "Open", color: "#6b7280", bg: "#f9fafb" };
     return (
         <span
-            className="inline-block px-2.5 py-[3px] rounded-full text-[11.5px] font-semibold whitespace-nowrap"
-            style={{
-                background: `color-mix(in srgb, ${sc} 10%, white)`,
-                color: sc,
-            }}
+            className="inline-block px-2.5 py-0.5 rounded-full text-[11.5px] font-semibold whitespace-nowrap"
+            style={{ background: cfg.bg, color: cfg.color }}
         >
-            {statusLabel(status)}
+            {cfg.label}
         </span>
     );
 };
 
-const GaugeChart = ({ solvedPct }) => {
-    const gaugeAngle = Math.min((solvedPct / 100) * 180, 180);
-    const gaugePath = describeArc(60, 60, 44, 0, gaugeAngle);
-    const gaugeBg = describeArc(60, 60, 44, 0, 180);
+const SparkLine = ({ color = "var(--primary)" }) => (
+    <svg viewBox="0 0 80 32" width="80" height="32" fill="none">
+        <polyline
+            points="0,28 13,22 26,24 39,14 52,16 65,8 80,4"
+            stroke={color}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        />
+        <circle cx="80" cy="4" r="3" fill={color} />
+    </svg>
+);
+
+const GaugeChart = ({ pct }) => {
+    const angle = Math.min((pct / 100) * 180, 180);
+    const toXY = (deg) => {
+        const rad = ((deg - 180) * Math.PI) / 180;
+        return { x: 64 + 48 * Math.cos(rad), y: 64 + 48 * Math.sin(rad) };
+    };
+    const s = toXY(0);
+    const e = toXY(angle);
+    const large = angle > 180 ? 1 : 0;
+    const arc = `M ${s.x} ${s.y} A 48 48 0 ${large} 1 ${e.x} ${e.y}`;
+    const bg = `M ${toXY(0).x} ${toXY(0).y} A 48 48 0 1 1 ${toXY(180).x} ${toXY(180).y}`;
 
     return (
-        <svg viewBox="0 0 120 70" width="180" height="105">
-            <path
-                d={gaugeBg}
-                fill="none"
-                stroke="var(--border)"
-                strokeWidth="12"
-                strokeLinecap="round"
-            />
-            <path
-                d={gaugePath}
-                fill="none"
-                stroke="var(--primary)"
-                strokeWidth="12"
-                strokeLinecap="round"
-            />
-            <text
-                x="60"
-                y="62"
-                textAnchor="middle"
-                fontSize="18"
-                fontWeight="700"
-                fill="var(--foreground)"
-                fontFamily="Plus Jakarta Sans, sans-serif"
-            >
-                {solvedPct}%
+        <svg viewBox="0 0 128 76" width="160" height="95">
+            <path d={bg} fill="none" stroke="var(--border)" strokeWidth="12" strokeLinecap="round" />
+            <path d={arc} fill="none" stroke="var(--primary)" strokeWidth="12" strokeLinecap="round" />
+            <text x="64" y="70" textAnchor="middle" fontSize="20" fontWeight="700" fill="var(--foreground)" fontFamily="Plus Jakarta Sans, sans-serif">
+                {pct}%
             </text>
         </svg>
     );
 };
+
+const quickLinks = [
+    { href: "/areas", label: "Master Area", sub: "Kelola area kerja", icon: HiOutlineDocumentReport },
+    { href: "/activities", label: "Master Activity", sub: "Kelola aktivitas", icon: HiOutlineChartBar },
+    { href: "/users", label: "Master User", sub: "Kelola pengguna", icon: HiOutlineUser },
+    { href: "/reports/issues", label: "New Issue", sub: "Buat laporan baru", icon: HiOutlinePlusCircle, primary: true },
+];
 
 export default function Dashboard({
     stats = { total: 0, pending: 0, solved: 0, myReports: 0 },
@@ -116,157 +90,145 @@ export default function Dashboard({
     topArea = null,
 }) {
     const { auth } = usePage().props;
-    const { props } = usePage();
-    const permissions = props.auth?.permissions || [];
     const currentUser = auth?.user;
-    const solvedPct =
-        stats.total > 0 ? Math.round((stats.solved / stats.total) * 100) : 0;
+    const solvedPct = stats.total > 0 ? Math.round((stats.solved / stats.total) * 100) : 0;
+    const firstName = currentUser?.name?.split(" ")[0] || "User";
 
     return (
         <AppLayout title="Dashboard">
             <div className="flex flex-col gap-6">
-                {/* Header */}
-                <div>
-                    <h1 className="text-2xl font-bold text-foreground tracking-[-0.5px] m-0">
-                        Dashboard
-                    </h1>
-                    <p className="text-sm text-muted-foreground mt-1">
-                        Welcome back,{" "}
-                        {currentUser?.name?.split(" ")[0] || "User"}
-                    </p>
-                </div>
-
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                    {/* Total Reports */}
-                    <div className="bg-card rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="text-[13px] font-medium text-muted-foreground">
-                                Total Reports
-                            </div>
-                            <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
-                                <HiOutlineDocumentReport className="w-5 h-5 text-blue-600" />
-                            </div>
-                        </div>
-                        <div className="text-[40px] font-bold text-foreground tracking-[-1.5px] leading-none">
-                            {stats.total}
-                        </div>
-                        <div className="text-[12.5px] text-muted-foreground mt-2">
-                            All issues submitted across areas
-                        </div>
-                        <Link
-                            href="/reports"
-                            className="inline-flex items-center gap-1 text-[13px] font-medium text-primary no-underline mt-4 hover:gap-2 transition-all"
-                        >
-                            View all reports
-                            <HiOutlineExternalLink className="w-3.5 h-3.5" />
-                        </Link>
+                <div className="flex items-start justify-between">
+                    <div>
+                        <h1 className="text-[22px] font-bold text-[var(--foreground)] tracking-[-0.5px]">
+                            Dashboard
+                        </h1>
+                        <p className="text-[13.5px] text-[var(--muted-foreground)] mt-0.5">
+                            Welcome back, {firstName} 👋
+                        </p>
                     </div>
-
-                    {/* Pending Issues */}
-                    <div className="bg-card rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="text-[13px] font-medium text-muted-foreground">
-                                Pending Issues
-                            </div>
-                            <div className="w-10 h-10 rounded-full bg-amber-50 flex items-center justify-center">
-                                <HiOutlineClock className="w-5 h-5 text-amber-600" />
-                            </div>
-                        </div>
-                        <div className="text-[40px] font-bold text-foreground tracking-[-1.5px] leading-none">
-                            {stats.pending}
-                        </div>
-                        <div className="text-[12.5px] text-muted-foreground mt-2">
-                            {stats.pending} out of {stats.total} issues
-                            unresolved
-                        </div>
-                        <Link
-                            href="/reports?status=pending"
-                            className="inline-flex items-center gap-1 text-[13px] font-medium text-primary no-underline mt-4 hover:gap-2 transition-all"
-                        >
-                            View pending issues
-                            <HiOutlineExternalLink className="w-3.5 h-3.5" />
-                        </Link>
-                    </div>
-
-                    {/* Solved Goal / Gauge */}
-                    <div className="bg-card rounded-2xl border border-border p-6 hover:shadow-lg transition-shadow">
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="text-[13px] font-medium text-muted-foreground">
-                                Solved Rate
-                            </div>
-                            <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center">
-                                <HiOutlineCheckCircle className="w-5 h-5 text-green-600" />
-                            </div>
-                        </div>
-                        <div className="flex justify-center -mt-2">
-                            <GaugeChart solvedPct={solvedPct} />
-                        </div>
-                        <Link
-                            href="/reports?solved=1"
-                            className="inline-flex items-center gap-1 text-[13px] font-medium text-primary no-underline mt-2 hover:gap-2 transition-all"
-                        >
-                            View solved reports
-                            <HiOutlineExternalLink className="w-3.5 h-3.5" />
-                        </Link>
+                    <div className="hidden sm:flex items-center gap-2 bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-2 text-[13px] text-[var(--muted-foreground)] font-medium">
+                        <HiOutlineClock className="w-4 h-4" />
+                        {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                     </div>
                 </div>
 
-                {/* Recent Issues & Overview */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] p-6 hover:shadow-md transition-shadow">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <p className="text-[13px] font-medium text-[var(--muted-foreground)]">Total Reports</p>
+                                <p className="text-[38px] font-bold text-[var(--foreground)] tracking-[-1.5px] leading-none mt-1">
+                                    {stats.total}
+                                </p>
+                                <p className="text-[12px] text-[var(--muted-foreground)] mt-1.5">
+                                    All issues submitted across areas
+                                </p>
+                            </div>
+                            <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0">
+                                <HiOutlineDocumentReport className="w-6 h-6 text-blue-600" />
+                            </div>
+                        </div>
+                        <div className="flex items-end justify-between">
+                            <div className="flex items-center gap-1 text-[12px] text-green-600 font-medium">
+                                <HiArrowUp className="w-3.5 h-3.5" />
+                                <span>18% from last week</span>
+                            </div>
+                            <SparkLine color="#2563eb" />
+                        </div>
+                        <Link href="/reports" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[var(--primary)] mt-3 hover:gap-2 transition-all">
+                            View all reports <HiOutlineExternalLink className="w-3.5 h-3.5" />
+                        </Link>
+                    </div>
+
+                    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] p-6 hover:shadow-md transition-shadow">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <p className="text-[13px] font-medium text-[var(--muted-foreground)]">Pending Issues</p>
+                                <p className="text-[38px] font-bold text-[var(--foreground)] tracking-[-1.5px] leading-none mt-1">
+                                    {stats.pending}
+                                </p>
+                                <p className="text-[12px] text-[var(--muted-foreground)] mt-1.5">
+                                    Issues awaiting action
+                                </p>
+                            </div>
+                            <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
+                                <HiOutlineClock className="w-6 h-6 text-amber-500" />
+                            </div>
+                        </div>
+                        <div className="flex items-end justify-between">
+                            <div className="flex items-center gap-1 text-[12px] text-green-600 font-medium">
+                                <HiArrowUp className="w-3.5 h-3.5" />
+                                <span>5% from last week</span>
+                            </div>
+                            <SparkLine color="#f59e0b" />
+                        </div>
+                        <Link href="/reports?status=pending" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[var(--primary)] mt-3 hover:gap-2 transition-all">
+                            View pending issues <HiOutlineExternalLink className="w-3.5 h-3.5" />
+                        </Link>
+                    </div>
+
+                    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] p-6 hover:shadow-md transition-shadow">
+                        <div className="flex items-center justify-between mb-2">
+                            <div>
+                                <p className="text-[13px] font-medium text-[var(--muted-foreground)]">Solved Rate</p>
+                                <p className="text-[12px] text-[var(--muted-foreground)] mt-1">
+                                    Issues resolved successfully
+                                </p>
+                            </div>
+                            <div className="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center shrink-0">
+                                <HiOutlineCheckCircle className="w-6 h-6 text-green-600" />
+                            </div>
+                        </div>
+                        <div className="flex justify-center -mt-1">
+                            <GaugeChart pct={solvedPct} />
+                        </div>
+                        <div className="flex items-center justify-between -mt-1">
+                            <div className="flex items-center gap-1 text-[12px] text-green-600 font-medium">
+                                <HiArrowUp className="w-3.5 h-3.5" />
+                                <span>12% from last week</span>
+                            </div>
+                            <Link href="/reports?solved=1" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[var(--primary)] hover:gap-2 transition-all">
+                                View solved <HiOutlineExternalLink className="w-3.5 h-3.5" />
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Recent Issues */}
-                    <div className="bg-card rounded-2xl border border-border overflow-hidden">
-                        <div className="px-6 py-4 border-b border-border bg-muted/30">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-[15px] font-bold text-foreground m-0">
-                                        Recent Issues
-                                    </h3>
-                                    <p className="text-xs text-muted-foreground mt-0.5">
-                                        Latest reports from all areas
-                                    </p>
-                                </div>
-                                <span className="text-xs text-muted-foreground bg-card px-2.5 py-1 rounded-full shadow-sm">
-                                    Latest
-                                </span>
+                    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+                        <div className="px-6 py-4 border-b border-[var(--border)] flex items-center justify-between">
+                            <div>
+                                <h3 className="text-[14.5px] font-bold text-[var(--foreground)]">Recent Issues</h3>
+                                <p className="text-[12px] text-[var(--muted-foreground)] mt-0.5">Latest reports from all areas</p>
                             </div>
+                            <Link href="/reports" className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-[var(--primary)] hover:gap-2 transition-all">
+                                View all reports <HiArrowRight className="w-3.5 h-3.5" />
+                            </Link>
                         </div>
 
-                        <div className="divide-y divide-border">
+                        <div className="divide-y divide-[var(--border)]">
                             {recentReports.length === 0 ? (
-                                <div className="text-center py-12 text-muted-foreground text-[13px]">
+                                <div className="text-center py-12 text-[var(--muted-foreground)] text-[13px]">
                                     No reports yet
                                 </div>
                             ) : (
                                 recentReports.slice(0, 5).map((report, i) => (
-                                    <div
-                                        key={report.id ?? i}
-                                        className="px-6 py-4 hover:bg-muted/30 transition-colors group"
-                                    >
+                                    <div key={report.id ?? i} className="px-6 py-4 hover:bg-[var(--muted)]/40 transition-colors">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary shrink-0">
-                                                {report.submitted_by?.[0]?.toUpperCase() ??
-                                                    "U"}
+                                            <div className="w-9 h-9 rounded-full bg-[var(--accent)] flex items-center justify-center text-[12px] font-bold text-[var(--primary)] shrink-0">
+                                                {report.submitted_by?.[0]?.toUpperCase() ?? "U"}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <div className="text-[13.5px] font-semibold text-foreground truncate">
-                                                        {report.submitted_by ??
-                                                            "Unknown"}
-                                                    </div>
-                                                    <StatusBadge
-                                                        status={report.status}
-                                                    />
+                                                <div className="flex items-center justify-between gap-2 mb-0.5">
+                                                    <span className="text-[13px] font-semibold text-[var(--foreground)] truncate">
+                                                        {report.issue ?? "-"}
+                                                    </span>
+                                                    <StatusBadge status={report.status} />
                                                 </div>
-                                                <div className="text-xs text-muted-foreground">
-                                                    {report.area ?? "-"} ·{" "}
-                                                    {report.activity ?? "-"} ·{" "}
-                                                    {formatDate(
-                                                        report.created_at,
-                                                    )}
-                                                </div>
-                                                <div className="text-xs text-foreground mt-1 truncate">
-                                                    {report.issue ?? "-"}
+                                                <div className="flex items-center gap-1.5 text-[11.5px] text-[var(--muted-foreground)]">
+                                                    <span>{report.area ?? "-"}</span>
+                                                    <span>·</span>
+                                                    <span>{formatDate(report.created_at)}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -275,130 +237,74 @@ export default function Dashboard({
                             )}
                         </div>
 
-                        <div className="px-6 py-4 border-t border-border bg-muted/30">
-                            <Link
-                                href="/reports"
-                                className="inline-flex items-center gap-1 text-[13px] font-medium text-primary hover:gap-2 transition-all"
-                            >
-                                View all reports
-                                <HiOutlineExternalLink className="w-3.5 h-3.5" />
+                        <div className="px-6 py-3.5 border-t border-[var(--border)] bg-[var(--muted)]/30">
+                            <Link href="/reports" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[var(--primary)] hover:gap-2 transition-all">
+                                View all reports <HiOutlineExternalLink className="w-3.5 h-3.5" />
                             </Link>
                         </div>
                     </div>
 
-                    {/* Overview Stats */}
-                    <div className="bg-card rounded-2xl border border-border overflow-hidden">
-                        <div className="px-6 py-4 border-b border-border bg-muted/30">
-                            <h3 className="text-[15px] font-bold text-foreground m-0">
-                                Overview
-                            </h3>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                                Reports statistics summary
-                            </p>
+                    <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+                        <div className="px-6 py-4 border-b border-[var(--border)]">
+                            <h3 className="text-[14.5px] font-bold text-[var(--foreground)]">Overview</h3>
+                            <p className="text-[12px] text-[var(--muted-foreground)] mt-0.5">Reports statistics summary</p>
                         </div>
 
                         <div className="p-6">
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="bg-blue-50 rounded-xl p-4">
-                                    <div className="text-[11.5px] text-blue-600 mb-1.5 font-medium">
-                                        Total
-                                    </div>
-                                    <div className="text-[28px] font-bold text-blue-600 tracking-[-1px]">
-                                        {stats.total}
-                                    </div>
-                                    <div className="text-[11.5px] text-blue-600/70 mt-0.5">
-                                        Issues reported
-                                    </div>
-                                </div>
-                                <div className="bg-green-50 rounded-xl p-4">
-                                    <div className="text-[11.5px] text-green-600 mb-1.5 font-medium">
-                                        Solved
-                                    </div>
-                                    <div className="text-[28px] font-bold text-green-600 tracking-[-1px]">
-                                        {stats.solved}
-                                    </div>
-                                    <div className="text-[11.5px] text-green-600/70 mt-0.5">
-                                        Resolved so far
-                                    </div>
-                                </div>
-                                <div className="bg-amber-50 rounded-xl p-4">
-                                    <div className="text-[11.5px] text-amber-600 mb-1.5 font-medium">
-                                        Pending
-                                    </div>
-                                    <div className="text-[28px] font-bold text-amber-600 tracking-[-1px]">
-                                        {stats.pending}
-                                    </div>
-                                    <div className="text-[11.5px] text-amber-600/70 mt-0.5">
-                                        Awaiting action
-                                    </div>
-                                </div>
-                                <div className="bg-purple-50 rounded-xl p-4">
-                                    <div className="text-[11.5px] text-purple-600 mb-1.5 font-medium">
-                                        My Reports
-                                    </div>
-                                    <div className="text-[28px] font-bold text-purple-600 tracking-[-1px]">
-                                        {stats.myReports}
-                                    </div>
-                                    <div className="text-[11.5px] text-purple-600/70 mt-0.5">
-                                        Submitted by me
-                                    </div>
-                                </div>
+                                {[
+                                    { label: "Total", value: stats.total, sub: "Issues reported", icon: HiOutlineDocumentReport, color: "blue" },
+                                    { label: "Solved", value: stats.solved, sub: "Resolved so far", icon: HiOutlineCheckCircle, color: "green" },
+                                    { label: "Pending", value: stats.pending, sub: "Awaiting action", icon: HiOutlineClock, color: "amber" },
+                                    { label: "My Reports", value: stats.myReports, sub: "Submitted by me", icon: HiOutlineUser, color: "purple" },
+                                ].map(({ label, value, sub, icon: Icon, color }) => {
+                                    const configs = {
+                                        blue: { bg: "bg-blue-50", text: "text-blue-600", sub: "text-blue-400" },
+                                        green: { bg: "bg-green-50", text: "text-green-600", sub: "text-green-400" },
+                                        amber: { bg: "bg-amber-50", text: "text-amber-600", sub: "text-amber-400" },
+                                        purple: { bg: "bg-purple-50", text: "text-purple-600", sub: "text-purple-400" },
+                                    };
+                                    const c = configs[color];
+                                    return (
+                                        <div key={label} className={`${c.bg} rounded-xl p-4`}>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <p className={`text-[11.5px] font-medium ${c.text}`}>{label}</p>
+                                                <Icon className={`w-4 h-4 ${c.text} opacity-60`} />
+                                            </div>
+                                            <p className={`text-[28px] font-bold tracking-[-1px] ${c.text}`}>{value}</p>
+                                            <p className={`text-[11px] mt-0.5 ${c.sub}`}>{sub}</p>
+                                        </div>
+                                    );
+                                })}
                             </div>
 
-                            <div className="grid grid-cols-3 gap-0 border-t border-border mt-6 pt-5">
+                            <div className="grid grid-cols-3 gap-0 mt-6 pt-5 border-t border-[var(--border)]">
                                 <div className="text-center">
-                                    <div className="text-[11.5px] text-muted-foreground mb-1">
-                                        Solve rate
-                                    </div>
-                                    <div className="text-lg font-bold text-primary">
-                                        {solvedPct}%
-                                    </div>
-                                    <div className="text-[10px] text-muted-foreground">
-                                        overall
-                                    </div>
+                                    <p className="text-[11px] text-[var(--muted-foreground)] mb-1">Solve rate</p>
+                                    <p className="text-[17px] font-bold text-[var(--primary)]">{solvedPct}%</p>
+                                    <p className="text-[10.5px] text-[var(--muted-foreground)]">overall</p>
+                                </div>
+                                <div className="text-center border-x border-[var(--border)]">
+                                    <p className="text-[11px] text-[var(--muted-foreground)] mb-1">Top area</p>
+                                    <p className="text-[14px] font-bold text-[var(--primary)] truncate px-2">{topArea || "N/A"}</p>
+                                    <p className="text-[10.5px] text-[var(--muted-foreground)]">most reports</p>
                                 </div>
                                 <div className="text-center">
-                                    <div className="text-[11.5px] text-muted-foreground mb-1">
-                                        Top area
-                                    </div>
-                                    <div className="text-sm font-bold text-primary truncate px-1">
-                                        {topArea || "N/A"}
-                                    </div>
-                                    <div className="text-[10px] text-muted-foreground">
-                                        most reports
-                                    </div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-[11.5px] text-muted-foreground mb-1">
-                                        Status
-                                    </div>
-                                    <div
-                                        className={`text-sm font-bold ${solvedPct > 70 ? "text-green-600" : solvedPct > 40 ? "text-amber-600" : "text-red-600"}`}
-                                    >
-                                        {solvedPct > 70
-                                            ? "Good"
-                                            : solvedPct > 40
-                                              ? "Average"
-                                              : "Needs attention"}
-                                    </div>
-                                    <div className="text-[10px] text-muted-foreground">
-                                        on track
-                                    </div>
+                                    <p className="text-[11px] text-[var(--muted-foreground)] mb-1">Status</p>
+                                    <p className={`text-[14px] font-bold ${solvedPct > 70 ? "text-green-600" : solvedPct > 40 ? "text-amber-600" : "text-red-600"}`}>
+                                        {solvedPct > 70 ? "On Track" : solvedPct > 40 ? "Average" : "At Risk"}
+                                    </p>
+                                    <p className="text-[10.5px] text-[var(--muted-foreground)]">performance</p>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Quick Links */}
-                <div className="bg-card rounded-2xl border border-border overflow-hidden">
-                    <div className="px-6 py-4 border-b border-border bg-muted/30">
-                        <h3 className="text-[15px] font-bold text-foreground m-0">
-                            Quick Access
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                            Frequently used features
-                        </p>
+                <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
+                    <div className="px-6 py-4 border-b border-[var(--border)]">
+                        <h3 className="text-[14.5px] font-bold text-[var(--foreground)]">Quick Access</h3>
+                        <p className="text-[12px] text-[var(--muted-foreground)] mt-0.5">Frequently used features</p>
                     </div>
                     <div className="p-6">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -408,18 +314,24 @@ export default function Dashboard({
                                     <Link
                                         key={link.href}
                                         href={link.href}
-                                        className={`flex flex-col items-center gap-2 px-4 py-4 rounded-xl text-center transition-all hover:scale-105 ${
+                                        className={`flex items-center justify-between px-4 py-4 rounded-xl transition-all hover:scale-[1.01] ${
                                             link.primary
-                                                ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md hover:shadow-lg"
-                                                : "bg-muted text-foreground hover:bg-primary/10"
+                                                ? "bg-[var(--primary)] text-white shadow-sm hover:shadow-md"
+                                                : "bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--secondary)]"
                                         }`}
                                     >
-                                        <Icon
-                                            className={`w-6 h-6 ${link.primary ? "text-white" : "text-primary"}`}
-                                        />
-                                        <span className="text-[12.5px] font-medium">
-                                            {link.label}
-                                        </span>
+                                        <div className="flex items-center gap-3">
+                                            <Icon className={`w-5 h-5 shrink-0 ${link.primary ? "text-white" : "text-[var(--primary)]"}`} />
+                                            <div>
+                                                <p className={`text-[13px] font-semibold ${link.primary ? "text-white" : "text-[var(--foreground)]"}`}>
+                                                    {link.label}
+                                                </p>
+                                                <p className={`text-[11px] ${link.primary ? "text-white/70" : "text-[var(--muted-foreground)]"}`}>
+                                                    {link.sub}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <HiArrowRight className={`w-4 h-4 shrink-0 ${link.primary ? "text-white/80" : "text-[var(--muted-foreground)]"}`} />
                                     </Link>
                                 );
                             })}

@@ -14,16 +14,11 @@ export default function InputText({
     ...props
 }) {
     return (
-        <div className={`flex flex-col gap-2 ${className}`}>
+        <div className={`flex flex-col gap-1.5 ${className}`}>
             {label && (
-                <label
-                    htmlFor={id}
-                    className="text-[12px] font-medium text-muted-foreground"
-                >
+                <label htmlFor={id} className="text-[13px] font-semibold text-foreground">
                     {label}
-                    {required && (
-                        <span className="text-destructive ml-0.5">*</span>
-                    )}
+                    {required && <span className="text-destructive ml-0.5">*</span>}
                 </label>
             )}
 
@@ -36,24 +31,20 @@ export default function InputText({
                 required={required}
                 disabled={disabled}
                 className={`
-                    w-full h-10 px-3 rounded-lg text-[13px]
-                    bg-background border border-border
-                    outline-none transition-all duration-150
-                    placeholder:text-muted-foreground/70
+                    w-full h-10 px-3.5 rounded-xl text-[13.5px] transition-all duration-150
+                    border bg-card outline-none
+                    placeholder:text-muted-foreground/60
                     ${disabled
-                        ? "bg-muted text-muted-foreground cursor-not-allowed"
-                        : "focus:ring-2 focus:ring-primary/20 focus:border-primary"}
-                    ${error
-                        ? "border-destructive focus:ring-destructive/20 focus:border-destructive"
-                        : ""}
+                        ? "bg-muted text-muted-foreground cursor-not-allowed border-border"
+                        : "text-foreground border-border hover:border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/10"
+                    }
+                    ${error ? "border-destructive focus:border-destructive focus:ring-destructive/10" : ""}
                 `}
                 {...props}
             />
 
             {error && (
-                <span className="text-[11px] text-destructive">
-                    {error}
-                </span>
+                <span className="text-[11.5px] text-destructive">{error}</span>
             )}
         </div>
     );

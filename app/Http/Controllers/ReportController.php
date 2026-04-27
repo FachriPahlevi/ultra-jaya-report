@@ -12,16 +12,35 @@ use Inertia\Inertia;
 
 class ReportController extends Controller
 {
-    public function index()
+public function index(Request $request)
     {
         $user = Auth::user();
 
-        $areaReports = Report::with(['author', 'area', 'activity'])
-            ->whereHas('area', function ($query) use ($user) {
-                $query->where('pic_user_id', $user->id);
-            })
-            ->latest()
-            ->paginate(10);
+        $query = Report::with(['author', 'area', 'activity']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('issue', 'like', "%{$search}%")
+                  ->orWhereHas('author', function($q2) use ($search) {
+                      $q2->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        if ($request->filled('status')) {
+            if ($request->status === 'pending') {
+                $query->whereNull('finished_date');
+            } elseif ($request->status === 'solved') {
+                $query->whereNotNull('finished_date');
+            }
+        }
+
+        if ($request->filled('type')) {
+            $query->where('activity_id', $request->type);
+        }
+
+        $areaReports = $query->latest()->paginate(10);
 
         $areas = Area::select('id', 'area')->get();
         $activities = Activity::select('id', 'description')->get();
