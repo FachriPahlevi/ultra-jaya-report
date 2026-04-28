@@ -4,13 +4,14 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\AreaController;
 use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingController;
 
-Route::inertia('/', 'Dashboard/Index')->name('dashboard');
-
 Route::middleware(['auth', 'verified'])->group(function () {
+
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::middleware(['auth', 'verified', 'role:SUPER_ADMIN'])->group(function () {
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
@@ -38,6 +39,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{report}', [ReportController::class, 'destroy'])->name('reports.destroy')
             ->whereNumber('report')
             ->middleware('permission:reports.delete');
+        Route::get('/export/{type}', [ReportController::class, 'export'])->name('reports.export');
     });
 
     // Areas - hanya SUPER_ADMIN dan ADMIN

@@ -1,6 +1,7 @@
 // resources/js/Components/Settings/UserForm.jsx
 import { useState } from "react";
 import { router } from "@inertiajs/react";
+import axios from "axios";
 import InputText from "@/Components/Input/InputText";
 import InputDropdown from "@/Components/Input/InputDropdown";
 import BtnDefault from "@/Components/Button/BtnDefault";
@@ -37,19 +38,38 @@ export default function UserForm({ isOpen, onClose, user, roles }) {
         e.preventDefault();
         setProcessing(true);
 
+        const submitData = {
+            name: form.name,
+            email: form.email,
+            role: form.role,
+        };
+
+        if (form.password) {
+            submitData.password = form.password;
+        }
+
         try {
             if (user) {
-                await axios.put(`/settings/users/${user.id}`, form);
+                await axios.put(`/settings/users/${user.id}`, submitData);
                 showStatusModal("success", "Success", "User updated");
+                router.reload();
+                onClose();
             } else {
-                await axios.post("/settings/users", form);
+                await axios.post("/settings/users", submitData);
                 showStatusModal("success", "Success", "User created");
+                router.reload();
+                onClose();
             }
-            router.reload();
-            onClose();
         } catch (error) {
-            const message = error.response?.data?.message || "Failed to save user";
-            showStatusModal("error", "Error", message);
+            console.error('Error:', error.response?.data);
+            let errorMessage = "Failed to save user";
+            if (error.response?.data?.message) {
+                errorMessage = error.response.data.message;
+            } else if (error.response?.data?.errors) {
+                const errors = error.response.data.errors;
+                errorMessage = Object.values(errors).flat()[0];
+            }
+            showStatusModal("error", "Error", errorMessage);
         } finally {
             setProcessing(false);
         }

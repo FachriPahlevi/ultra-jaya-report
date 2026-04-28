@@ -1,14 +1,119 @@
 // resources/js/Pages/settings/Index.jsx
 import { useState } from "react";
+import { router } from "@inertiajs/react";
+import axios from "axios";
 import AppLayout from "@/Layouts/AppLayout";
-import { useStatusModal } from "@/Components/Context/StatusModalContext";
-import PermissionsMForm from "@/Components/Form/PermissionsForm";
+import BtnDefault from "@/Components/Button/BtnDefault";
 import UserForm from "@/Components/Form/UserForm";
-import UsersTable from "@/Components/Settings/UsersTable";
-import RolesTable from "@/Components/Settings/RolesTable";
-import PermissionSummary from "@/Components/Settings/PermissionSummary";
 import RoleForm from "@/Components/Form/RoleForm";
+import PermissionsForm from "@/Components/Form/PermissionsForm";
+import { useStatusModal } from "@/Components/Context/StatusModalContext";
+import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineShieldCheck, HiOutlineUserAdd } from "react-icons/hi";
 
+const getInitials = (name) => name?.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") ?? "U";
+
+const UsersTable = ({ users, onEdit, onDelete, onAdd }) => (
+    <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
+        <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center justify-between">
+            <h2 className="text-[15px] font-bold text-foreground m-0">System Users</h2>
+            <BtnDefault size="sm" onClick={onAdd}>
+                <HiOutlineUserAdd className="w-4 h-4" />
+                Add User
+            </BtnDefault>
+        </div>
+        <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+                <thead>
+                    <tr className="text-left text-[11px] font-semibold text-muted-foreground border-b border-border bg-muted/20">
+                        <th className="p-3 w-12">No</th>
+                        <th className="p-3">User</th>
+                        <th className="p-3">Email</th>
+                        <th className="p-3">Role</th>
+                        <th className="p-3 w-24">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {users.data.map((user, i) => (
+                        <tr key={user.id} className="border-b border-border/50 hover:bg-muted/30">
+                            <td className="p-3 text-xs text-muted-foreground font-mono">{(users.meta?.from ?? 1) + i}</td>
+                            <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">{getInitials(user.name)}</div>
+                                    <span className="font-medium text-foreground">{user.name}</span>
+                                </div>
+                            </td>
+                            <td className="p-3 text-muted-foreground text-xs">{user.email}</td>
+                            <td className="p-3">
+                                <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[11px]">{user.roles[0]?.name || "No role"}</span>
+                            </td>
+                            <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => onEdit(user)} className="text-primary hover:text-primary/80 p-1"><HiOutlinePencil className="w-4 h-4" /></button>
+                                    {user.roles[0]?.name !== "SUPER_ADMIN" && (
+                                        <button onClick={() => onDelete(user)} className="text-destructive hover:text-destructive/80 p-1"><HiOutlineTrash className="w-4 h-4" /></button>
+                                    )}
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+        {users.links?.length > 3 && (
+            <div className="px-4 py-3 border-t border-border bg-muted/30 flex gap-1 flex-wrap">
+                {users.links.map((link, idx) => (
+                    <BtnDefault key={idx} size="sm" outline={!link.active} disabled={!link.url} onClick={() => link.url && router.visit(link.url)} className="min-w-[32px] px-2">
+                        <span dangerouslySetInnerHTML={{ __html: link.label }} />
+                    </BtnDefault>
+                ))}
+            </div>
+        )}
+    </div>
+);
+
+const RolesTable = ({ roles, onAdd, onEdit, onDelete, onManagePermissions }) => (
+    <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
+        <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center justify-between">
+            <h2 className="text-[15px] font-bold text-foreground m-0">Roles</h2>
+            <BtnDefault size="sm" onClick={onAdd}><HiOutlinePlus className="w-4 h-4" />Add Role</BtnDefault>
+        </div>
+        <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+                <thead>
+                    <tr className="text-left text-[11px] font-semibold text-muted-foreground border-b border-border bg-muted/20">
+                        <th className="p-3">Name</th><th className="p-3">Permissions</th><th className="p-3 w-24">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {roles.map((role) => (
+                        <tr key={role.id} className="border-b border-border/50 hover:bg-muted/30">
+                            <td className="p-3 font-medium text-foreground">{role.name}</td>
+                            <td className="p-3">
+                                <div className="flex flex-wrap gap-1">
+                                    {role.permissions.slice(0, 2).map((perm) => (
+                                        <span key={perm.id} className="inline-block px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[11px]">{perm.name.split(".")[0]}</span>
+                                    ))}
+                                    {role.permissions.length > 2 && <span className="text-xs text-muted-foreground">+{role.permissions.length - 2}</span>}
+                                </div>
+                            </td>
+                            <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => onManagePermissions(role)} className="text-primary hover:text-primary/80 p-1"><HiOutlineShieldCheck className="w-4 h-4" /></button>
+                                    {role.name !== "SUPER_ADMIN" && (
+                                        <>
+                                            <button onClick={() => onEdit(role)} className="text-primary hover:text-primary/80 p-1"><HiOutlinePencil className="w-4 h-4" /></button>
+                                            <button onClick={() => onDelete(role)} className="text-destructive hover:text-destructive/80 p-1"><HiOutlineTrash className="w-4 h-4" /></button>
+                                        </>
+                                    )}
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    </div>
+);
 
 export default function Settings({ users, roles, permissions }) {
     const { setStatusModalProps } = useStatusModal();
@@ -16,44 +121,25 @@ export default function Settings({ users, roles, permissions }) {
     const [selectedUser, setSelectedUser] = useState(null);
     const [showRoleModal, setShowRoleModal] = useState(false);
     const [selectedRole, setSelectedRole] = useState(null);
-    const [showPermissionsMForm, setShowPermissionsMForm] = useState(false);
+    const [showPermissionsModal, setShowPermissionsModal] = useState(false);
     const [roleForPermissions, setRoleForPermissions] = useState(null);
 
-    const showStatusModal = (type, title, message) => {
-        setStatusModalProps({
-            isOpen: true,
-            type,
-            title,
-            message,
-            button1: { text: "OK" },
-        });
-    };
-
-    const permissionGroups = {
-        users: permissions.filter((p) => p.name.startsWith("users.")),
-        areas: permissions.filter((p) => p.name.startsWith("areas.")),
-        activities: permissions.filter((p) => p.name.startsWith("activities.")),
-        reports: permissions.filter((p) => p.name.startsWith("reports.")),
-    };
+    const showStatusModal = (type, title, message) => setStatusModalProps({ isOpen: true, type, title, message, button1: { text: "OK" } });
 
     const confirmDeleteUser = (user) => {
+        if (user.roles[0]?.name === "SUPER_ADMIN") {
+            showStatusModal("error", "Error", "Cannot delete SUPER_ADMIN user");
+            return;
+        }
         setStatusModalProps({
-            isOpen: true,
-            type: "warning",
-            title: "Delete User",
-            message: `Are you sure you want to delete user "${user.name}"?`,
-            button1: {
-                text: "Delete",
-                onClick: async () => {
-                    try {
-                        await axios.delete(`/settings/users/${user.id}`);
-                        showStatusModal("success", "Success", "User deleted");
-                        window.location.reload();
-                    } catch (error) {
-                        showStatusModal("error", "Error", "Failed to delete user");
-                    }
-                },
-            },
+            isOpen: true, type: "warning", title: "Delete User", message: `Delete user "${user.name}"?`,
+            button1: { text: "Delete", onClick: async () => {
+                try {
+                    await axios.delete(`/settings/users/${user.id}`);
+                    showStatusModal("success", "Success", "User deleted");
+                    window.location.reload();
+                } catch { showStatusModal("error", "Error", "Failed to delete user"); }
+            } },
             button2: { text: "Cancel" },
         });
     };
@@ -63,26 +149,24 @@ export default function Settings({ users, roles, permissions }) {
             showStatusModal("error", "Error", "Cannot delete SUPER_ADMIN role");
             return;
         }
-
         setStatusModalProps({
-            isOpen: true,
-            type: "warning",
-            title: "Delete Role",
-            message: `Are you sure you want to delete role "${role.name}"?`,
-            button1: {
-                text: "Delete",
-                onClick: async () => {
-                    try {
-                        await axios.delete(`/settings/roles/${role.id}`);
-                        showStatusModal("success", "Success", "Role deleted");
-                        window.location.reload();
-                    } catch (error) {
-                        showStatusModal("error", "Error", "Failed to delete role");
-                    }
-                },
-            },
+            isOpen: true, type: "warning", title: "Delete Role", message: `Delete role "${role.name}"?`,
+            button1: { text: "Delete", onClick: async () => {
+                try {
+                    await axios.delete(`/settings/roles/${role.id}`);
+                    showStatusModal("success", "Success", "Role deleted");
+                    window.location.reload();
+                } catch { showStatusModal("error", "Error", "Failed to delete role"); }
+            } },
             button2: { text: "Cancel" },
         });
+    };
+
+    const permissionGroups = {
+        users: permissions.filter(p => p.name.startsWith("users.")),
+        areas: permissions.filter(p => p.name.startsWith("areas.")),
+        activities: permissions.filter(p => p.name.startsWith("activities.")),
+        reports: permissions.filter(p => p.name.startsWith("reports.")),
     };
 
     return (
@@ -93,59 +177,30 @@ export default function Settings({ users, roles, permissions }) {
                     <p className="text-sm text-muted-foreground mt-1">Manage users, roles, and permissions</p>
                 </div>
 
-                <UsersTable
-                    users={users}
-                    onAdd={() => {
-                        setSelectedUser(null);
-                        setShowUserModal(true);
-                    }}
-                    onEdit={(user) => {
-                        setSelectedUser(user);
-                        setShowUserModal(true);
-                    }}
-                    onDelete={confirmDeleteUser}
-                />
+                <UsersTable users={users} onAdd={() => { setSelectedUser(null); setShowUserModal(true); }} onEdit={(user) => { setSelectedUser(user); setShowUserModal(true); }} onDelete={confirmDeleteUser} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <RolesTable
-                        roles={roles}
-                        onAdd={() => {
-                            setSelectedRole(null);
-                            setShowRoleModal(true);
-                        }}
-                        onEdit={(role) => {
-                            setSelectedRole(role);
-                            setShowRoleModal(true);
-                        }}
-                        onDelete={confirmDeleteRole}
-                        onManagePermissions={(role) => {
-                            setRoleForPermissions(role);
-                            setShowPermissionsMForm(true);
-                        }}
-                    />
-                    <PermissionSummary groups={permissionGroups} />
+                    <RolesTable roles={roles} onAdd={() => { setSelectedRole(null); setShowRoleModal(true); }} onEdit={(role) => { setSelectedRole(role); setShowRoleModal(true); }} onDelete={confirmDeleteRole} onManagePermissions={(role) => { setRoleForPermissions(role); setShowPermissionsModal(true); }} />
+                    <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
+                        <div className="px-6 py-4 border-b border-border bg-muted/30"><h2 className="text-[15px] font-bold text-foreground m-0">Permission Groups</h2></div>
+                        <div className="p-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                {Object.entries(permissionGroups).map(([key, perms]) => (
+                                    <div key={key} className="bg-primary/10 rounded-xl p-4">
+                                        <div className="text-[11.5px] text-primary mb-1 font-medium capitalize">{key}</div>
+                                        <div className="text-2xl font-bold text-primary">{perms.length}</div>
+                                        <div className="text-[10px] text-primary/70 mt-1">permissions</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <UserForm
-                isOpen={showUserModal}
-                onClose={() => setShowUserModal(false)}
-                user={selectedUser}
-                roles={roles}
-            />
-
-            <RoleForm   
-                isOpen={showRoleModal}
-                onClose={() => setShowRoleModal(false)}
-                role={selectedRole}
-            />
-
-            <PermissionsMForm
-                isOpen={showPermissionsMForm}
-                onClose={() => setShowPermissionsMForm(false)}
-                role={roleForPermissions}
-                permissions={permissions}
-            />
+            <UserForm isOpen={showUserModal} onClose={() => setShowUserModal(false)} user={selectedUser} roles={roles} />
+            <RoleForm isOpen={showRoleModal} onClose={() => setShowRoleModal(false)} role={selectedRole} />
+            <PermissionsForm isOpen={showPermissionsModal} onClose={() => setShowPermissionsModal(false)} role={roleForPermissions} permissions={permissions} />
         </AppLayout>
     );
 }

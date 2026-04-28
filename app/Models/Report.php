@@ -36,8 +36,8 @@ class Report extends Model
         return $this->belongsTo(Area::class);
     }
     
-    public function activity()
+    public function activityType()
     {
-        return $this->belongsTo(Activity::class);
+        return $this->belongsTo(Activity::class, 'activity_id');
     }
 }

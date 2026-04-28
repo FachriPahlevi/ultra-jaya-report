@@ -12,13 +12,16 @@ export default function ReportForm({
     onClose,
     areas = [],
     activities = [],
+    users = [],
 }) {
     const { setStatusModalProps } = useStatusModal();
     const { auth } = usePage().props;
     const currentUser = auth?.user;
+    const userRole = currentUser?.role?.toLowerCase() || "user";
     const [photoPreview, setPhotoPreview] = useState(null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
+        author_id: "",
         type_activity: "",
         area_activity: "",
         activity: "",
@@ -41,6 +44,10 @@ export default function ReportForm({
         if (!file) return;
         setData("photo", file);
         setPhotoPreview(URL.createObjectURL(file));
+    };
+
+    const handleAuthorChange = (item) => {
+        setData("author_id", item.value);
     };
 
     const handleTypeActivityChange = (item) => {
@@ -81,6 +88,13 @@ export default function ReportForm({
         });
     };
 
+    const canChangeAuthor = userRole === "super_admin" || userRole === "admin";
+
+    const userOptions = users.map(user => ({
+        label: user.name,
+        value: user.id
+    }));
+
     return (
         <ModalOverlay isOpen={isOpen} onClose={handleCancel}>
             <div className="bg-card rounded-2xl border border-border shadow-xl">
@@ -99,11 +113,23 @@ export default function ReportForm({
 
                 <div className="p-6">
                     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-                        <InputText
-                            label="Name"
-                            value={currentUser?.name ?? ""}
-                            disabled
-                        />
+                        {canChangeAuthor ? (
+                            <InputDropdown
+                                id="author_id"
+                                label="Name"
+                                itemList={userOptions}
+                                placeholder="Select user..."
+                                required
+                                setObject={handleAuthorChange}
+                                error={errors.author_id}
+                            />
+                        ) : (
+                            <InputText
+                                label="Name"
+                                value={currentUser?.name ?? ""}
+                                disabled
+                            />
+                        )}
 
                         <InputDropdown
                             id="area_activity"
@@ -215,18 +241,20 @@ export default function ReportForm({
                                 outline
                                 onClick={handleCancel}
                                 className="flex-1"
-                                btnText="Cancel"
-                            />
+                            >
+                                Cancel
+                            </BtnDefault>
                             <BtnDefault
                                 type="submit"
                                 loading={processing}
                                 className="flex-[2]"
-                                btnText={processing ? "Submitting..." : "Submit Report"}
-                            />
+                            >
+                                {processing ? "Submitting..." : "Submit Report"}
+                            </BtnDefault>
                         </div>
                     </form>
                 </div>
             </div>
         </ModalOverlay>
     );
-}
+}   

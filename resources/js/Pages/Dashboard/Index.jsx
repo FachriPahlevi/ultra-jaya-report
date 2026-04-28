@@ -300,44 +300,6 @@ export default function Dashboard({
                         </div>
                     </div>
                 </div>
-
-                <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] overflow-hidden">
-                    <div className="px-6 py-4 border-b border-[var(--border)]">
-                        <h3 className="text-[14.5px] font-bold text-[var(--foreground)]">Quick Access</h3>
-                        <p className="text-[12px] text-[var(--muted-foreground)] mt-0.5">Frequently used features</p>
-                    </div>
-                    <div className="p-6">
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                            {quickLinks.map((link) => {
-                                const Icon = link.icon;
-                                return (
-                                    <Link
-                                        key={link.href}
-                                        href={link.href}
-                                        className={`flex items-center justify-between px-4 py-4 rounded-xl transition-all hover:scale-[1.01] ${
-                                            link.primary
-                                                ? "bg-[var(--primary)] text-white shadow-sm hover:shadow-md"
-                                                : "bg-[var(--muted)] text-[var(--foreground)] hover:bg-[var(--secondary)]"
-                                        }`}
-                                    >
-                                        <div className="flex items-center gap-3">
-                                            <Icon className={`w-5 h-5 shrink-0 ${link.primary ? "text-white" : "text-[var(--primary)]"}`} />
-                                            <div>
-                                                <p className={`text-[13px] font-semibold ${link.primary ? "text-white" : "text-[var(--foreground)]"}`}>
-                                                    {link.label}
-                                                </p>
-                                                <p className={`text-[11px] ${link.primary ? "text-white/70" : "text-[var(--muted-foreground)]"}`}>
-                                                    {link.sub}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <HiArrowRight className={`w-4 h-4 shrink-0 ${link.primary ? "text-white/80" : "text-[var(--muted-foreground)]"}`} />
-                                    </Link>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
             </div>
         </AppLayout>
     );

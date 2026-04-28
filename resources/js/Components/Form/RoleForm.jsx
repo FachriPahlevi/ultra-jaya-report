@@ -1,6 +1,7 @@
 // resources/js/Components/Settings/RoleForm.jsx
 import { useState } from "react";
 import { router } from "@inertiajs/react";
+import axios from "axios";
 import InputText from "@/Components/Input/InputText";
 import BtnDefault from "@/Components/Button/BtnDefault";
 import ModalOverlay from "@/Components/Modal/ModalOverlay";
@@ -9,6 +10,7 @@ import { HiOutlineX } from "react-icons/hi";
 
 export default function RoleForm({ isOpen, onClose, role }) {
     const { setStatusModalProps } = useStatusModal();
+    const [processing, setProcessing] = useState(false);
     const [form, setForm] = useState({ name: role?.name || "" });
 
     const showStatusModal = (type, title, message) => {
@@ -23,19 +25,26 @@ export default function RoleForm({ isOpen, onClose, role }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setProcessing(true);
 
         try {
             if (role) {
                 await axios.put(`/settings/roles/${role.id}`, form);
                 showStatusModal("success", "Success", "Role updated");
+                router.reload();
+                onClose();
             } else {
                 await axios.post("/settings/roles", form);
                 showStatusModal("success", "Success", "Role created");
+                router.reload();
+                onClose();
             }
-            router.reload();
-            onClose();
         } catch (error) {
-            showStatusModal("error", "Error", error.response?.data?.message || "Failed to save role");
+            console.error('Error:', error);
+            const message = error.response?.data?.message || "Failed to save role";
+            showStatusModal("error", "Error", message);
+        } finally {
+            setProcessing(false);
         }
     };
 
@@ -60,7 +69,7 @@ export default function RoleForm({ isOpen, onClose, role }) {
                     />
                     <div className="flex gap-3">
                         <BtnDefault outline onClick={onClose} className="flex-1">Cancel</BtnDefault>
-                        <BtnDefault type="submit" className="flex-[2]">Save</BtnDefault>
+                        <BtnDefault type="submit" loading={processing} className="flex-[2]">Save</BtnDefault>
                     </div>
                 </form>
             </div>
