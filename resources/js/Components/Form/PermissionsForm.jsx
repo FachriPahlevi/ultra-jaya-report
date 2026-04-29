@@ -1,4 +1,3 @@
-// resources/js/Components/Settings/PermissionsForm.jsx
 import { useState, useEffect } from "react";
 import { router } from "@inertiajs/react";
 import axios from "axios";
@@ -25,10 +24,23 @@ export default function PermissionsForm({ isOpen, onClose, role, permissions }) 
   }, [isOpen]);
 
   const permissionGroups = {
+    menu: permissions.filter((p) => p.name.startsWith("menu.")),
     users: permissions.filter((p) => p.name.startsWith("users.")),
     areas: permissions.filter((p) => p.name.startsWith("areas.")),
     activities: permissions.filter((p) => p.name.startsWith("activities.")),
     reports: permissions.filter((p) => p.name.startsWith("reports.")),
+    settings: permissions.filter((p) => p.name.startsWith("settings.")),
+    roles: permissions.filter((p) => p.name.startsWith("roles.")),
+  };
+
+  const groupLabels = {
+    menu: "Menu Navigation",
+    users: "User Management",
+    areas: "Area Management",
+    activities: "Activity Management",
+    reports: "Report Management",
+    settings: "Settings",
+    roles: "Role & Permission",
   };
 
   const showStatusModal = (type, title, message) => {
@@ -105,6 +117,8 @@ export default function PermissionsForm({ isOpen, onClose, role, permissions }) 
 
   if (!role) return null;
 
+  const groupsToShow = Object.entries(permissionGroups).filter(([_, perms]) => perms.length > 0);
+
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
       <div className="bg-card rounded-2xl border border-border shadow-xl w-full max-w-[700px] mx-4 sm:mx-auto max-h-[90vh] flex flex-col">
@@ -127,7 +141,7 @@ export default function PermissionsForm({ isOpen, onClose, role, permissions }) 
             </div>
           </div>
 
-          {Object.entries(permissionGroups).map(([group, perms]) => {
+          {groupsToShow.map(([group, perms]) => {
             const isFullySelected = isGroupFullySelected(group);
             const isPartiallySelected = isGroupPartiallySelected(group);
 
@@ -151,7 +165,9 @@ export default function PermissionsForm({ isOpen, onClose, role, permissions }) 
                       </svg>
                     )}
                   </button>
-                  <h3 className="text-[13px] sm:text-[14px] font-bold text-foreground uppercase tracking-wide">{group}</h3>
+                  <h3 className="text-[13px] sm:text-[14px] font-bold text-foreground uppercase tracking-wide">
+                    {groupLabels[group] || group}
+                  </h3>
                   <span className="text-xs text-muted-foreground">({perms.length} permissions)</span>
                 </div>
 
