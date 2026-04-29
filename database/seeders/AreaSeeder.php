@@ -11,47 +11,75 @@ class AreaSeeder extends Seeder
 {
     public function run(): void
     {
-        // Ambil user dengan role SUPERVISOR menggunakan Spatie
+        // Pastikan role SUPERVISOR ada
+        $supervisorRole = Role::firstOrCreate(['name' => 'SUPERVISOR']);
+        
+        // Ambil user dengan role SUPERVISOR
         $supervisors = User::role('SUPERVISOR')->get();
 
         if ($supervisors->isEmpty()) {
+            $this->command->info('No supervisors found. Creating dummy supervisors...');
             $this->createDummySupervisors();
             $supervisors = User::role('SUPERVISOR')->get();
         }
 
+        if ($supervisors->isEmpty()) {
+            $this->command->error('Failed to create supervisors. Please check UserSeeder.');
+            return;
+        }
+
         $areas = [
-            ['area' => 'Fresh Milk Reception'],
-            ['area' => 'Processing'],
-            ['area' => 'CIP Kitchen'],
-            ['area' => 'Filling'],
-            ['area' => 'Packing'],
+            ['area' => 'Fresh Milk Reception', 'pic_user_id' => null],
+            ['area' => 'Processing', 'pic_user_id' => null],
+            ['area' => 'CIP Kitchen', 'pic_user_id' => null],
+            ['area' => 'Filling', 'pic_user_id' => null],
+            ['area' => 'Packing', 'pic_user_id' => null],
         ];
 
+        // Assign 1 SPV untuk 1 area (berurutan)
         foreach ($areas as $index => $area) {
-            $picUserId = $supervisors[$index % $supervisors->count()]->id;
+            if (isset($supervisors[$index])) {
+                $areas[$index]['pic_user_id'] = $supervisors[$index]->id;
+            }
+        }
 
+        foreach ($areas as $area) {
             Area::updateOrCreate(
                 ['area' => $area['area']],
-                ['area' => $area['area'], 'pic_user_id' => $picUserId]
+                ['pic_user_id' => $area['pic_user_id']]
             );
         }
+
+        $this->command->info(count($areas) . ' areas seeded successfully.');
+        $this->command->info('Each supervisor assigned to 1 area.');
     }
 
     private function createDummySupervisors()
     {
-        $supervisorRole = Role::where('name', 'SUPERVISOR')->first();
+        $supervisorRole = Role::firstOrCreate(['name' => 'SUPERVISOR']);
 
-        for ($i = 1; $i <= 5; $i++) {
+        $supervisors = [
+            ['name' => 'Supervisor Fresh Milk', 'email' => 'spv.freshmilk@example.com'],
+            ['name' => 'Supervisor Processing', 'email' => 'spv.processing@example.com'],
+            ['name' => 'Supervisor CIP Kitchen', 'email' => 'spv.cip@example.com'],
+            ['name' => 'Supervisor Filling', 'email' => 'spv.filling@example.com'],
+            ['name' => 'Supervisor Packing', 'email' => 'spv.packing@example.com'],
+        ];
+
+        foreach ($supervisors as $data) {
             $user = User::updateOrCreate(
-                ['email' => "spv{$i}@example.com"],
+                ['email' => $data['email']],
                 [
-                    'name' => "Supervisor {$i}",
-                    'email' => "spv{$i}@example.com",
+                    'name' => $data['name'],
                     'password' => bcrypt('password'),
                     'is_active' => true,
                 ]
             );
-            $user->assignRole($supervisorRole);
+            if (!$user->hasRole('SUPERVISOR')) {
+                $user->assignRole($supervisorRole);
+            }
         }
+        
+        $this->command->info('5 dummy supervisors created with specific areas.');
     }
 }

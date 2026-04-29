@@ -10,4 +10,4 @@ export default function ApplicationLogo({ className = "", width = 32, height = 3
             {...props}
         />
     );
-}
+}   

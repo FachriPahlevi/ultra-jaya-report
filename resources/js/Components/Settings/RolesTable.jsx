@@ -2,7 +2,7 @@
 import BtnDefault from "@/Components/Button/BtnDefault";
 import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineShieldCheck } from "react-icons/hi";
 
-export default function RolesTable({ roles, onAdd, onEdit, onDelete, onManagePermissions }) {
+const RolesTable = ({ roles, onAdd, onEdit, onDelete, onManagePermissions }) => {
     return (
         <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
             <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center justify-between">

@@ -7,7 +7,7 @@ const getInitials = (name) => {
     return name?.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") ?? "U";
 };
 
-export default function UsersTable({ users, onEdit, onDelete, onAdd }) {
+const UsersTable = ({ users, onEdit, onDelete, onAdd }) => {
     return (
         <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
             <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center justify-between">

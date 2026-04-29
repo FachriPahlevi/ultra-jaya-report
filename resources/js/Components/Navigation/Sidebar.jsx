@@ -10,11 +10,11 @@ import {
 } from "react-icons/hi";
 
 const NAV_ITEMS = [
-    { href: "/", label: "Dashboard", icon: HiOutlineViewGrid, permission: null },
-    { href: "/reports", label: "All reports", icon: HiOutlineDocumentReport, permission: "reports.view" },
-    { href: "/areas", label: "Areas", icon: HiOutlineMap, permission: "areas.view" },
-    { href: "/activities", label: "Activities", icon: HiOutlineLightningBolt, permission: "activities.view" },
-    { href: "/settings", label: "Settings", icon: HiOutlineCog, permission: "settings.view" },
+    { href: "/", label: "Dashboard", icon: HiOutlineViewGrid, permission: "menu.dashboard" },
+    { href: "/reports", label: "All reports", icon: HiOutlineDocumentReport, permission: "menu.reports" },
+    { href: "/areas", label: "Areas", icon: HiOutlineMap, permission: "menu.areas" },
+    { href: "/activities", label: "Activities", icon: HiOutlineLightningBolt, permission: "menu.activities" },
+    { href: "/settings", label: "Settings", icon: HiOutlineCog, permission: "menu.settings" },
 ];
 
 const SidebarItem = ({ item, active, onClick }) => {
@@ -42,7 +42,7 @@ const SidebarItem = ({ item, active, onClick }) => {
 const Sidebar = ({ sidebarOpen, closeSidebar }) => {
     const { props, url } = usePage();
     const currentUser = props.auth?.user;
-    const permissions = props.auth?.permissions || [];
+    const permissions = props.auth?.user?.permissions || [];
 
     const isActive = (href) => (href === "/" ? url === "/" : url.startsWith(href));
 
@@ -50,10 +50,8 @@ const Sidebar = ({ sidebarOpen, closeSidebar }) => {
         name?.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("") ?? "U";
 
     const getRoleName = () => {
-        const role = currentUser?.role;
-        if (!role) return "User";
-        if (typeof role === "string") return role;
-        return role.name || role.role_name || "User";
+        const roles = currentUser?.roles || [];
+        return roles[0] || "User";
     };
 
     const filteredNav = NAV_ITEMS.filter((item) =>
@@ -70,11 +68,9 @@ const Sidebar = ({ sidebarOpen, closeSidebar }) => {
             `}
         >
             <div className="flex items-center gap-2.5 px-5 py-5 border-b border-[var(--sidebar-border)]">
-                <div className="w-9 h-9 rounded-xl bg-[var(--sidebar-accent)] flex items-center justify-center shrink-0">
-                    <img src="/img/logo/logo_uj.png" className="w-5 h-5 object-contain" alt="logo" />
-                </div>
+                    <img src="/img/logo/logo_uj.svg" className="w-12 h-12 object-contain" alt="logo" />
                 <span className="text-[13px] font-bold text-[var(--sidebar-foreground)] leading-tight">
-                    PT Ultra Jaya Milk
+                    PT Ultrajaya Milk Industry
                 </span>
             </div>
 

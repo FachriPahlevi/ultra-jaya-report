@@ -13,11 +13,27 @@ use Inertia\Inertia;
 
 class ReportController extends Controller
 {
-   public function index(Request $request)
+    public function index(Request $request)
     {
         $user = Auth::user();
-
         $query = Report::with(['author', 'area', 'activityType']);
+
+        // Filter berdasarkan permission
+        if ($user->can('reports.view.all')) {
+        // SUPER_ADMIN, ADMIN, MANAGER bisa lihat semua report
+        // Tidak perlu filter tambahan
+    } elseif ($user->can('reports.solve.own.area')) {
+        // SUPERVISOR: lihat report sendiri + report di area yang dia jadi PIC
+        $query->where(function($q) use ($user) {
+            $q->where('author_id', $user->id)
+              ->orWhereHas('area', function($q2) use ($user) {
+                  $q2->where('pic_user_id', $user->id);
+              });
+        });
+    } else {
+        // USER biasa: hanya lihat report sendiri
+        $query->where('author_id', $user->id);
+    }
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -57,6 +73,10 @@ class ReportController extends Controller
 
     public function store(Request $request)
     {
+        if (!Auth::user()->can('reports.create')) {
+            return back()->with('error', 'Anda tidak memiliki izin untuk membuat laporan');
+        }
+
         $validated = $request->validate([
             'author_id' => 'required|exists:users,id',
             'type_activity' => 'required|exists:activities,id',
@@ -79,11 +99,26 @@ class ReportController extends Controller
             'is_content_edited' => false,
         ]);
 
-        return redirect()->back();
+        return redirect()->back()->with('success', 'Laporan berhasil dibuat');
     }
 
     public function solve(Request $request, Report $report)
     {
+        $user = Auth::user();
+
+        // Cek permission solve
+        if ($user->can('reports.solve.all')) {
+            // SUPER_ADMIN, ADMIN, MANAGER bisa solve semua
+        } elseif ($user->can('reports.solve.own.area')) {
+            // SUPERVISOR: cek apakah report berada di area yang dia menjadi PIC
+            // Gunakan pic_user_id, bukan supervisor_id
+            if ($report->area->pic_user_id !== $user->id) {
+                return back()->with('error', 'Anda tidak memiliki izin untuk menyelesaikan laporan di area ini');
+            }
+        } else {
+            return back()->with('error', 'Anda tidak memiliki izin untuk menyelesaikan laporan');
+        }
+
         $validated = $request->validate([
             'photo_after' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
@@ -93,13 +128,25 @@ class ReportController extends Controller
         $report->update([
             'photo_after' => $photoPath,
             'finished_date' => now(),
+            'solved_by' => $user->id,
         ]);
 
-        return redirect()->back();
+        return redirect()->back()->with('success', 'Laporan berhasil diselesaikan');
     }
 
     public function update(Request $request, Report $report)
     {
+        $user = Auth::user();
+
+        // Cek permission edit
+        if ($user->can('reports.edit.all')) {
+            // Bisa edit semua
+        } elseif ($user->can('reports.edit.own') && $report->author_id === $user->id) {
+            // Bisa edit punya sendiri
+        } else {
+            return back()->with('error', 'Anda tidak memiliki izin untuk mengedit laporan ini');
+        }
+
         $validated = $request->validate([
             'type_activity' => 'sometimes|exists:activities,id',
             'area_activity' => 'sometimes|exists:areas,id',
@@ -136,11 +183,15 @@ class ReportController extends Controller
 
         $report->update($updateData);
 
-        return redirect()->back();
+        return redirect()->back()->with('success', 'Laporan berhasil diupdate');
     }
 
     public function destroy(Report $report)
     {
+        if (!Auth::user()->can('reports.delete')) {
+            return back()->with('error', 'Anda tidak memiliki izin untuk menghapus laporan');
+        }
+
         if ($report->photo_before) {
             Storage::disk('public')->delete($report->photo_before);
         }
@@ -150,7 +201,7 @@ class ReportController extends Controller
 
         $report->delete();
 
-        return redirect()->back();
+        return redirect()->back()->with('success', 'Laporan berhasil dihapus');
     }
 
     public function show(Report $report)
@@ -160,41 +211,56 @@ class ReportController extends Controller
         ]);
     }
 
-public function export(Request $request, $type)
-{
-    $query = Report::with(['author', 'area', 'activityType']);
+    public function export(Request $request, $type)
+    {
+        $user = Auth::user();
+        $query = Report::with(['author', 'area', 'activityType']);
 
-    if ($request->filled('start_date')) {
-        $query->whereDate('created_at', '>=', $request->start_date);
-    }
-    if ($request->filled('end_date')) {
-        $query->whereDate('created_at', '<=', $request->end_date);
-    }
-    if ($request->filled('area_id')) {
-        $query->where('area_id', $request->area_id);
-    }
-    if ($request->filled('activity_id')) {
-        $query->where('activity_id', $request->activity_id);
-    }
-    if ($request->filled('status')) {
-        if ($request->status === 'pending') {
-            $query->whereNull('finished_date');
-        } elseif ($request->status === 'solved') {
-            $query->whereNotNull('finished_date');
+        // Filter berdasarkan permission untuk export
+        if ($user->can('reports.view.all')) {
+            // Bisa export semua
+        } elseif ($user->can('reports.solve.own.area')) {
+            $query->where(function($q) use ($user) {
+                $q->where('author_id', $user->id)
+                  ->orWhereHas('area', function($q2) use ($user) {
+                      $q2->where('pic_user_id', $user->id);
+                  });
+            });
+        } else {
+            $query->where('author_id', $user->id);
+        }
+
+        if ($request->filled('start_date')) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+        if ($request->filled('area_id')) {
+            $query->where('area_id', $request->area_id);
+        }
+        if ($request->filled('activity_id')) {
+            $query->where('activity_id', $request->activity_id);
+        }
+        if ($request->filled('status')) {
+            if ($request->status === 'pending') {
+                $query->whereNull('finished_date');
+            } elseif ($request->status === 'solved') {
+                $query->whereNotNull('finished_date');
+            }
+        }
+        if ($request->filled('author_id')) {
+            $query->where('author_id', $request->author_id);
+        }
+
+        $reports = $query->latest()->get();
+
+        if ($type === 'excel') {
+            return $this->exportCsv($reports);
+        } else {
+            return $this->exportPdf($reports);
         }
     }
-    if ($request->filled('author_id')) {
-        $query->where('author_id', $request->author_id);
-    }
-
-    $reports = $query->latest()->get();
-
-    if ($type === 'excel') {
-        return $this->exportCsv($reports);
-    } else {
-        return $this->exportPdf($reports);
-    }
-}
 
     private function exportCsv($reports)
     {
@@ -228,16 +294,17 @@ public function export(Request $request, $type)
         fclose($handle);
         exit;
     }
-private function exportPdf($reports)
-{
-    $pdf = Pdf::loadView('exports.reports', ['reports' => $reports]);
-    $pdf->setPaper('a4', 'landscape');
-    $pdf->setOptions([
-        'defaultFont' => 'Times New Roman',
-        'isRemoteEnabled' => false,
-        'isHtml5ParserEnabled' => true,
-        'isPhpEnabled' => false
-    ]);
-    return $pdf->download('Laporan_Issue_Report_' . date('Y-m-d') . '.pdf');
+
+    private function exportPdf($reports)
+    {
+        $pdf = Pdf::loadView('exports.reports', ['reports' => $reports]);
+        $pdf->setPaper('a4', 'landscape');
+        $pdf->setOptions([
+            'defaultFont' => 'Times New Roman',
+            'isRemoteEnabled' => false,
+            'isHtml5ParserEnabled' => true,
+            'isPhpEnabled' => false
+        ]);
+        return $pdf->download('Laporan_Issue_Report_' . date('Y-m-d') . '.pdf');
+    }
 }
-}   

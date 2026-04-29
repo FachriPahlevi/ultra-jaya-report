@@ -10,79 +10,140 @@ class RoleSeeder extends Seeder
 {
     public function run(): void
     {
-        // Reset cached roles and permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Buat permissions
         $permissions = [
+            // Menu permissions
+            'menu.dashboard',
+            'menu.reports',
+            'menu.areas',
+            'menu.activities',
+            'menu.settings',
+            
+            // User management
             'users.view',
             'users.create',
             'users.edit',
             'users.delete',
+            'users.assign.area',
+            'users.promote',
+            
+            // Role & Permission
+            'roles.view',
+            'roles.create',
+            'roles.edit',
+            'roles.delete',
+            'permissions.manage',
+            
+            // Settings
+            'settings.view',
+            'settings.manage',
+            
+            // Area management
             'areas.view',
             'areas.create',
             'areas.edit',
             'areas.delete',
+            'areas.assign.supervisor',
+            
+            // Activity management
             'activities.view',
             'activities.create',
             'activities.edit',
             'activities.delete',
-            'reports.view',
+            
+            // Report management
+            'reports.view.own',
+            'reports.view.all',
             'reports.create',
-            'reports.edit',
+            'reports.edit.own',
+            'reports.edit.all',
             'reports.delete',
-            'reports.solve',
+            'reports.solve.own.area',
+            'reports.solve.all',
         ];
 
         foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission]);
+            Permission::firstOrCreate(['name' => $permission]);
         }
 
-        // Buat roles dan assign permissions
-        $superAdmin = Role::create(['name' => 'SUPER_ADMIN']);
-        $superAdmin->givePermissionTo(Permission::all());
+        // SUPER_ADMIN - Developer, bisa akses semua menu
+        $superAdmin = Role::firstOrCreate(['name' => 'SUPER_ADMIN']);
+        $superAdmin->syncPermissions(Permission::all());
 
-        $admin = Role::create(['name' => 'ADMIN']);
-        $admin->givePermissionTo([
-            'users.view',
-            'users.create',
-            'users.edit',
-            'users.delete',
+        // ADMIN - Admin pabrik
+        $admin = Role::firstOrCreate(['name' => 'ADMIN']);
+        $admin->syncPermissions([
+            // Menu
+            'menu.dashboard',
+            'menu.reports',
+            'menu.areas',
+            'menu.activities',
+            'menu.settings',
+            // Areas
             'areas.view',
             'areas.create',
             'areas.edit',
             'areas.delete',
+            'areas.assign.supervisor',
+            // Activities
             'activities.view',
             'activities.create',
             'activities.edit',
             'activities.delete',
-            'reports.view',
-            'reports.create',
-            'reports.edit',
-            'reports.delete',
-            'reports.solve',
+            // Users
+            'users.view',
+            'users.create',
+            'users.edit',
+            'users.delete',
+            'users.assign.area',
+            'users.promote',
+            // Reports
+            'reports.view.all',
+            'reports.solve.all',
+            'settings.view',
         ]);
 
-        $manager = Role::create(['name' => 'MANAGER']);
-        $manager->givePermissionTo([
-            'reports.view',
+        // MANAGER - Bisa lihat dan Solve semua Area
+        $manager = Role::firstOrCreate(['name' => 'MANAGER']);
+        $manager->syncPermissions([
+            // Menu
+            'menu.dashboard',
+            'menu.reports',
+            // Reports
+            'reports.view.all',
             'reports.create',
-            'reports.edit',
+            'reports.edit.all',
+            'reports.solve.all',
             'areas.view',
             'activities.view',
         ]);
 
-        $supervisor = Role::create(['name' => 'SUPERVISOR']);
-        $supervisor->givePermissionTo([
-            'reports.view',
+        // SUPERVISOR - Bisa nambah Report, lihat Report yang dia buat, lihat dan solve Report di Area yang diassign
+        $supervisor = Role::firstOrCreate(['name' => 'SUPERVISOR']);
+        $supervisor->syncPermissions([
+            // Menu
+            'menu.dashboard',
+            'menu.reports',
+            // Reports
+            'reports.view.own',
             'reports.create',
-            'reports.solve',
+            'reports.edit.own',
+            'reports.solve.own.area',
+            'areas.view',
+            'activities.view',
         ]);
 
-        $user = Role::create(['name' => 'USER']);
-        $user->givePermissionTo([
-            'reports.view',
+        // USER - Cuma bisa nambah Report dan lihat Report yang dia buat
+        $user = Role::firstOrCreate(['name' => 'USER']);
+        $user->syncPermissions([
+            // Menu
+            'menu.dashboard',
+            'menu.reports',
+            // Reports
+            'reports.view.own',
             'reports.create',
+            'reports.edit.own',
         ]);
     }
 }

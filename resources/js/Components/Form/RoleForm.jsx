@@ -1,5 +1,5 @@
 // resources/js/Components/Settings/RoleForm.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { router } from "@inertiajs/react";
 import axios from "axios";
 import InputText from "@/Components/Input/InputText";
@@ -11,7 +11,13 @@ import { HiOutlineX } from "react-icons/hi";
 export default function RoleForm({ isOpen, onClose, role }) {
     const { setStatusModalProps } = useStatusModal();
     const [processing, setProcessing] = useState(false);
-    const [form, setForm] = useState({ name: role?.name || "" });
+    const [form, setForm] = useState({ name: "" });
+
+    useEffect(() => {
+        if (isOpen) {
+            setForm({ name: role?.name || "" });
+        }
+    }, [isOpen, role]);
 
     const showStatusModal = (type, title, message) => {
         setStatusModalProps({

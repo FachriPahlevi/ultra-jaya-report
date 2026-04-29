@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             AreaSeeder::class,
             ActivitySeeder::class,
+            ReportSeeder::class,
         ]);
     }
 }

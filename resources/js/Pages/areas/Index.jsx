@@ -1,8 +1,9 @@
-import { useState } from "react";
-import { router } from "@inertiajs/react";
+import { useState, useEffect } from "react";
+import { router, usePage } from "@inertiajs/react";
 import axios from "axios";
 import AppLayout from "@/Layouts/AppLayout";
 import InputText from "@/Components/Input/InputText";
+import InputDropdown from "@/Components/Input/InputDropdown";
 import BtnDefault from "@/Components/Button/BtnDefault";
 import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
@@ -14,12 +15,34 @@ import {
 } from "react-icons/hi";
 
 export default function Index({ areas = { data: [], links: [], meta: {} } }) {
+    console.log(areas)
+    const { props } = usePage();
     const { setStatusModalProps } = useStatusModal();
     const [showModal, setShowModal] = useState(false);
     const [editTarget, setEditTarget] = useState(null);
     const [processing, setProcessing] = useState(false);
-    const [form, setForm] = useState({ name: "" });
+    const [form, setForm] = useState({ name: "", pic_user_id: "" });
     const [errors, setErrors] = useState({});
+
+    const permissions = props.auth?.user?.permissions || [];
+    const users = props.users || [];
+    const canAssignPic = permissions.includes('areas.assign.supervisor');
+
+    const userOptions = [
+        { label: "Select PIC", value: "" },
+        ...users.map((user) => ({ label: user.name, value: user.id.toString() })),
+    ];
+
+    useEffect(() => {
+        if (showModal && editTarget) {
+            setForm({
+                name: editTarget.area,
+                pic_user_id: editTarget.pic_user_id?.toString() || "",
+            });
+        } else if (showModal && !editTarget) {
+            setForm({ name: "", pic_user_id: "" });
+        }
+    }, [showModal, editTarget]);
 
     const showStatusModal = (type, title, message) => {
         setStatusModalProps({
@@ -33,14 +56,12 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
 
     const openAdd = () => {
         setEditTarget(null);
-        setForm({ name: "" });
         setErrors({});
         setShowModal(true);
     };
 
     const openEdit = (area) => {
         setEditTarget(area);
-        setForm({ name: area.area });
         setErrors({});
         setShowModal(true);
     };
@@ -48,7 +69,6 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
     const closeModal = () => {
         setShowModal(false);
         setEditTarget(null);
-        setForm({ name: "" });
         setErrors({});
     };
 
@@ -68,7 +88,10 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
         setProcessing(true);
         setErrors({});
 
-        const submitData = { name: form.name };
+        const submitData = { 
+            name: form.name,
+            pic_user_id: form.pic_user_id || null,
+        };
 
         try {
             if (editTarget) {
@@ -145,10 +168,6 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
         });
     };
 
-    const deleteArea = (area) => {
-        confirmDelete(area);
-    };
-
     if (!areas || !areas.data) {
         return (
             <AppLayout title="Master Area">
@@ -191,6 +210,7 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
                                 <tr className="text-left text-[11px] font-semibold text-muted-foreground tracking-wide uppercase border-b border-border bg-muted/20">
                                     <th className="p-3 w-12">No</th>
                                     <th className="p-3">Name</th>
+                                    <th className="p-3">PIC</th>
                                     <th className="p-3 w-24">Actions</th>
                                 </tr>
                             </thead>
@@ -198,7 +218,7 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
                                 {areas.data.length === 0 ? (
                                     <tr>
                                         <td
-                                            colSpan="3"
+                                            colSpan="4"
                                             className="py-12 text-center text-muted-foreground"
                                         >
                                             No areas found
@@ -216,6 +236,9 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
                                             <td className="p-3 font-medium text-foreground">
                                                 {area.area}
                                             </td>
+                                            <td className="p-3 text-muted-foreground">
+                                                {area.pic?.name || "-"}
+                                            </td>
                                             <td className="p-3">
                                                 <div className="flex items-center gap-2">
                                                     <button
@@ -229,7 +252,7 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
                                                     </button>
                                                     <button
                                                         onClick={() =>
-                                                            deleteArea(area)
+                                                            confirmDelete(area)
                                                         }
                                                         className="text-destructive hover:text-destructive/80 transition-colors p-1"
                                                         title="Delete"
@@ -303,6 +326,19 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
                             error={errors.name}
                             required
                         />
+
+                        {canAssignPic && (
+                            <InputDropdown
+                                label="PIC (Supervisor)"
+                                placeholder="Select PIC"
+                                value={form.pic_user_id}
+                                setObject={(item) =>
+                                    handleFormChange("pic_user_id", item.value)
+                                }
+                                itemList={userOptions}
+                                error={errors.pic_user_id}
+                            />
+                        )}
 
                         <div className="flex items-center gap-3 pt-4">
                             <BtnDefault

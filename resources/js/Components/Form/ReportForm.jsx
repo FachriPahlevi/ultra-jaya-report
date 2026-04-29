@@ -1,5 +1,5 @@
 import { useForm, usePage } from "@inertiajs/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import InputText from "@/Components/Input/InputText";
 import InputDropdown from "@/Components/Input/InputDropdown";
 import BtnDefault from "@/Components/Button/BtnDefault";
@@ -17,17 +17,26 @@ export default function ReportForm({
     const { setStatusModalProps } = useStatusModal();
     const { auth } = usePage().props;
     const currentUser = auth?.user;
-    const userRole = currentUser?.role?.toLowerCase() || "user";
+    const userRole = currentUser?.roles?.[0]?.toLowerCase() || "user";
     const [photoPreview, setPhotoPreview] = useState(null);
 
     const { data, setData, post, processing, errors, reset } = useForm({
-        author_id: "",
+        author_id: currentUser?.id || "", // Set default ke current user
         type_activity: "",
         area_activity: "",
         activity: "",
         issue: "",
         photo: null,
     });
+
+    // Reset form saat modal dibuka
+    useEffect(() => {
+        if (isOpen) {
+            reset();
+            setData("author_id", currentUser?.id || "");
+            setPhotoPreview(null);
+        }
+    }, [isOpen]);
 
     const showStatusModal = (type, title, message) => {
         setStatusModalProps({
@@ -74,6 +83,13 @@ export default function ReportForm({
 
     const handleSubmit = (e) => {
         e.preventDefault();
+        
+        // Pastikan author_id terisi
+        if (!data.author_id) {
+            showStatusModal("error", "Error", "User ID is required");
+            return;
+        }
+        
         post("/reports", {
             forceFormData: true,
             onSuccess: () => {
@@ -83,6 +99,7 @@ export default function ReportForm({
                 onClose();
             },
             onError: (error) => {
+                console.error("Error:", error);
                 showStatusModal("error", "Error", "Failed to create report");
             },
         });
@@ -124,11 +141,14 @@ export default function ReportForm({
                                 error={errors.author_id}
                             />
                         ) : (
-                            <InputText
-                                label="Name"
-                                value={currentUser?.name ?? ""}
-                                disabled
-                            />
+                            <>
+                                <InputText
+                                    label="Name"
+                                    value={currentUser?.name ?? ""}
+                                    disabled
+                                />
+                                <input type="hidden" name="author_id" value={currentUser?.id} />
+                            </>
                         )}
 
                         <InputDropdown
@@ -257,4 +277,4 @@ export default function ReportForm({
             </div>
         </ModalOverlay>
     );
-}   
+}

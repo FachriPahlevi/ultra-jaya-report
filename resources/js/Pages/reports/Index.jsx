@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { router } from "@inertiajs/react";
+import { router, usePage } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
 import { formatDate } from "@/lib/format.ts";
 import BtnDefault from "@/Components/Button/BtnDefault";
@@ -12,9 +12,13 @@ import { useStatusModal } from "@/Components/Context/StatusModalContext";
 import { HiOutlineX, HiOutlinePlus } from "react-icons/hi";
 import ExpandableImage from "@/Components/UI/ExpandableImage";
 import { BsFileExcelFill } from "react-icons/bs";
+import { File } from "lucide-react";
 
 export default function Index({ areaReports = { data: [], links: [], meta: {} }, areas = [], activities = [], users = [] }) {
+    const { props } = usePage();
     const { setStatusModalProps } = useStatusModal();
+    const permissions = props.auth?.user?.permissions || [];
+    
     const [selectedAreaReport, setSelectedAreaReport] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [showSolveModal, setShowSolveModal] = useState(false);
@@ -22,6 +26,12 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [typeFilter, setTypeFilter] = useState("");
+
+    const can = (permission) => permissions.includes(permission);
+    
+    const canCreate = can('reports.create');
+    const canSolve = can('reports.solve.all') || can('reports.solve.own.area');
+    const canExport = can('reports.view.all');
 
     const filteredReports = useMemo(() => {
         let reports = areaReports.data;
@@ -99,6 +109,8 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
 
     const renderAreaReportRow = (report, index) => {
         const isSolved = !!report.finished_date;
+        const canSolveThis = canSolve && !isSolved;
+        
         return (
             <tr
                 key={report.id}
@@ -161,10 +173,12 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
                         <p className="text-sm text-muted-foreground mt-1">Manage and track all reports</p>
                     </div>
                     <div className="flex items-center gap-2">
-                        <BtnDefault onClick={handleOpenModal} size="md" className="gap-2 px-4 h-10 rounded-xl shadow-sm">
-                            <HiOutlinePlus className="w-4 h-4" />
-                            New Issue
-                        </BtnDefault>
+                        {canCreate && (
+                            <BtnDefault onClick={handleOpenModal} size="md" className="gap-2 px-4 h-10 rounded-xl shadow-sm">
+                                <HiOutlinePlus className="w-4 h-4" />
+                                New Issue
+                            </BtnDefault>
+                        )}
                     </div>
                 </div>
 
@@ -176,13 +190,14 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
                             <InputDropdown placeholder="Type Activity" value={typeFilter} setObject={(item) => setTypeFilter(item.value)} itemList={typeOptions} />
                             <BtnDefault outline onClick={handleReset} className="h-10 rounded-xl">Reset</BtnDefault>
                         </div>
-                        <div className="flex items-center gap-2 pt-2">
-                            <BtnDefault outline onClick={handleExportClick} className="gap-2 h-9 px-3 rounded-xl">
-                                <BsFileExcelFill className="w-4 h-4" />
-                                <span className="w-4 h-4 bg-blue-500/10 rounded flex items-center justify-center text-blue-600 text-xs font-bold">EXP</span>
-                                Export Dokumen
-                            </BtnDefault>
-                        </div>
+                        {canExport && (
+                            <div className="flex items-center gap-2 pt-2">
+                                <BtnDefault outline onClick={handleExportClick} className="gap-2 h-9 px-3 rounded-xl">
+                                    <File className="w-4 h-4" />
+                                    Export Dokumen
+                                </BtnDefault>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -225,21 +240,29 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
                     )}
                 </div>
 
-                {selectedAreaReport && (
+                {selectedAreaReport && !selectedAreaReport.finished_date && canSolve && (
                     <div className="fixed bottom-7 left-1/2 -translate-x-1/2 bg-slate-800 text-white rounded-xl py-3 px-5 flex items-center gap-4 shadow-xl z-[300] min-w-[340px] border border-slate-700">
                         <div className="flex-1 min-w-0">
                             <div className="text-[13px] font-semibold">#{selectedAreaReport.id} · {selectedAreaReport.activity_type?.description ?? "-"} · {formatDate(selectedAreaReport.created_at)}</div>
                             <div className="text-xs text-slate-400 mt-0.5">
-                                {selectedAreaReport.finished_date ? (
-                                    <span className="text-emerald-400">✓ Solved {formatDate(selectedAreaReport.finished_date)}</span>
-                                ) : (
-                                    <span className="text-amber-400">● Pending</span>
-                                )}
+                                <span className="text-amber-400">● Pending</span>
                             </div>
                         </div>
-                        {!selectedAreaReport.finished_date && (
-                            <BtnDefault size="sm" onClick={handleSolveClick} className="shadow-lg">Solve</BtnDefault>
-                        )}
+                        <BtnDefault size="sm" onClick={handleSolveClick} className="shadow-lg">Solve</BtnDefault>
+                        <button onClick={handleCloseAreaReport} className="bg-white/10 hover:bg-white/20 w-7 h-7 rounded-lg flex items-center justify-center">
+                            <HiOutlineX className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                )}
+
+                {selectedAreaReport && selectedAreaReport.finished_date && (
+                    <div className="fixed bottom-7 left-1/2 -translate-x-1/2 bg-slate-800 text-white rounded-xl py-3 px-5 flex items-center gap-4 shadow-xl z-[300] min-w-[340px] border border-slate-700">
+                        <div className="flex-1 min-w-0">
+                            <div className="text-[13px] font-semibold">#{selectedAreaReport.id} · {selectedAreaReport.activity_type?.description ?? "-"} · {formatDate(selectedAreaReport.created_at)}</div>
+                            <div className="text-xs text-slate-400 mt-0.5">
+                                <span className="text-emerald-400">✓ Solved {formatDate(selectedAreaReport.finished_date)}</span>
+                            </div>
+                        </div>
                         <button onClick={handleCloseAreaReport} className="bg-white/10 hover:bg-white/20 w-7 h-7 rounded-lg flex items-center justify-center">
                             <HiOutlineX className="w-3.5 h-3.5" />
                         </button>

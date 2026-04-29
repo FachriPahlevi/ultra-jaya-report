@@ -77,13 +77,6 @@ const GaugeChart = ({ pct }) => {
     );
 };
 
-const quickLinks = [
-    { href: "/areas", label: "Master Area", sub: "Kelola area kerja", icon: HiOutlineDocumentReport },
-    { href: "/activities", label: "Master Activity", sub: "Kelola aktivitas", icon: HiOutlineChartBar },
-    { href: "/users", label: "Master User", sub: "Kelola pengguna", icon: HiOutlineUser },
-    { href: "/reports/issues", label: "New Issue", sub: "Buat laporan baru", icon: HiOutlinePlusCircle, primary: true },
-];
-
 export default function Dashboard({
     stats = { total: 0, pending: 0, solved: 0, myReports: 0 },
     recentReports = [],
@@ -91,6 +84,15 @@ export default function Dashboard({
 }) {
     const { auth } = usePage().props;
     const currentUser = auth?.user;
+    const permissions = currentUser?.permissions || [];
+    
+    const can = (permission) => permissions.includes(permission);
+    
+    const canViewAreas = can('areas.view');
+    const canViewActivities = can('activities.view');
+    const canViewUsers = can('users.view');
+    const canCreateReports = can('reports.create');
+    
     const solvedPct = stats.total > 0 ? Math.round((stats.solved / stats.total) * 100) : 0;
     const firstName = currentUser?.name?.split(" ")[0] || "User";
 
@@ -129,11 +131,6 @@ export default function Dashboard({
                             </div>
                         </div>
                         <div className="flex items-end justify-between">
-                            <div className="flex items-center gap-1 text-[12px] text-green-600 font-medium">
-                                <HiArrowUp className="w-3.5 h-3.5" />
-                                <span>18% from last week</span>
-                            </div>
-                            <SparkLine color="#2563eb" />
                         </div>
                         <Link href="/reports" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[var(--primary)] mt-3 hover:gap-2 transition-all">
                             View all reports <HiOutlineExternalLink className="w-3.5 h-3.5" />
@@ -154,13 +151,6 @@ export default function Dashboard({
                             <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
                                 <HiOutlineClock className="w-6 h-6 text-amber-500" />
                             </div>
-                        </div>
-                        <div className="flex items-end justify-between">
-                            <div className="flex items-center gap-1 text-[12px] text-green-600 font-medium">
-                                <HiArrowUp className="w-3.5 h-3.5" />
-                                <span>5% from last week</span>
-                            </div>
-                            <SparkLine color="#f59e0b" />
                         </div>
                         <Link href="/reports?status=pending" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[var(--primary)] mt-3 hover:gap-2 transition-all">
                             View pending issues <HiOutlineExternalLink className="w-3.5 h-3.5" />
@@ -183,11 +173,7 @@ export default function Dashboard({
                             <GaugeChart pct={solvedPct} />
                         </div>
                         <div className="flex items-center justify-between -mt-1">
-                            <div className="flex items-center gap-1 text-[12px] text-green-600 font-medium">
-                                <HiArrowUp className="w-3.5 h-3.5" />
-                                <span>12% from last week</span>
-                            </div>
-                            <Link href="/reports?solved=1" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[var(--primary)] hover:gap-2 transition-all">
+                            <Link href="/reports?status=solved" className="inline-flex items-center gap-1 text-[12.5px] font-medium text-[var(--primary)] hover:gap-2 transition-all">
                                 View solved <HiOutlineExternalLink className="w-3.5 h-3.5" />
                             </Link>
                         </div>
@@ -216,7 +202,7 @@ export default function Dashboard({
                                     <div key={report.id ?? i} className="px-6 py-4 hover:bg-[var(--muted)]/40 transition-colors">
                                         <div className="flex items-center gap-3">
                                             <div className="w-9 h-9 rounded-full bg-[var(--accent)] flex items-center justify-center text-[12px] font-bold text-[var(--primary)] shrink-0">
-                                                {report.submitted_by?.[0]?.toUpperCase() ?? "U"}
+                                                {report.submitted_by}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center justify-between gap-2 mb-0.5">
@@ -303,4 +289,4 @@ export default function Dashboard({
             </div>
         </AppLayout>
     );
-}
+}   
