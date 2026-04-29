@@ -4,7 +4,7 @@ import { router } from "@inertiajs/react";
 import BtnDefault from "@/Components/Button/BtnDefault";
 import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
-import { HiOutlineX } from "react-icons/hi";
+import { HiOutlineX, HiOutlinePhotograph } from "react-icons/hi";
 
 export default function SolveForm({ isOpen, onClose, reportId }) {
   const { setStatusModalProps } = useStatusModal();
@@ -27,11 +27,11 @@ export default function SolveForm({ isOpen, onClose, reportId }) {
       showStatusModal("error", "Error", "Please upload photo after");
       return;
     }
-    
+
     setProcessing(true);
     const formData = new FormData();
-    formData.append('photo_after', solvePhoto);
-    
+    formData.append("photo_after", solvePhoto);
+
     router.post(`/reports/${reportId}/solve`, formData, {
       onSuccess: () => {
         showStatusModal("success", "Success", "Report has been solved");
@@ -43,48 +43,78 @@ export default function SolveForm({ isOpen, onClose, reportId }) {
         }, 1500);
       },
       onError: (error) => {
-        const errorMessage = error.response?.data?.errors?.photo_after?.[0] 
-          || error.response?.data?.message 
-          || "Failed to solve report";
+        const errorMessage = error.response?.data?.errors?.photo_after?.[0] || error.response?.data?.message || "Failed to solve report";
         showStatusModal("error", "Error", errorMessage);
         setProcessing(false);
-      }
+      },
     });
   };
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
-      <div className="bg-card rounded-2xl border border-border shadow-xl w-full max-w-[500px]">
-        <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl">
-          <h2 className="text-xl font-bold text-foreground">Solve Report</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
+      <div className="bg-card rounded-2xl border border-border shadow-xl w-full max-w-[500px] mx-auto">
+        <div className="sticky top-0 bg-card border-b border-border px-4 sm:px-6 py-4 flex items-center justify-between rounded-t-2xl">
+          <h2 className="text-lg sm:text-xl font-bold text-foreground tracking-[-0.5px] m-0">Solve Report</h2>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md shrink-0" aria-label="Close">
             <HiOutlineX className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-6 flex flex-col gap-4">
-          <div>
-            <label className="text-[13px] font-semibold text-foreground mb-1.5 block">
-              Photo After <span className="text-destructive">*</span>
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files[0];
-                if (file) {
-                  setSolvePhoto(file);
-                  setSolvePhotoPreview(URL.createObjectURL(file));
-                }
-              }}
-              className="w-full px-3 py-2 border border-border rounded-lg text-[13.5px] bg-background focus:border-primary outline-none"
-            />
-            {solvePhotoPreview && (
-              <img src={solvePhotoPreview} alt="Preview" className="mt-2 w-full h-32 object-cover rounded-lg" />
-            )}
-          </div>
-          <div className="flex gap-3">
-            <BtnDefault outline onClick={onClose} className="flex-1">Cancel</BtnDefault>
-            <BtnDefault onClick={handleSolveSubmit} loading={processing} className="flex-[2]">Submit</BtnDefault>
+
+        <div className="p-4 sm:p-6">
+          <div className="flex flex-col gap-4 sm:gap-5">
+            <div>
+              <label className="text-[13px] font-semibold text-foreground mb-1.5 block">
+                Photo After <span className="text-destructive">*</span>
+              </label>
+
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                <label
+                  htmlFor="photo_after"
+                  className="inline-flex items-center justify-center gap-1.5 bg-accent text-primary px-3.5 py-1.5 rounded-md text-[12.5px] font-semibold cursor-pointer transition-colors hover:bg-primary/20 w-full sm:w-auto"
+                >
+                  <HiOutlinePhotograph className="w-3.5 h-3.5" />
+                  Upload Photo
+                </label>
+                <input
+                  id="photo_after"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      setSolvePhoto(file);
+                      setSolvePhotoPreview(URL.createObjectURL(file));
+                    }
+                  }}
+                  className="hidden"
+                />
+              </div>
+
+              <div
+                className="border-2 border-dashed rounded-xl overflow-hidden min-h-[140px] flex items-center justify-center bg-muted transition-colors"
+                style={{
+                  borderColor: solvePhotoPreview ? "var(--primary)" : "var(--border)",
+                }}
+              >
+                {solvePhotoPreview ? (
+                  <img src={solvePhotoPreview} alt="Preview" className="w-full max-h-[240px] object-cover" />
+                ) : (
+                  <div className="text-center text-muted-foreground py-6">
+                    <HiOutlinePhotograph className="w-9 h-9 mx-auto mb-2 opacity-40" />
+                    <span className="text-[12.5px]">Click Upload to add a photo</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 mt-1">
+              <BtnDefault outline onClick={onClose} className="w-full sm:flex-1 order-2 sm:order-1">
+                Cancel
+              </BtnDefault>
+              <BtnDefault onClick={handleSolveSubmit} loading={processing} className="w-full sm:flex-[2] order-1 sm:order-2">
+                {processing ? "Submitting..." : "Submit"}
+              </BtnDefault>
+            </div>
           </div>
         </div>
       </div>

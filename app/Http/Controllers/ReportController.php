@@ -20,20 +20,17 @@ class ReportController extends Controller
 
         // Filter berdasarkan permission
         if ($user->can('reports.view.all')) {
-        // SUPER_ADMIN, ADMIN, MANAGER bisa lihat semua report
-        // Tidak perlu filter tambahan
-    } elseif ($user->can('reports.solve.own.area')) {
-        // SUPERVISOR: lihat report sendiri + report di area yang dia jadi PIC
-        $query->where(function($q) use ($user) {
-            $q->where('author_id', $user->id)
-              ->orWhereHas('area', function($q2) use ($user) {
-                  $q2->where('pic_user_id', $user->id);
-              });
-        });
-    } else {
-        // USER biasa: hanya lihat report sendiri
-        $query->where('author_id', $user->id);
-    }
+            // SUPER_ADMIN, ADMIN, MANAGER bisa lihat semua report
+        } elseif ($user->can('reports.solve.own.area')) {
+            $query->where(function ($q) use ($user) {
+                $q->where('author_id', $user->id)
+                    ->orWhereHas('area', function ($q2) use ($user) {
+                        $q2->where('pic_user_id', $user->id);
+                    });
+            });
+        } else {
+            $query->where('author_id', $user->id);
+        }
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -57,17 +54,20 @@ class ReportController extends Controller
             $query->where('activity_id', $request->type);
         }
 
-        $areaReports = $query->latest()->paginate(10);
+        // TAMBAHKAN withQueryString()
+        $areaReports = $query->latest()->paginate(10)->withQueryString();
 
         $areas = Area::select('id', 'area')->get();
         $activities = Activity::select('id', 'description')->get();
         $users = \App\Models\User::select('id', 'name')->get();
 
+        // Kirim filters ke frontend
         return Inertia::render('reports/Index', [
             'areaReports' => $areaReports,
             'areas' => $areas,
             'activities' => $activities,
             'users' => $users,
+            'filters' => $request->only(['search', 'status', 'type']), // TAMBAHKAN INI
         ]);
     }
 
@@ -220,11 +220,11 @@ class ReportController extends Controller
         if ($user->can('reports.view.all')) {
             // Bisa export semua
         } elseif ($user->can('reports.solve.own.area')) {
-            $query->where(function($q) use ($user) {
+            $query->where(function ($q) use ($user) {
                 $q->where('author_id', $user->id)
-                  ->orWhereHas('area', function($q2) use ($user) {
-                      $q2->where('pic_user_id', $user->id);
-                  });
+                    ->orWhereHas('area', function ($q2) use ($user) {
+                        $q2->where('pic_user_id', $user->id);
+                    });
             });
         } else {
             $query->where('author_id', $user->id);
@@ -266,13 +266,13 @@ class ReportController extends Controller
     {
         $filename = 'reports_' . date('Y-m-d_H-i-s') . '.csv';
         $handle = fopen('php://output', 'w');
-        
+
         header('Content-Type: text/csv');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         header('Cache-Control: max-age=0');
-        
+
         fputcsv($handle, ['No', 'ID', 'Author', 'Area', 'Type Activity', 'User Activity', 'Issue', 'Photo Before', 'Photo After', 'Status', 'Created At', 'Updated At']);
-        
+
         $row = 1;
         foreach ($reports as $report) {
             fputcsv($handle, [
@@ -290,7 +290,7 @@ class ReportController extends Controller
                 $report->updated_at,
             ]);
         }
-        
+
         fclose($handle);
         exit;
     }
