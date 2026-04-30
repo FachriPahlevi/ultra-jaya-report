@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { router } from "@inertiajs/react";
+import { Head, router } from "@inertiajs/react";
 import axios from "axios";
 import AppLayout from "@/Layouts/AppLayout";
 import InputText from "@/Components/Input/InputText";
@@ -120,6 +120,9 @@ export default function Index({ activities = { data: [], links: [], meta: {} } }
 
   return (
     <AppLayout title="Master Activity">
+      <Head>
+        <title>Master Activity</title>
+      </Head>
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between gap-4">
           <div>

@@ -97,4 +97,8 @@
     --sidebar-accent-foreground: hsl(221 83% 40%);
     --sidebar-border: hsl(220 20% 92%);
     --sidebar-muted: hsl(220 15% 96%);
+
+    .overflow-y-auto {
+    overflow-y: auto !important;
+}
 }

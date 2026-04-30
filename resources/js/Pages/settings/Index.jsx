@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { router } from "@inertiajs/react";
+import { Head, router } from "@inertiajs/react";
 import axios from "axios";
 import AppLayout from "@/Layouts/AppLayout";
 import BtnDefault from "@/Components/Button/BtnDefault";
@@ -73,17 +73,13 @@ const UsersTable = ({ users, onEdit, onDelete, onAdd }) => (
         <div key={user.id} className="p-4 hover:bg-muted/30 transition-colors">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold">
-                {getInitials(user.name)}
-              </div>
+              <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-semibold">{getInitials(user.name)}</div>
               <div>
                 <div className="font-semibold text-foreground text-sm">{user.name}</div>
                 <div className="text-xs text-muted-foreground">{user.email}</div>
               </div>
             </div>
-            <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[10px] font-semibold">
-              {user.roles[0]?.name || "No role"}
-            </span>
+            <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[10px] font-semibold">{user.roles[0]?.name || "No role"}</span>
           </div>
           <div className="flex justify-end gap-3 pt-2 border-t border-border/50">
             <button onClick={() => onEdit(user)} className="text-primary hover:text-primary/80 p-1 text-sm flex items-center gap-1">
@@ -144,9 +140,7 @@ const RolesTable = ({ roles, onAdd, onEdit, onDelete, onManagePermissions }) => 
                       </span>
                     );
                   })}
-                  {role.permissions.length > 3 && (
-                    <span className="text-xs text-muted-foreground">+{role.permissions.length - 3}</span>
-                  )}
+                  {role.permissions.length > 3 && <span className="text-xs text-muted-foreground">+{role.permissions.length - 3}</span>}
                 </div>
               </td>
               <td className="p-3">
@@ -185,9 +179,7 @@ const RolesTable = ({ roles, onAdd, onEdit, onDelete, onManagePermissions }) => 
                   </span>
                 );
               })}
-              {role.permissions.length > 3 && (
-                <span className="text-xs text-muted-foreground">+{role.permissions.length - 3}</span>
-              )}
+              {role.permissions.length > 3 && <span className="text-xs text-muted-foreground">+{role.permissions.length - 3}</span>}
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-2 border-t border-border/50">
@@ -310,6 +302,9 @@ export default function Settings({ users, roles, permissions }) {
 
   return (
     <AppLayout title="Settings">
+      <Head>
+        <title>Settings</title>
+      </Head>
       <div className="flex flex-col gap-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-[-0.5px] m-0">Settings</h1>
@@ -344,7 +339,7 @@ export default function Settings({ users, roles, permissions }) {
             setShowUserModal(true);
           }}
           onDelete={confirmDeleteUser}
-        />  
+        />
       </div>
 
       <UserForm isOpen={showUserModal} onClose={() => setShowUserModal(false)} user={selectedUser} roles={roles} />

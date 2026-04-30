@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { router, usePage } from "@inertiajs/react";
+import { Head, router, usePage } from "@inertiajs/react";
 import axios from "axios";
 import AppLayout from "@/Layouts/AppLayout";
 import InputText from "@/Components/Input/InputText";
@@ -23,6 +23,9 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
   const canAssignPic = permissions.includes("areas.assign.supervisor");
 
   const userOptions = [{ label: "Select PIC", value: "" }, ...users.map((user) => ({ label: user.name, value: user.id.toString() }))];
+  const canAdd = permissions.includes("areas.create");
+  const canEdit = permissions.includes("areas.edit");
+  const canDelete = permissions.includes("areas.delete");
 
   useEffect(() => {
     if (showModal && editTarget) {
@@ -141,6 +144,9 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
   if (!areas || !areas.data) {
     return (
       <AppLayout title="Master Area">
+        <Head>
+          <title>Master Area</title>
+        </Head>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
@@ -153,16 +159,21 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
 
   return (
     <AppLayout title="Master Area">
+      <Head>
+        <title>Master Area</title>
+      </Head>
       <div className="flex flex-col gap-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold text-foreground tracking-[-0.5px] m-0">Master Area</h1>
             <p className="text-sm text-muted-foreground mt-1">Manage areas</p>
           </div>
-          <BtnDefault onClick={openAdd} size="md" className="gap-2 shadow-sm">
-            <HiOutlinePlus className="w-4 h-4" />
-            Add Area
-          </BtnDefault>
+          {canAdd && (
+            <BtnDefault onClick={openAdd} size="md" className="gap-2 shadow-sm">
+              <HiOutlinePlus className="w-4 h-4" />
+              Add Area
+            </BtnDefault>
+          )}
         </div>
 
         <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
@@ -191,12 +202,16 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
                       <td className="p-3 text-muted-foreground">{area.pic?.name || "-"}</td>
                       <td className="p-3">
                         <div className="flex items-center gap-2">
-                          <button onClick={() => openEdit(area)} className="text-primary hover:text-primary/80 transition-colors p-1" title="Edit">
-                            <HiOutlinePencil className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => confirmDelete(area)} className="text-destructive hover:text-destructive/80 transition-colors p-1" title="Delete">
-                            <HiOutlineTrash className="w-4 h-4" />
-                          </button>
+                          {canEdit && (
+                            <button onClick={() => openEdit(area)} className="text-primary hover:text-primary/80 transition-colors p-1" title="Edit">
+                              <HiOutlinePencil className="w-4 h-4" />
+                            </button>
+                          )}
+                          {canDelete && (
+                            <button onClick={() => confirmDelete(area)} className="text-destructive hover:text-destructive/80 transition-colors p-1" title="Delete">
+                              <HiOutlineTrash className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

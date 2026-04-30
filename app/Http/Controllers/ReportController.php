@@ -18,26 +18,36 @@ class ReportController extends Controller
         $user = Auth::user();
         $query = Report::with(['author', 'area', 'activityType']);
 
-        // Filter berdasarkan permission
-        if ($user->can('reports.view.all')) {
-            // SUPER_ADMIN, ADMIN, MANAGER bisa lihat semua report
-        } elseif ($user->can('reports.solve.own.area')) {
-            $query->where(function ($q) use ($user) {
-                $q->where('author_id', $user->id)
-                    ->orWhereHas('area', function ($q2) use ($user) {
-                        $q2->where('pic_user_id', $user->id);
-                    });
-            });
-        } else {
+        // Filter my reports only (priority)
+        if ($request->boolean('my_reports_only')) {
             $query->where('author_id', $user->id);
+        } else {
+            // Filter berdasarkan permission
+            if ($user->can('reports.view.all')) {
+                // SUPER_ADMIN, ADMIN, MANAGER bisa lihat semua report
+            } elseif ($user->can('reports.solve.own.area')) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('author_id', $user->id)
+                        ->orWhereHas('area', function ($q2) use ($user) {
+                            $q2->where('pic_user_id', $user->id);
+                        });
+                });
+            } else {
+                $query->where('author_id', $user->id);
+            }
         }
 
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('issue', 'like', "%{$search}%")
+                    ->orWhere('activity', 'like', "%{$search}%")
                     ->orWhereHas('author', function ($q2) use ($search) {
                         $q2->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('activityType', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%")
+                            ->orWhere('description', 'like', "%{$search}%");
                     });
             });
         }
@@ -54,23 +64,40 @@ class ReportController extends Controller
             $query->where('activity_id', $request->type);
         }
 
-        // TAMBAHKAN withQueryString()
+        if ($request->filled('area')) {
+            $query->where('area_id', $request->area);
+        }
+
+        if ($request->filled('role')) {
+            $query->whereHas('author', function ($q) use ($request) {
+                $q->whereHas('roles', function ($q2) use ($request) {
+                    $q2->where('name', $request->role);
+                });
+            });
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
         $areaReports = $query->latest()->paginate(10)->withQueryString();
 
         $areas = Area::with('pic')->select('id', 'area', 'pic_user_id')->get();
         $activities = Activity::select('id', 'description')->get();
         $users = \App\Models\User::select('id', 'name')->get();
 
-        // Kirim filters ke frontend
         return Inertia::render('reports/Index', [
             'areaReports' => $areaReports,
             'areas' => $areas,
             'activities' => $activities,
             'users' => $users,
-            'filters' => $request->only(['search', 'status', 'type']), // TAMBAHKAN INI
+            'filters' => $request->only(['search', 'status', 'type', 'area', 'role', 'date_from', 'date_to', 'my_reports_only']),
         ]);
     }
-
     public function store(Request $request)
     {
         if (!Auth::user()->can('reports.create')) {
@@ -216,18 +243,21 @@ class ReportController extends Controller
         $user = Auth::user();
         $query = Report::with(['author', 'area', 'activityType']);
 
-        // Filter berdasarkan permission untuk export
-        if ($user->can('reports.view.all')) {
-            // Bisa export semua
-        } elseif ($user->can('reports.solve.own.area')) {
-            $query->where(function ($q) use ($user) {
-                $q->where('author_id', $user->id)
-                    ->orWhereHas('area', function ($q2) use ($user) {
-                        $q2->where('pic_user_id', $user->id);
-                    });
-            });
-        } else {
+        if ($request->boolean('my_reports_only')) {
             $query->where('author_id', $user->id);
+        } else {
+            if ($user->can('reports.view.all')) {
+                // Bisa export semua
+            } elseif ($user->can('reports.solve.own.area')) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('author_id', $user->id)
+                        ->orWhereHas('area', function ($q2) use ($user) {
+                            $q2->where('pic_user_id', $user->id);
+                        });
+                });
+            } else {
+                $query->where('author_id', $user->id);
+            }
         }
 
         if ($request->filled('start_date')) {
@@ -236,11 +266,11 @@ class ReportController extends Controller
         if ($request->filled('end_date')) {
             $query->whereDate('created_at', '<=', $request->end_date);
         }
-        if ($request->filled('area_id')) {
-            $query->where('area_id', $request->area_id);
+        if ($request->filled('area_ids')) {
+            $query->whereIn('area_id', $request->area_ids);
         }
-        if ($request->filled('activity_id')) {
-            $query->where('activity_id', $request->activity_id);
+        if ($request->filled('activity_ids')) {
+            $query->whereIn('activity_id', $request->activity_ids);
         }
         if ($request->filled('status')) {
             if ($request->status === 'pending') {
@@ -249,8 +279,8 @@ class ReportController extends Controller
                 $query->whereNotNull('finished_date');
             }
         }
-        if ($request->filled('author_id')) {
-            $query->where('author_id', $request->author_id);
+        if ($request->filled('author_ids')) {
+            $query->whereIn('author_id', $request->author_ids);
         }
 
         $reports = $query->latest()->get();
@@ -261,7 +291,6 @@ class ReportController extends Controller
             return $this->exportPdf($reports);
         }
     }
-
     private function exportCsv($reports)
     {
         $filename = 'reports_' . date('Y-m-d_H-i-s') . '.csv';
@@ -271,7 +300,7 @@ class ReportController extends Controller
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         header('Cache-Control: max-age=0');
 
-        fputcsv($handle, ['No', 'ID', 'Author', 'Area', 'Type Activity', 'User Activity', 'Issue', 'Photo Before', 'Photo After', 'Status', 'Created At', 'Updated At']);
+        fputcsv($handle, ['No', 'ID', 'Author', 'Area', 'Type Activity', 'User Activity', 'Issue', 'Photo Before', 'Photo After', 'Status', 'Created At', 'Updated At'], ',', '"', '\\');
 
         $row = 1;
         foreach ($reports as $report) {
@@ -288,7 +317,7 @@ class ReportController extends Controller
                 $report->finished_date ? 'Solved' : 'Pending',
                 $report->created_at,
                 $report->updated_at,
-            ]);
+            ], ',', '"', '\\');
         }
 
         fclose($handle);

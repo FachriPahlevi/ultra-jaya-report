@@ -100,7 +100,7 @@ export default function InputDropdown({
 
                 {showDropdown && (
                     <div className="absolute z-50 w-full mt-1.5 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
-                        <div className="max-h-[200px] overflow-y-auto py-1">
+                        <div className="max-h-[250px] overflow-y-auto overscroll-contain">
                             {itemList.length === 0 ? (
                                 <div className="px-4 py-3 text-[13px] text-muted-foreground text-center">
                                     No options available
@@ -115,7 +115,7 @@ export default function InputDropdown({
                                             onClick={() => handleOptionClick(item)}
                                             className={`w-full text-left px-4 py-2.5 text-[13.5px] transition-colors duration-100 ${
                                                 isSelected
-                                                    ? "bg-primary/8 text-primary font-semibold"
+                                                    ? "bg-primary/10 text-primary font-semibold"
                                                     : "text-foreground hover:bg-muted"
                                             }`}
                                         >
