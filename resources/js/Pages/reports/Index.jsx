@@ -26,6 +26,7 @@ export default function Index({
   const { props } = usePage();
   const { setStatusModalProps } = useStatusModal();
   const permissions = props.auth?.user?.permissions || [];
+  const auth = props.auth?.user;
 
   const [selectedAreaReport, setSelectedAreaReport] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -106,6 +107,8 @@ export default function Index({
   const handleCloseAreaReport = () => setSelectedAreaReport(null);
   const handleSolveClick = () => setShowSolveModal(true);
   const handleCloseSolveModal = () => { setShowSolveModal(false); setSelectedAreaReport(null); };
+  const areaOfAuthUser = areas.find(area => area.pic_user_id == auth.id);
+
 
   return (
     <AppLayout title="Report Lists">
@@ -159,7 +162,7 @@ export default function Index({
 
         <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
           <div className="px-6 py-5 border-b border-border bg-muted/30">
-            <h3 className="text-[15px] font-bold text-foreground m-0">Area Report</h3>
+            <h3 className="text-[15px] font-bold text-foreground m-0">Report Area <span>{areaOfAuthUser?.area ?? ''}</span></h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">

@@ -57,7 +57,7 @@ class ReportController extends Controller
         // TAMBAHKAN withQueryString()
         $areaReports = $query->latest()->paginate(10)->withQueryString();
 
-        $areas = Area::select('id', 'area')->get();
+        $areas = Area::with('pic')->select('id', 'area', 'pic_user_id')->get();
         $activities = Activity::select('id', 'description')->get();
         $users = \App\Models\User::select('id', 'name')->get();
 

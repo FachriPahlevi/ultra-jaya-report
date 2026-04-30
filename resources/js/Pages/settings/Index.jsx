@@ -344,7 +344,7 @@ export default function Settings({ users, roles, permissions }) {
             setShowUserModal(true);
           }}
           onDelete={confirmDeleteUser}
-        />
+        />  
       </div>
 
       <UserForm isOpen={showUserModal} onClose={() => setShowUserModal(false)} user={selectedUser} roles={roles} />
