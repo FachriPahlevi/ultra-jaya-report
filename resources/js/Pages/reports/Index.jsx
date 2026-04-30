@@ -212,12 +212,10 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
               Filter
               <ChevronRight className="w-3.5 h-3.5 rotate-90" />
             </BtnDefault>
-            {canExport && (
               <BtnDefault outline onClick={() => setShowExportModal(true)} className="gap-2 h-10 px-4 rounded-xl text-sm">
                 <File className="w-4 h-4" />
                 Export Dokumen
               </BtnDefault>
-            )}
           </div>
 
           {activeFilterChips.length > 0 && (
