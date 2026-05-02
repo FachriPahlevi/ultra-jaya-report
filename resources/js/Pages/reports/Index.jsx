@@ -49,7 +49,13 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   const can = (permission) => permissions.includes(permission);
   const canCreate = can("reports.create");
   const canSolve = can("reports.solve.all") || can("reports.solve.own.area");
-  const canExport = can("reports.view.all");
+  const canExportAll = can("reports.view.all");
+  const canExportArea = can("reports.solve.own.area");
+  const canExportOwn = can("reports.view.own");
+  const canExport = canExportAll || canExportArea || canExportOwn;
+  const assignedAreas = areas.filter((a) => a.pic_user_id == auth.id);
+  const exportAreas = canExportAll ? areas : assignedAreas;
+  const exportUsers = canExportAll ? users : [];
 
   const reports = areaReports.data ?? [];
 
@@ -212,10 +218,12 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
               Filter
               <ChevronRight className="w-3.5 h-3.5 rotate-90" />
             </BtnDefault>
+            {canExport && (
               <BtnDefault outline onClick={() => setShowExportModal(true)} className="gap-2 h-10 px-4 rounded-xl text-sm">
                 <File className="w-4 h-4" />
                 Export Dokumen
               </BtnDefault>
+            )}
           </div>
 
           {activeFilterChips.length > 0 && (
@@ -601,7 +609,17 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
 
       <ReportForm isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} areas={areas} activities={activities} users={users} />
       <SolveForm isOpen={showSolveModal} onClose={handleCloseSolveModal} reportId={selectedAreaReport?.id} />
-      <ExportForm isOpen={showExportModal} onClose={() => setShowExportModal(false)} areas={areas} activities={activities} users={users} />
+      <ExportForm
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        areas={exportAreas}
+        activities={activities}
+        users={exportUsers}
+        canExportAll={canExportAll}
+        canExportArea={canExportArea}
+        canExportOwn={canExportOwn}
+        assignedAreas={assignedAreas}
+      />
     </AppLayout>
   );
 }

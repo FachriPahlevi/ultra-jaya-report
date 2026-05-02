@@ -21,16 +21,18 @@ class ReportController extends Controller
         // Filter my reports only (priority)
         if ($request->boolean('my_reports_only')) {
             $query->where('author_id', $user->id);
+
+            if ($user->can('reports.solve.own.area') && ! $user->can('reports.view.all')) {
+                $query->whereHas('area', function ($q2) use ($user) {
+                    $q2->where('pic_user_id', $user->id);
+                });
+            }
         } else {
-            // Filter berdasarkan permission
             if ($user->can('reports.view.all')) {
                 // SUPER_ADMIN, ADMIN, MANAGER bisa lihat semua report
             } elseif ($user->can('reports.solve.own.area')) {
-                $query->where(function ($q) use ($user) {
-                    $q->where('author_id', $user->id)
-                        ->orWhereHas('area', function ($q2) use ($user) {
-                            $q2->where('pic_user_id', $user->id);
-                        });
+                $query->whereHas('area', function ($q2) use ($user) {
+                    $q2->where('pic_user_id', $user->id);
                 });
             } else {
                 $query->where('author_id', $user->id);
@@ -240,7 +242,7 @@ class ReportController extends Controller
         } elseif ($user->can('reports.view.own') && $report->author_id === $user->id) {
             // allowed
         } elseif ($user->can('reports.solve.own.area') && $report->area->pic_user_id === $user->id) {
-            // allowed 
+            // allowed
         } else {
             abort(403, 'Anda tidak memiliki izin untuk melihat laporan ini');
         }
@@ -257,15 +259,18 @@ class ReportController extends Controller
 
         if ($request->boolean('my_reports_only')) {
             $query->where('author_id', $user->id);
+
+            if ($user->can('reports.solve.own.area') && ! $user->can('reports.view.all')) {
+                $query->whereHas('area', function ($q2) use ($user) {
+                    $q2->where('pic_user_id', $user->id);
+                });
+            }
         } else {
             if ($user->can('reports.view.all')) {
                 // Bisa export semua
             } elseif ($user->can('reports.solve.own.area')) {
-                $query->where(function ($q) use ($user) {
-                    $q->where('author_id', $user->id)
-                        ->orWhereHas('area', function ($q2) use ($user) {
-                            $q2->where('pic_user_id', $user->id);
-                        });
+                $query->whereHas('area', function ($q2) use ($user) {
+                    $q2->where('pic_user_id', $user->id);
                 });
             } else {
                 $query->where('author_id', $user->id);

@@ -39,7 +39,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         
         Route::get('/export/{type}', [ReportController::class, 'export'])
             ->name('reports.export')
-            ->middleware('can:reports.view.all');
+            ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area');
     });
 
     // Areas routes
