@@ -34,6 +34,10 @@ class SettingController extends Controller
             'password' => 'required|string|min:6',
         ]);
 
+        if ($validated['role'] === 'SUPER_ADMIN' && ! Auth::user()->hasRole('SUPER_ADMIN')) {
+            return back()->with('error', 'Hanya SUPER_ADMIN yang dapat menetapkan role SUPER_ADMIN.');
+        }
+
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
@@ -54,6 +58,16 @@ class SettingController extends Controller
             'role' => 'required|string|exists:roles,name',
             'password' => 'nullable|string|min:6',
         ]);
+
+        if (! Auth::user()->hasRole('SUPER_ADMIN')) {
+            if ($user->hasRole('SUPER_ADMIN')) {
+                return back()->with('error', 'Hanya SUPER_ADMIN yang dapat mengubah data user SUPER_ADMIN.');
+            }
+
+            if ($validated['role'] === 'SUPER_ADMIN') {
+                return back()->with('error', 'Hanya SUPER_ADMIN yang dapat menetapkan role SUPER_ADMIN.');
+            }
+        }
 
         $user->update([
             'name' => $validated['name'],
@@ -131,6 +145,10 @@ class SettingController extends Controller
 
     public function syncRolePermissions(Request $request, Role $role)
     {
+        if ($role->name === 'SUPER_ADMIN' && ! Auth::user()->hasRole('SUPER_ADMIN')) {
+            return back()->with('error', 'Hanya SUPER_ADMIN yang dapat mengubah permission SUPER_ADMIN.');
+        }
+
         $validated = $request->validate([
             'permissions' => 'array',
         ]);
@@ -148,6 +166,15 @@ class SettingController extends Controller
         ]);
 
         $user = User::find($validated['user_id']);
+
+        if ($validated['role'] === 'SUPER_ADMIN' && ! Auth::user()->hasRole('SUPER_ADMIN')) {
+            return back()->with('error', 'Hanya SUPER_ADMIN yang dapat menetapkan role SUPER_ADMIN.');
+        }
+
+        if ($user->hasRole('SUPER_ADMIN') && ! Auth::user()->hasRole('SUPER_ADMIN')) {
+            return back()->with('error', 'Hanya SUPER_ADMIN yang dapat mengubah role user SUPER_ADMIN.');
+        }
+
         $user->syncRoles([$validated['role']]);
 
         return redirect()->route('settings.index')->with('success', 'Role berhasil diassign ke user');

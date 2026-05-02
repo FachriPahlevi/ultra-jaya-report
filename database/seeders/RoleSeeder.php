@@ -81,6 +81,7 @@ class RoleSeeder extends Seeder
             'users.assign.area',
             'users.promote',
             'reports.view.all',
+            'reports.create',
             'reports.solve.all',
             'settings.view',
         ]);

@@ -233,6 +233,18 @@ class ReportController extends Controller
 
     public function show(Report $report)
     {
+        $user = Auth::user();
+
+        if ($user->can('reports.view.all')) {
+            // allowed
+        } elseif ($user->can('reports.view.own') && $report->author_id === $user->id) {
+            // allowed
+        } elseif ($user->can('reports.solve.own.area') && $report->area->pic_user_id === $user->id) {
+            // allowed 
+        } else {
+            abort(403, 'Anda tidak memiliki izin untuk melihat laporan ini');
+        }
+
         return Inertia::render('reports/Show', [
             'report' => $report->load(['author', 'area', 'activityType']),
         ]);
