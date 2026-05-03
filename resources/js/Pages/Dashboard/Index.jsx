@@ -1,4 +1,4 @@
-import { usePage, Link } from "@inertiajs/react";
+import { usePage, Link, Head } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
 import { HiOutlineDocumentReport, HiOutlineClock, HiOutlineCheckCircle, HiOutlineUser, HiOutlineExternalLink, HiArrowRight } from "react-icons/hi";
 
@@ -66,6 +66,9 @@ export default function Dashboard({
 
   return (
     <AppLayout title="Dashboard">
+         <Head>
+          <title>Dashboard</title>
+        </Head>
       <div className="flex flex-col gap-4">
 
         {/* Header */}
