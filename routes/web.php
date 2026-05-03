@@ -15,7 +15,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('reports')->group(function () {
         Route::get('/', [ReportController::class, 'index'])
             ->name('reports.index')
-            ->middleware('can:reports.view.own,reports.view.all');
+            ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area');
         
         Route::post('/', [ReportController::class, 'store'])
             ->name('reports.store')
@@ -23,15 +23,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         
         Route::post('/{report}/solve', [ReportController::class, 'solve'])
             ->name('reports.solve')
-            ->middleware('can:reports.solve.own.area,reports.solve.all');
+            ->middleware('role_or_permission:reports.solve.own.area|reports.solve.all');
         
         Route::get('/{report}', [ReportController::class, 'show'])
             ->name('reports.show')
-            ->middleware('can:reports.view.own,reports.view.all');
+            ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area');
         
         Route::put('/{report}', [ReportController::class, 'update'])
             ->name('reports.update')
-            ->middleware('can:reports.edit.own,reports.edit.all');
+            ->middleware('role_or_permission:reports.edit.own|reports.edit.all');
         
         Route::delete('/{report}', [ReportController::class, 'destroy'])
             ->name('reports.destroy')
@@ -39,7 +39,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         
         Route::get('/export/{type}', [ReportController::class, 'export'])
             ->name('reports.export')
-            ->middleware('can:reports.view.all');
+            ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area');
     });
 
     // Areas routes
@@ -83,14 +83,38 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Settings routes - hanya SUPER_ADMIN dan ADMIN
     Route::middleware(['can:settings.view'])->group(function () {
         Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
-        Route::post('/settings/roles', [SettingController::class, 'storeRole'])->name('settings.roles.store');
-        Route::put('/settings/roles/{role}', [SettingController::class, 'updateRole'])->name('settings.roles.update');
-        Route::delete('/settings/roles/{role}', [SettingController::class, 'deleteRole'])->name('settings.roles.destroy');
-        Route::post('/settings/roles/{role}/permissions', [SettingController::class, 'syncRolePermissions'])->name('settings.roles.permissions');
-        Route::post('/settings/users', [SettingController::class, 'storeUser'])->name('settings.users.store');
-        Route::put('/settings/users/{user}', [SettingController::class, 'updateUser'])->name('settings.users.update');
-        Route::delete('/settings/users/{user}', [SettingController::class, 'destroyUser'])->name('settings.users.destroy');
-        Route::post('/settings/users/assign-role', [SettingController::class, 'assignRoleToUser'])->name('settings.users.assign-role');
+
+        Route::post('/settings/users', [SettingController::class, 'storeUser'])
+            ->name('settings.users.store')
+            ->middleware('can:users.create');
+
+        Route::put('/settings/users/{user}', [SettingController::class, 'updateUser'])
+            ->name('settings.users.update')
+            ->middleware('can:users.edit');
+
+        Route::delete('/settings/users/{user}', [SettingController::class, 'destroyUser'])
+            ->name('settings.users.destroy')
+            ->middleware('can:users.delete');
+
+        Route::post('/settings/users/assign-role', [SettingController::class, 'assignRoleToUser'])
+            ->name('settings.users.assign-role')
+            ->middleware('can:users.promote');
+
+        Route::post('/settings/roles', [SettingController::class, 'storeRole'])
+            ->name('settings.roles.store')
+            ->middleware('can:permissions.manage');
+
+        Route::put('/settings/roles/{role}', [SettingController::class, 'updateRole'])
+            ->name('settings.roles.update')
+            ->middleware('can:permissions.manage');
+
+        Route::delete('/settings/roles/{role}', [SettingController::class, 'deleteRole'])
+            ->name('settings.roles.destroy')
+            ->middleware('can:permissions.manage');
+
+        Route::post('/settings/roles/{role}/permissions', [SettingController::class, 'syncRolePermissions'])
+            ->name('settings.roles.permissions')
+            ->middleware('can:permissions.manage');
     });
 });
 

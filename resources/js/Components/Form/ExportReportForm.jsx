@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { router } from "@inertiajs/react";
 import BtnDefault from "@/Components/Button/BtnDefault";
 import InputText from "@/Components/Input/InputText";
@@ -7,7 +7,7 @@ import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
 import { HiOutlineX } from "react-icons/hi";
 
-export default function ExportForm({ isOpen, onClose, areas, activities, users }) {
+export default function ExportForm({ isOpen, onClose, areas, activities, users, canExportAll = false, canExportArea = false, canExportOwn = false, assignedAreas = [] }) {
   const { setStatusModalProps } = useStatusModal();
   const [processing, setProcessing] = useState(false);
   const [form, setForm] = useState({
@@ -18,8 +18,14 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users }
     activity_ids: [],
     status: "",
     author_ids: [],
-    my_reports_only: false,
+    my_reports_only: !canExportAll && !canExportArea,
   });
+
+  useEffect(() => {
+    if (!canExportAll && !canExportArea) {
+      setForm((prev) => ({ ...prev, my_reports_only: true }));
+    }
+  }, [canExportAll, canExportArea]);
 
   const showStatusModal = (type, title, message) => {
     setStatusModalProps({
@@ -90,22 +96,27 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users }
     e.preventDefault();
     setProcessing(true);
 
-    const params = new URLSearchParams();
-    if (form.start_date) params.append("start_date", form.start_date);
-    if (form.end_date) params.append("end_date", form.end_date);
-    if (form.area_ids.length > 0) {
-      form.area_ids.forEach((id) => params.append("area_ids[]", id));
-    }
-    if (form.activity_ids.length > 0) {
-      form.activity_ids.forEach((id) => params.append("activity_ids[]", id));
-    }
-    if (form.status) params.append("status", form.status);
-    if (form.author_ids.length > 0) {
-      form.author_ids.forEach((id) => params.append("author_ids[]", id));
-    }
-    if (form.my_reports_only) params.append("my_reports_only", "true");
+    const submitForm = {
+      ...form,
+      my_reports_only: !canExportAll && !canExportArea ? true : form.my_reports_only,
+    };
 
-    const url = `/reports/export/${form.type}?${params.toString()}`;
+    const params = new URLSearchParams();
+    if (submitForm.start_date) params.append("start_date", submitForm.start_date);
+    if (submitForm.end_date) params.append("end_date", submitForm.end_date);
+    if (submitForm.area_ids.length > 0) {
+      submitForm.area_ids.forEach((id) => params.append("area_ids[]", id));
+    }
+    if (submitForm.activity_ids.length > 0) {
+      submitForm.activity_ids.forEach((id) => params.append("activity_ids[]", id));
+    }
+    if (submitForm.status) params.append("status", submitForm.status);
+    if (submitForm.author_ids.length > 0) {
+      submitForm.author_ids.forEach((id) => params.append("author_ids[]", id));
+    }
+    if (submitForm.my_reports_only) params.append("my_reports_only", "true");
+
+    const url = `/reports/export/${submitForm.type}?${params.toString()}`;
 
     try {
       window.open(url, "_blank");
@@ -136,57 +147,66 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users }
             <InputText label="End Date" type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
           </div>
 
-          <div>
-            <label className="text-[13px] font-semibold text-foreground mb-2 block">Authors</label>
-            <div className="border border-border rounded-lg p-3 max-h-[150px] overflow-y-auto">
-              <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border">
-                <input
-                  type="checkbox"
-                  checked={form.author_ids.length === users.length}
-                  onChange={() => handleSelectAll("author", users)}
-                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                />
-                <label className="text-[13px] font-semibold text-foreground cursor-pointer">Select All</label>
-              </div>
-              {users.map((user) => (
-                <div key={user.id} className="flex items-center gap-2 py-1">
+          {canExportAll && (
+            <div>
+              <label className="text-[13px] font-semibold text-foreground mb-2 block">Authors</label>
+              <div className="border border-border rounded-lg p-3 max-h-[150px] overflow-y-auto">
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border">
                   <input
                     type="checkbox"
-                    checked={form.author_ids.includes(user.id)}
-                    onChange={(e) => handleCheckboxChange(user.id, "author", e.target.checked)}
+                    checked={form.author_ids.length === users.length}
+                    onChange={() => handleSelectAll("author", users)}
                     className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                   />
-                  <label className="text-[13px] text-foreground cursor-pointer">{user.name}</label>
+                  <label className="text-[13px] font-semibold text-foreground cursor-pointer">Select All</label>
                 </div>
-              ))}
+                {users.map((user) => (
+                  <div key={user.id} className="flex items-center gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      checked={form.author_ids.includes(user.id)}
+                      onChange={(e) => handleCheckboxChange(user.id, "author", e.target.checked)}
+                      className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                    />
+                    <label className="text-[13px] text-foreground cursor-pointer">{user.name}</label>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
-          <div>
-            <label className="text-[13px] font-semibold text-foreground mb-2 block">Areas</label>
-            <div className="border border-border rounded-lg p-3 max-h-[150px] overflow-y-auto">
-              <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border">
-                <input
-                  type="checkbox"
-                  checked={form.area_ids.length === areas.length}
-                  onChange={() => handleSelectAll("area", areas)}
-                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                />
-                <label className="text-[13px] font-semibold text-foreground cursor-pointer">Select All</label>
-              </div>
-              {areas.map((area) => (
-                <div key={area.id} className="flex items-center gap-2 py-1">
+          {(canExportAll || canExportArea) && (
+            <div>
+              <label className="text-[13px] font-semibold text-foreground mb-2 block">Areas</label>
+              <div className="border border-border rounded-lg p-3 max-h-[150px] overflow-y-auto">
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border">
                   <input
                     type="checkbox"
-                    checked={form.area_ids.includes(area.id)}
-                    onChange={(e) => handleCheckboxChange(area.id, "area", e.target.checked)}
+                    checked={form.area_ids.length === areas.length}
+                    onChange={() => handleSelectAll("area", areas)}
                     className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                    disabled={!canExportAll && !canExportArea}
                   />
-                  <label className="text-[13px] text-foreground cursor-pointer">{area.area}</label>
+                  <label className="text-[13px] font-semibold text-foreground cursor-pointer">Select All</label>
                 </div>
-              ))}
+                {areas.map((area) => (
+                  <div key={area.id} className="flex items-center gap-2 py-1">
+                    <input
+                      type="checkbox"
+                      checked={form.area_ids.includes(area.id)}
+                      onChange={(e) => handleCheckboxChange(area.id, "area", e.target.checked)}
+                      className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                      disabled={!canExportAll && !canExportArea}
+                    />
+                    <label className="text-[13px] text-foreground cursor-pointer">{area.area}</label>
+                  </div>
+                ))}
+              </div>
+              {!canExportAll && canExportArea && assignedAreas.length === 1 && (
+                <p className="text-[12px] text-muted-foreground mt-2">Anda hanya dapat mengekspor area yang ditugaskan: {assignedAreas[0].area}.</p>
+              )}
             </div>
-          </div>
+          )}
 
           <div>
             <label className="text-[13px] font-semibold text-foreground mb-2 block">Activities</label>
@@ -216,17 +236,26 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users }
 
           <InputDropdown label="Status" value={form.status} setObject={(item) => setForm({ ...form, status: item.value })} itemList={statusOptions} />
 
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="my_reports_only"
-              checked={form.my_reports_only}
-              onChange={(e) => setForm({ ...form, my_reports_only: e.target.checked })}
-              className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
-            />
-            <label htmlFor="my_reports_only" className="text-[13px] text-foreground cursor-pointer">
-              Export only my reports
-            </label>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="my_reports_only"
+                checked={form.my_reports_only}
+                onChange={(e) => setForm({ ...form, my_reports_only: e.target.checked })}
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                disabled={!canExportAll && !canExportArea}
+              />
+              <label htmlFor="my_reports_only" className="text-[13px] text-foreground cursor-pointer">
+                Export only my reports
+              </label>
+            </div>
+            {!canExportAll && !canExportArea && (
+              <p className="text-[12px] text-muted-foreground">Sebagai user biasa, Anda hanya dapat mengekspor laporan yang Anda unggah sendiri.</p>
+            )}
+            {canExportArea && !canExportAll && (
+              <p className="text-[12px] text-muted-foreground">Sebagai supervisor, ekspor akan dibatasi ke area yang ditugaskan.</p>
+            )}
           </div>
 
           <div className="flex gap-3 pt-4">
