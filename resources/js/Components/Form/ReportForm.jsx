@@ -7,29 +7,45 @@ import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
 import { HiOutlinePhotograph, HiOutlineX } from "react-icons/hi";
 
-export default function ReportForm({ isOpen, onClose, areas = [], activities = [], users = [] }) {
+export default function ReportForm({ isOpen, onClose, report = null, areas = [], activities = [], users = [] }) {
   const { setStatusModalProps } = useStatusModal();
   const { auth } = usePage().props;
   const currentUser = auth?.user;
   const userRole = currentUser?.roles?.[0]?.toLowerCase() || "user";
   const [photoPreview, setPhotoPreview] = useState(null);
 
-  const { data, setData, post, processing, errors, reset } = useForm({
+  const { data, setData, post, put, processing, errors, reset } = useForm({
     author_id: currentUser?.id || "",
-    type_activity: "",
-    area_activity: "",
-    activity: "",
-    issue: "",
+    type_activity: report?.activity_id || "",
+    area_activity: report?.area_id || "",
+    activity: report?.activity || "",
+    issue: report?.issue || "",
+    correction_comment: report?.correction_comment || "",
     photo: null,
   });
 
   useEffect(() => {
-    if (isOpen) {
+    if (!isOpen) {
+      return;
+    }
+
+    if (report) {
+      setData({
+        author_id: report.author_id || currentUser?.id || "",
+        type_activity: report.activity_id || "",
+        area_activity: report.area_id || "",
+        activity: report.activity || "",
+        issue: report.issue || "",
+        correction_comment: report.correction_comment || "",
+        photo: null,
+      });
+      setPhotoPreview(report.photo_before ? `/storage/${report.photo_before}` : null);
+    } else {
       reset();
       setData("author_id", currentUser?.id || "");
       setPhotoPreview(null);
     }
-  }, [isOpen]);
+  }, [isOpen, report]);
 
   const showStatusModal = (type, title, message) => {
     setStatusModalProps({
@@ -82,17 +98,23 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
       return;
     }
 
-    post("/reports", {
+    const method = report ? put : post;
+    const url = report ? `/reports/${report.id}` : "/reports";
+
+    method(url, {
       forceFormData: true,
       onSuccess: () => {
-        showStatusModal("success", "Success", "Report has been created");
+        showStatusModal("success", "Success", report ? "Report has been updated" : "Report has been created");
         reset();
         setPhotoPreview(null);
         onClose();
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
       },
       onError: (error) => {
         console.error("Error:", error);
-        showStatusModal("error", "Error", "Failed to create report");
+        showStatusModal("error", "Error", report ? "Failed to update report" : "Failed to create report");
       },
     });
   };
@@ -166,6 +188,22 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
               />
               {errors.issue && <p className="text-xs text-destructive mt-1">{errors.issue}</p>}
             </div>
+
+            {report && (
+              <div>
+                <label htmlFor="correction_comment" className="text-[13px] font-semibold text-foreground mb-1.5 block">
+                  Catatan Perbaikan
+                </label>
+                <textarea
+                  id="correction_comment"
+                  value={data.correction_comment}
+                  onChange={(e) => setData("correction_comment", e.target.value)}
+                  placeholder="Jelaskan apa yang sudah diperbaiki atau tambahkan detail perbaikan..."
+                  className="w-full px-3 py-2.5 border border-border rounded-lg text-[13.5px] text-foreground bg-background outline-none focus:border-primary transition-colors font-inherit resize-y min-h-[90px]"
+                />
+                {errors.correction_comment && <p className="text-xs text-destructive mt-1">{errors.correction_comment}</p>}
+              </div>
+            )}
 
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">

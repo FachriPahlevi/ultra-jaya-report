@@ -56,9 +56,11 @@ class ReportController extends Controller
 
         if ($request->filled('status')) {
             if ($request->status === 'pending') {
-                $query->whereNull('finished_date');
+                $query->where('status', 'pending');
+            } elseif ($request->status === 'rejected') {
+                $query->where('status', 'rejected');
             } elseif ($request->status === 'solved') {
-                $query->whereNotNull('finished_date');
+                $query->where('status', 'solved');
             }
         }
 
@@ -124,6 +126,7 @@ class ReportController extends Controller
             'activity' => $validated['activity'],
             'issue' => $validated['issue'],
             'photo_before' => $photoPath,
+            'status' => 'pending',
             'finished_date' => null,
             'is_content_edited' => false,
         ]);
@@ -148,6 +151,14 @@ class ReportController extends Controller
             return back()->with('error', 'Anda tidak memiliki izin untuk menyelesaikan laporan');
         }
 
+        if ($report->status === 'solved') {
+            return back()->with('error', 'Laporan ini sudah selesai');
+        }
+
+        if ($report->status === 'rejected') {
+            return back()->with('error', 'Laporan ini harus dikembalikan ke penulis terlebih dahulu sebelum diselesaikan');
+        }
+
         $validated = $request->validate([
             'photo_after' => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
@@ -157,6 +168,7 @@ class ReportController extends Controller
         $report->update([
             'photo_after' => $photoPath,
             'finished_date' => now(),
+            'status' => 'solved',
             'solved_by' => $user->id,
         ]);
 
@@ -182,9 +194,18 @@ class ReportController extends Controller
             'activity' => 'nullable|string|max:255',
             'issue' => 'sometimes|string',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'correction_comment' => 'nullable|string',
         ]);
 
         $updateData = ['is_content_edited' => true];
+
+        if ($report->status === 'rejected') {
+            $updateData['status'] = 'pending';
+            $updateData['rejected_comment'] = null;
+            $updateData['rejected_by'] = null;
+            $updateData['rejected_at'] = null;
+            $updateData['correction_comment'] = $validated['correction_comment'] ?? null;
+        }
 
         if ($request->hasFile('photo')) {
             if ($report->photo_before) {
@@ -210,9 +231,45 @@ class ReportController extends Controller
             $updateData['issue'] = $validated['issue'];
         }
 
+        if (isset($validated['correction_comment'])) {
+            $updateData['correction_comment'] = $validated['correction_comment'];
+        }
+
         $report->update($updateData);
 
         return redirect()->back()->with('success', 'Laporan berhasil diupdate');
+    }
+
+    public function reject(Request $request, Report $report)
+    {
+        $user = Auth::user();
+
+        if ($user->can('reports.solve.all')) {
+            // SUPER_ADMIN, ADMIN, MANAGER bisa reject semua
+        } elseif ($user->can('reports.solve.own.area')) {
+            if ($report->area->pic_user_id !== $user->id) {
+                return back()->with('error', 'Anda tidak memiliki izin untuk menolak laporan di area ini');
+            }
+        } else {
+            return back()->with('error', 'Anda tidak memiliki izin untuk menolak laporan ini');
+        }
+
+        if ($report->status === 'solved') {
+            return back()->with('error', 'Laporan yang sudah selesai tidak dapat ditolak');
+        }
+
+        $validated = $request->validate([
+            'rejected_comment' => 'required|string',
+        ]);
+
+        $report->update([
+            'status' => 'rejected',
+            'rejected_comment' => $validated['rejected_comment'],
+            'rejected_by' => $user->id,
+            'rejected_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Laporan berhasil ditolak dan dikembalikan ke penulis');
     }
 
     public function destroy(Report $report)
@@ -291,9 +348,11 @@ class ReportController extends Controller
         }
         if ($request->filled('status')) {
             if ($request->status === 'pending') {
-                $query->whereNull('finished_date');
+                $query->where('status', 'pending');
+            } elseif ($request->status === 'rejected') {
+                $query->where('status', 'rejected');
             } elseif ($request->status === 'solved') {
-                $query->whereNotNull('finished_date');
+                $query->where('status', 'solved');
             }
         }
         if ($request->filled('author_ids')) {
@@ -331,7 +390,7 @@ class ReportController extends Controller
                 $report->issue,
                 $report->photo_before ? 'Yes' : 'No',
                 $report->photo_after ? 'Yes' : 'No',
-                $report->finished_date ? 'Solved' : 'Pending',
+                $report->status ? ucfirst($report->status) : ($report->finished_date ? 'Solved' : 'Pending'),
                 $report->created_at,
                 $report->updated_at,
             ], ',', '"', '\\');

@@ -120,8 +120,9 @@ function ContentSection({ label, children }) {
 }
 
 export default function ReportCard({ report, isSelected, onSelect }) {
-  const isSolved = !!report.finished_date;
   const activityLabel = report.activity_type?.description ?? report.activity_type?.name ?? "-";
+  const isSolved = report.status === 'solved';
+  const isRejected = report.status === 'rejected';
   const hasPhotos = report.photo_before || report.photo_after;
   const hasActivity = report.activity && report.activity !== "-";
   const hasIssue = report.issue && report.issue !== "-";
@@ -134,7 +135,8 @@ export default function ReportCard({ report, isSelected, onSelect }) {
     >
       {/* Top accent line for solved */}
       {isSolved && <div className="h-0.5 bg-gradient-to-r from-emerald-400 to-emerald-300" />}
-      {!isSolved && <div className="h-0.5 bg-gradient-to-r from-amber-400 to-amber-300" />}
+      {isRejected && <div className="h-0.5 bg-gradient-to-r from-rose-500 to-rose-400" />}
+      {!isSolved && !isRejected && <div className="h-0.5 bg-gradient-to-r from-amber-400 to-amber-300" />}
 
       <div className="p-3.5">
         {/* Header: avatar + author + date + status */}
@@ -153,6 +155,11 @@ export default function ReportCard({ report, isSelected, onSelect }) {
                   <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                     Solved
+                  </span>
+                ) : isRejected ? (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                    Rejected
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
@@ -182,6 +189,13 @@ export default function ReportCard({ report, isSelected, onSelect }) {
                 <RichText text={report.issue} maxLines={3} />
               </ContentSection>
             )}
+          </div>
+        )}
+
+        {isRejected && report.rejected_comment && (
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="text-[10px] font-bold text-rose-500 uppercase tracking-wider">Supervisor Comment</div>
+            <p className="mt-1 text-[12px] text-rose-700">{report.rejected_comment}</p>
           </div>
         )}
 
