@@ -111,6 +111,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   const canEditSelected = (report) => report && (canEditAll || (canEditOwn && report.author_id === auth.id));
   const canRejectSelected = (report) => report && canReject && !report.finished_date && report.status === 'pending' && (can('reports.solve.all') || report.area?.pic_user_id == auth.id);
   const canSolveSelected = (report) => report && canSolve && !report.finished_date && report.status === 'pending' && (can('reports.solve.all') || report.area?.pic_user_id == auth.id);
+  const canDeleteSelected = (report) => report && report.status === 'pending' && canDelete;
 
   useEffect(() => {
     const debouncedFilter = debounce(() => {
@@ -178,12 +179,12 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   const handleRejectClick = () => setShowRejectModal(true);
   const handleCloseRejectModal = () => { setShowRejectModal(false); setSelectedAreaReport(null); };
   const handleDeleteReport = async () => {
-    if (!selectedAreaReport) return;
+    if (!selectedAreaReport || selectedAreaReport.status !== 'pending') return;
     const confirmed = window.confirm("Hapus laporan ini?");
     if (!confirmed) return;
 
     try {
-      await router.delete(`/reports/${selectedAreaReport.id}`);
+      await router.delete(route("reports.destroy", selectedAreaReport.id), {}, { preserveScroll: true });
       setSelectedAreaReport(null);
       router.reload();
     } catch (error) {
@@ -410,7 +411,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
             {canSolveSelected(selectedAreaReport) && (
               <BtnDefault size="sm" onClick={handleSolveClick} className="shadow-lg">Solve</BtnDefault>
             )}
-            {canDelete && (
+            {canDeleteSelected(selectedAreaReport) && (
               <BtnDefault size="sm" outline onClick={handleDeleteReport} className="shadow-lg text-destructive border-destructive">Delete</BtnDefault>
             )}
             <button onClick={handleCloseAreaReport} className="bg-white/10 hover:bg-white/20 w-7 h-7 rounded-lg flex items-center justify-center"><HiOutlineX className="w-3.5 h-3.5" /></button>
@@ -425,9 +426,6 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
             {canEditSelected(selectedAreaReport) && (
               <BtnDefault size="sm" onClick={handleEditClick} className="shadow-lg">Perbaiki</BtnDefault>
             )}
-            {canDelete && (
-              <BtnDefault size="sm" outline onClick={handleDeleteReport} className="shadow-lg text-destructive border-destructive">Delete</BtnDefault>
-            )}
             <button onClick={handleCloseAreaReport} className="bg-white/10 hover:bg-white/20 w-7 h-7 rounded-lg flex items-center justify-center"><HiOutlineX className="w-3.5 h-3.5" /></button>
           </div>
         )}
@@ -437,9 +435,6 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
               <div className="text-[13px] font-semibold truncate">#{selectedAreaReport.id} · {selectedAreaReport.activity_type?.description ?? "-"} · {formatDate(selectedAreaReport.created_at)}</div>
               <div className="text-xs text-emerald-400 mt-0.5"><span className="text-emerald-400">✓ Solved {formatDate(selectedAreaReport.finished_date)}</span></div>
             </div>
-            {canDelete && (
-              <BtnDefault size="sm" outline onClick={handleDeleteReport} className="shadow-lg text-destructive border-destructive">Delete</BtnDefault>
-            )}
             <button onClick={handleCloseAreaReport} className="bg-white/10 hover:bg-white/20 w-7 h-7 rounded-lg flex items-center justify-center"><HiOutlineX className="w-3.5 h-3.5" /></button>
           </div>
         )}
@@ -529,7 +524,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
             {canSolveSelected(selectedAreaReport) && (
               <button onClick={handleSolveClick} className="px-4 py-2 bg-emerald-600 rounded-xl text-[13px] font-semibold shadow-md active:bg-emerald-700 transition-colors">Solve</button>
             )}
-            {canDelete && (
+            {canDeleteSelected(selectedAreaReport) && (
               <button onClick={handleDeleteReport} className="px-4 py-2 bg-white/10 text-red-200 rounded-xl text-[13px] font-semibold shadow-md hover:bg-white/20">Delete</button>
             )}
             <button onClick={handleCloseAreaReport} className="bg-white/10 hover:bg-white/20 w-8 h-8 rounded-xl flex items-center justify-center shrink-0"><HiOutlineX className="w-4 h-4" /></button>

@@ -278,11 +278,8 @@ class ReportController extends Controller
             return back()->with('error', 'Anda tidak memiliki izin untuk menghapus laporan');
         }
 
-        if ($report->photo_before) {
-            Storage::disk('public')->delete($report->photo_before);
-        }
-        if ($report->photo_after) {
-            Storage::disk('public')->delete($report->photo_after);
+        if ($report->status !== 'pending') {
+            return back()->with('error', 'Laporan hanya dapat dihapus ketika status masih pending');
         }
 
         $report->delete();
