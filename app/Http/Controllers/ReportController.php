@@ -9,6 +9,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class ReportController extends Controller
@@ -40,16 +41,16 @@ class ReportController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = Str::lower($request->search);
             $query->where(function ($q) use ($search) {
-                $q->where('issue', 'like', "%{$search}%")
-                    ->orWhere('activity', 'like', "%{$search}%")
+                $q->whereRaw('LOWER(issue) LIKE ?', ["%{$search}%"])
+                    ->orWhereRaw('LOWER(activity) LIKE ?', ["%{$search}%"])
                     ->orWhereHas('author', function ($q2) use ($search) {
-                        $q2->where('name', 'like', "%{$search}%");
+                        $q2->whereRaw('LOWER(name) LIKE ?', ["%{$search}%"]);
                     })
                     ->orWhereHas('activityType', function ($q2) use ($search) {
-                        $q2->where('name', 'like', "%{$search}%")
-                            ->orWhere('description', 'like', "%{$search}%");
+                        $q2->whereRaw('LOWER(name) LIKE ?', ["%{$search}%"])
+                            ->orWhereRaw('LOWER(description) LIKE ?', ["%{$search}%"]);
                     });
             });
         }
