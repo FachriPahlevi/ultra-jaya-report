@@ -84,6 +84,7 @@ class RoleSeeder extends Seeder
             'reports.create',
             'reports.delete',
             'reports.solve.all',
+            'reports.delete',
             'settings.view',
         ]);
 
@@ -98,6 +99,7 @@ class RoleSeeder extends Seeder
             'reports.create',
             'reports.edit.all',
             'reports.solve.all',
+            'reports.delete',
             'areas.view',
             'activities.view',
         ]);

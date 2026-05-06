@@ -29,8 +29,9 @@ class ReportSeeder extends Seeder
                 $area = $areas->random();
                 $activity = $activities->random();
                 
-                $status = rand(0, 1);
-                $finishedDate = $status ? now()->subDays(rand(1, 30)) : null;
+                $status = rand(0, 2);
+                $finishedDate = $status === 2 ? now()->subDays(rand(1, 30)) : null;
+                $reportStatus = $status === 2 ? 'solved' : ($status === 1 ? 'rejected' : 'pending');
                 
                 $reportsData[] = [
                     'author_id' => $user->id,
@@ -40,7 +41,12 @@ class ReportSeeder extends Seeder
                     'issue' => $this->getRandomIssue(),
                     'photo_before' => null,
                     'photo_after' => null,
-                    'is_content_edited' => $status ? rand(0, 1) : 0,
+                    'status' => $reportStatus,
+                    'rejected_comment' => $reportStatus === 'rejected' ? 'Mohon perbaikan detail issue dan lampirkan bukti tambahan jika perlu.' : null,
+                    'rejected_by' => $reportStatus === 'rejected' ? User::role('SUPERVISOR')->inRandomOrder()->first()?->id : null,
+                    'rejected_at' => $reportStatus === 'rejected' ? now()->subDays(rand(1, 10)) : null,
+                    'correction_comment' => null,
+                    'is_content_edited' => $reportStatus === 'solved' ? rand(0, 1) : 0,
                     'finished_date' => $finishedDate,
                     'created_at' => now()->subDays(rand(1, 60)),
                     'updated_at' => now()->subDays(rand(0, 30)),
