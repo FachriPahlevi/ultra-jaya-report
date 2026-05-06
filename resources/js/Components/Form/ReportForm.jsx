@@ -8,7 +8,7 @@ import ExpandableImage from "@/Components/UI/ExpandableImage";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
 import { HiOutlinePhotograph, HiOutlineX } from "react-icons/hi";
 
-export default function ReportForm({ isOpen, onClose, report = null, areas = [], activities = [], users = [] }) {
+export default function ReportForm({ isOpen, onClose, areas = [], activities = [], users = [], report = null }) {
   const { setStatusModalProps } = useStatusModal();
   const { auth } = usePage().props;
   const currentUser = auth?.user;
@@ -21,11 +21,10 @@ export default function ReportForm({ isOpen, onClose, report = null, areas = [],
 
   const { data, setData, post, put, processing, errors, reset } = useForm({
     author_id: currentUser?.id || "",
-    type_activity: report?.activity_id || "",
-    area_activity: report?.area_id || "",
-    activity: report?.activity || "",
-    issue: report?.issue || "",
-    correction_comment: report?.correction_comment || "",
+    type_activity: "",
+    area_activity: "",
+    activity: "",
+    issue: "",
     photo: null,
   });
 
@@ -41,10 +40,17 @@ export default function ReportForm({ isOpen, onClose, report = null, areas = [],
         area_activity: report.area_id || "",
         activity: report.activity || "",
         issue: report.issue || "",
-        correction_comment: report.correction_comment || "",
         photo: null,
       });
-      setPhotoPreview(report.photo_before ? `/storage/${report.photo_before}` : null);
+
+      const authorOption = users.find((user) => user.id === report.author_id);
+      const areaOption = areas.find((area) => area.id === report.area_id);
+      const activityOption = activities.find((act) => act.id === report.activity_id);
+
+      setSelectedAuthor(authorOption ? { value: authorOption.id, label: authorOption.name } : null);
+      setSelectedArea(areaOption ? { value: areaOption.id, label: areaOption.area } : null);
+      setSelectedActivity(activityOption ? { value: activityOption.id, label: activityOption.description } : null);
+      setPhotoPreview(null);
     } else {
       reset();
       setData("author_id", currentUser?.id || "");
@@ -53,7 +59,7 @@ export default function ReportForm({ isOpen, onClose, report = null, areas = [],
       setSelectedActivity(null);
       setPhotoPreview(null);
     }
-  }, [isOpen, report]);
+  }, [isOpen, report, areas, activities, users]);
 
   const showStatusModal = (type, title, message) => {
     setStatusModalProps({
@@ -109,19 +115,18 @@ export default function ReportForm({ isOpen, onClose, report = null, areas = [],
       return;
     }
 
-    const method = report ? put : post;
+    const action = report ? put : post;
     const url = report ? `/reports/${report.id}` : "/reports";
+    const successMessage = report ? "Report has been updated" : "Report has been created";
 
-    method(url, {
+    action(url, {
       forceFormData: true,
       onSuccess: () => {
-        showStatusModal("success", "Success", report ? "Report has been updated" : "Report has been created");
+        showStatusModal("success", "Success", successMessage);
         reset();
         setPhotoPreview(null);
         onClose();
-        setTimeout(() => {
-          window.location.reload();
-        }, 500);
+        router.reload();
       },
       onError: (error) => {
         console.error("Error:", error);
@@ -201,22 +206,6 @@ export default function ReportForm({ isOpen, onClose, report = null, areas = [],
               />
               {errors.issue && <p className="text-xs text-destructive mt-1">{errors.issue}</p>}
             </div>
-
-            {report && (
-              <div>
-                <label htmlFor="correction_comment" className="text-[13px] font-semibold text-foreground mb-1.5 block">
-                  Catatan Perbaikan
-                </label>
-                <textarea
-                  id="correction_comment"
-                  value={data.correction_comment}
-                  onChange={(e) => setData("correction_comment", e.target.value)}
-                  placeholder="Jelaskan apa yang sudah diperbaiki atau tambahkan detail perbaikan..."
-                  className="w-full px-3 py-2.5 border border-border rounded-lg text-[13.5px] text-foreground bg-background outline-none focus:border-primary transition-colors font-inherit resize-y min-h-[90px]"
-                />
-                {errors.correction_comment && <p className="text-xs text-destructive mt-1">{errors.correction_comment}</p>}
-              </div>
-            )}
 
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">

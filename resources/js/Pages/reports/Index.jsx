@@ -9,7 +9,6 @@ import InputDropdown from "@/Components/Input/InputDropdown";
 import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import ReportForm from "@/Components/Form/ReportForm";
 import SolveForm from "@/Components/Form/SolveForm";
-import RejectForm from "@/Components/Form/RejectForm";
 import ExportForm from "@/Components/Form/ExportReportForm";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
 import { HiOutlineX, HiOutlinePlus } from "react-icons/hi";
@@ -71,8 +70,6 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   const [editReport, setEditReport] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showSolveModal, setShowSolveModal] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [showFilterSheet, setShowFilterSheet] = useState(false);
@@ -97,10 +94,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   const can = (permission) => permissions.includes(permission);
   const canCreate = can("reports.create");
   const canSolve = can("reports.solve.all") || can("reports.solve.own.area");
-  const canReject = canSolve;
-  const canEditAll = can("reports.edit.all");
-  const canEditOwn = can("reports.edit.own");
-  const canDelete = can("reports.delete");
+  const canEdit = can("reports.edit.all") || can("reports.edit.own");
   const canExportAll = can("reports.view.all");
   const canExportArea = can("reports.solve.own.area");
   const canExportOwn = can("reports.view.own");
@@ -111,10 +105,69 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   const exportAreas = canExportAll ? areas : assignedAreas;
   const exportUsers = canExportAll ? users : [];
   const reports = areaReports.data ?? [];
-  const canEditSelected = (report) => report && (canEditAll || (canEditOwn && report.author_id === auth.id));
-  const canRejectSelected = (report) => report && canReject && !report.finished_date && report.status === 'pending' && (can('reports.solve.all') || report.area?.pic_user_id == auth.id);
-  const canSolveSelected = (report) => report && canSolve && !report.finished_date && report.status === 'pending' && (can('reports.solve.all') || report.area?.pic_user_id == auth.id);
-  const canDeleteSelected = (report) => report && report.status === 'pending' && canDelete;
+  const isFinished = selectedAreaReport?.finished_date !== null;
+  const isReportEditable = (report) => {
+    if (!canEdit || !report || isFinished) return false;
+    if (can("reports.edit.all")) return true;
+
+    return can("reports.edit.own") && report.author_id === auth?.id;
+  };
+
+  const openEditReport = (report) => {
+    setEditReport(report);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseReportModal = () => {
+    setIsModalOpen(false);
+    setEditReport(null);
+  };
+
+  const isReportDeletable = (report) => {
+    if (!canDelete || !report) return false;
+    if (isAdmin) return true;
+    if (report.author_id === auth?.id && report.finished_date === null) return true;
+    if (assignedAreas.some((areaRow) => areaRow.id === report.area_id)) return true;
+    return false;
+  };
+
+  const confirmDeleteReport = (report) => {
+    if (!report) return;
+
+    setStatusModalProps({
+      isOpen: true,
+      type: "warning",
+      title: "Delete Report",
+      message: `Apakah Anda yakin ingin menghapus laporan #${report.id}?`,
+      button1: {
+        text: "Hapus",
+        onClick: () => {
+          router.delete(route("reports.destroy", report.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+              setStatusModalProps({
+                isOpen: true,
+                type: "success",
+                title: "Berhasil",
+                message: "Laporan berhasil dihapus",
+                button1: { text: "OK" },
+              });
+            },
+            onError: () => {
+              setStatusModalProps({
+                isOpen: true,
+                type: "error",
+                title: "Gagal",
+                message: "Gagal menghapus laporan. Silakan coba lagi.",
+                button1: { text: "OK" },
+              });
+            },
+          });
+        },
+      },
+      button2: { text: "Batal" },
+    });
+  };
 
   useEffect(() => {
     const debouncedFilter = debounce(() => {
@@ -169,7 +222,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   ];
 
   const typeOptions = [{ label: "All Activities", value: "" }, ...activities.map((a) => ({ label: a.description, value: a.id.toString() }))];
-  const statusOptions = [{ label: "All Statuses", value: "" }, { label: "Pending", value: "pending" }, { label: "Rejected", value: "rejected" }, { label: "Finished", value: "solved" }];
+  const statusOptions = [{ label: "All Statuses", value: "" }, { label: "Pending", value: "pending" }, { label: "Finished", value: "solved" }];
   const areaOptions = [{ label: "All Areas", value: "" }, ...areas.map((a) => ({ label: a.area, value: a.id.toString() }))];
   const roleOptions = [{ label: "All Roles", value: "" }, { label: "Admin", value: "Admin" }, { label: "Supervisor", value: "Supervisor" }, { label: "Manager", value: "Manager" }];
 
@@ -177,23 +230,6 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   const handleCloseAreaReport = () => setSelectedAreaReport(null);
   const handleSolveClick = () => setShowSolveModal(true);
   const handleCloseSolveModal = () => { setShowSolveModal(false); setSelectedAreaReport(null); };
-  const handleEditClick = () => setShowEditModal(true);
-  const handleCloseEditModal = () => { setShowEditModal(false); setSelectedAreaReport(null); };
-  const handleRejectClick = () => setShowRejectModal(true);
-  const handleCloseRejectModal = () => { setShowRejectModal(false); setSelectedAreaReport(null); };
-  const handleDeleteReport = async () => {
-    if (!selectedAreaReport || selectedAreaReport.status !== 'pending') return;
-    const confirmed = window.confirm("Hapus laporan ini?");
-    if (!confirmed) return;
-
-    try {
-      await router.delete(route("reports.destroy", selectedAreaReport.id), {}, { preserveScroll: true });
-      setSelectedAreaReport(null);
-      router.reload();
-    } catch (error) {
-      console.error(error);
-    }
-  };
   const areaOfAuthUser = areas.find((a) => a.pic_user_id == auth.id);
 
   // Shared filter form — rendered inside both modal and bottom sheet
@@ -336,7 +372,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
                       <tr key={report.id} onClick={() => handleSelectAreaReport(report)}
                         className={`cursor-pointer transition-all duration-150 align-top hover:bg-muted/50
                           ${isSelected ? "bg-primary/5 ring-1 ring-inset ring-primary/20" : ""}
-                          ${report.status === 'solved' ? "bg-emerald-50/30 dark:bg-emerald-950/10" : report.status === 'rejected' ? "bg-rose-50/30 dark:bg-rose-950/10" : ""}`}>
+                          ${isSolved ? "bg-emerald-50/30 dark:bg-emerald-950/10" : ""}`}>
                         <td className="px-4 py-3.5 text-[12px] text-muted-foreground font-semibold w-10 shrink-0">{index + 1}</td>
                         <td className="px-4 py-3.5 whitespace-nowrap">
                           <p className="text-[12.5px] font-medium text-foreground">{formatDate(report.created_at)}</p>
@@ -380,13 +416,9 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
                             : <div className="w-14 h-14 rounded-lg border border-dashed border-border flex items-center justify-center"><span className="text-muted-foreground text-[10px]">–</span></div>}
                         </td>
                         <td className="px-4 py-3.5">
-                          {report.status === 'solved' ? (
-                            <span className="inline-flex items-center gap-1.5 text-emerald-600 text-[11.5px] font-semibold bg-emerald-50 px-2.5 py-1 rounded-full whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />Finished</span>
-                          ) : report.status === 'rejected' ? (
-                            <span className="inline-flex items-center gap-1.5 text-rose-600 text-[11.5px] font-semibold bg-rose-50 px-2.5 py-1 rounded-full whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />Rejected</span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 text-amber-600 text-[11.5px] font-semibold bg-amber-50 px-2.5 py-1 rounded-full whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />Pending</span>
-                          )}
+                          {isSolved
+                            ? <span className="inline-flex items-center gap-1.5 text-emerald-600 text-[11.5px] font-semibold bg-emerald-50 px-2.5 py-1 rounded-full whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />Finished</span>
+                            : <span className="inline-flex items-center gap-1.5 text-amber-600 text-[11.5px] font-semibold bg-amber-50 px-2.5 py-1 rounded-full whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />Pending</span>}
                         </td>
                         <td className="px-4 py-3.5 whitespace-nowrap">
                           {isSolved
@@ -403,44 +435,29 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
           <Pagination links={areaReports.links} />
         </div>
 
-        {selectedAreaReport && selectedAreaReport.status === 'pending' && (
-          <div className="fixed bottom-7 left-1/2 -translate-x-1/2 bg-slate-800 text-white rounded-xl py-3 px-5 flex items-center gap-3 shadow-xl z-[300] min-w-[340px] border border-slate-700">
+        {selectedAreaReport && !selectedAreaReport.finished_date && (
+          <div className="fixed bottom-7 left-1/2 -translate-x-1/2 bg-slate-800 text-white rounded-xl py-3 px-5 flex items-center gap-4 shadow-xl z-[300] min-w-[340px] border border-slate-700">
             <div className="flex-1 min-w-0">
               <div className="text-[13px] font-semibold truncate">#{selectedAreaReport.id} · {selectedAreaReport.activity_type?.description ?? "-"} · {formatDate(selectedAreaReport.created_at)}</div>
               <div className="text-xs text-slate-400 mt-0.5"><span className="text-amber-400">● Pending</span></div>
             </div>
-            {canEditSelected(selectedAreaReport) && (
-              <BtnDefault size="sm" onClick={handleEditClick} className="shadow-lg">Edit</BtnDefault>
-            )}
-            {canRejectSelected(selectedAreaReport) && (
-              <BtnDefault size="sm" outline onClick={handleRejectClick} className="shadow-lg">Reject</BtnDefault>
-            )}
-            {canSolveSelected(selectedAreaReport) && (
+            {canSolve && (
               <BtnDefault size="sm" onClick={handleSolveClick} className="shadow-lg">Solve</BtnDefault>
             )}
-            {canDeleteSelected(selectedAreaReport) && (
-              <BtnDefault size="sm" outline onClick={handleDeleteReport} className="shadow-lg text-destructive border-destructive">Delete</BtnDefault>
+            {isReportEditable(selectedAreaReport) && (
+              <BtnDefault size="sm" onClick={() => openEditReport(selectedAreaReport)} className="shadow-lg bg-slate-100 text-slate-900 hover:bg-slate-200">Edit</BtnDefault>
+            )}
+            {isReportDeletable(selectedAreaReport) && (
+              <button onClick={() => confirmDeleteReport(selectedAreaReport)} className="px-4 py-2 bg-red-600 rounded-xl text-[13px] font-semibold shadow-lg active:bg-red-700 transition-colors">Delete</button>
             )}
             <button onClick={handleCloseAreaReport} className="bg-white/10 hover:bg-white/20 w-7 h-7 rounded-lg flex items-center justify-center"><HiOutlineX className="w-3.5 h-3.5" /></button>
           </div>
         )}
-        {selectedAreaReport && selectedAreaReport.status === 'rejected' && (
-          <div className="fixed bottom-7 left-1/2 -translate-x-1/2 bg-rose-900 text-white rounded-xl py-3 px-5 flex items-center gap-3 shadow-xl z-[300] min-w-[340px] border border-rose-700">
-            <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold truncate">#{selectedAreaReport.id} · {selectedAreaReport.activity_type?.description ?? "-"} · {formatDate(selectedAreaReport.created_at)}</div>
-              <div className="text-xs text-rose-200 mt-0.5"><span className="text-rose-300">● Rejected</span></div>
-            </div>
-            {canEditSelected(selectedAreaReport) && (
-              <BtnDefault size="sm" onClick={handleEditClick} className="shadow-lg">Perbaiki</BtnDefault>
-            )}
-            <button onClick={handleCloseAreaReport} className="bg-white/10 hover:bg-white/20 w-7 h-7 rounded-lg flex items-center justify-center"><HiOutlineX className="w-3.5 h-3.5" /></button>
-          </div>
-        )}
-        {selectedAreaReport && selectedAreaReport.status === 'solved' && (
+        {selectedAreaReport && selectedAreaReport.finished_date && (
           <div className="fixed bottom-7 left-1/2 -translate-x-1/2 bg-slate-800 text-white rounded-xl py-3 px-5 flex items-center gap-4 shadow-xl z-[300] min-w-[340px] border border-slate-700">
             <div className="flex-1 min-w-0">
               <div className="text-[13px] font-semibold truncate">#{selectedAreaReport.id} · {selectedAreaReport.activity_type?.description ?? "-"} · {formatDate(selectedAreaReport.created_at)}</div>
-              <div className="text-xs text-emerald-400 mt-0.5"><span className="text-emerald-400">✓ Solved {formatDate(selectedAreaReport.finished_date)}</span></div>
+              <div className="text-xs text-slate-400 mt-0.5"><span className="text-emerald-400">✓ Solved {formatDate(selectedAreaReport.finished_date)}</span></div>
             </div>
             {isReportEditable(selectedAreaReport) && (
               <BtnDefault size="sm" onClick={() => openEditReport(selectedAreaReport)} className="shadow-lg bg-slate-100 text-slate-900 hover:bg-slate-200">Edit</BtnDefault>
@@ -522,50 +539,35 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
         </div>
         <Pagination links={areaReports.links} center />
 
-        {selectedAreaReport && selectedAreaReport.status === 'pending' && (
-          <div className="fixed bottom-20 left-3 right-3 bg-slate-800 text-white rounded-2xl py-3 px-4 flex flex-wrap items-center gap-3 shadow-xl z-[300] border border-slate-700">
+        {selectedAreaReport && !selectedAreaReport.finished_date && (
+          <div className="fixed bottom-20 left-3 right-3 bg-slate-800 text-white rounded-2xl py-3 px-4 flex items-center gap-3 shadow-xl z-[300] border border-slate-700">
             <div className="flex-1 min-w-0">
               <div className="text-[13px] font-semibold truncate">#{selectedAreaReport.id} · {selectedAreaReport.activity_type?.description ?? "-"}</div>
               <div className="text-[11px] text-slate-400 mt-0.5"><span className="text-amber-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" /> Pending</span></div>
             </div>
-            {canEditSelected(selectedAreaReport) && (
-              <button onClick={handleEditClick} className="px-4 py-2 bg-blue-600 rounded-xl text-[13px] font-semibold shadow-md active:bg-blue-700 transition-colors">Edit</button>
+            {canSolve && (
+              <button onClick={handleSolveClick} className="px-4 py-2 bg-blue-600 rounded-xl text-[13px] font-semibold shadow-md active:bg-blue-700 transition-colors">Solve</button>
             )}
-            {canRejectSelected(selectedAreaReport) && (
-              <button onClick={handleRejectClick} className="px-4 py-2 bg-rose-600 rounded-xl text-[13px] font-semibold shadow-md active:bg-rose-700 transition-colors">Reject</button>
+            {isReportEditable(selectedAreaReport) && (
+              <button onClick={() => openEditReport(selectedAreaReport)} className="px-4 py-2 bg-slate-100 text-slate-900 rounded-xl text-[13px] font-semibold shadow-md hover:bg-slate-200 transition-colors">Edit</button>
             )}
-            {canSolveSelected(selectedAreaReport) && (
-              <button onClick={handleSolveClick} className="px-4 py-2 bg-emerald-600 rounded-xl text-[13px] font-semibold shadow-md active:bg-emerald-700 transition-colors">Solve</button>
-            )}
-            {canDeleteSelected(selectedAreaReport) && (
-              <button onClick={handleDeleteReport} className="px-4 py-2 bg-white/10 text-red-200 rounded-xl text-[13px] font-semibold shadow-md hover:bg-white/20">Delete</button>
+            {isReportDeletable(selectedAreaReport) && (
+              <button onClick={() => confirmDeleteReport(selectedAreaReport)} className="px-4 py-2 bg-red-600 rounded-xl text-[13px] font-semibold shadow-md active:bg-red-700 transition-colors">Delete</button>
             )}
             <button onClick={handleCloseAreaReport} className="bg-white/10 hover:bg-white/20 w-8 h-8 rounded-xl flex items-center justify-center shrink-0"><HiOutlineX className="w-4 h-4" /></button>
           </div>
         )}
-        {selectedAreaReport && selectedAreaReport.status === 'rejected' && (
-          <div className="fixed bottom-20 left-3 right-3 bg-rose-900 text-white rounded-2xl py-3 px-4 flex flex-wrap items-center gap-3 shadow-xl z-[300] border border-rose-700">
-            <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold truncate">#{selectedAreaReport.id} · {selectedAreaReport.activity_type?.description ?? "-"}</div>
-              <div className="text-[11px] text-rose-200 mt-0.5"><span className="text-rose-300 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-rose-300 inline-block" /> Rejected</span></div>
-            </div>
-            {canEditSelected(selectedAreaReport) && (
-              <button onClick={handleEditClick} className="px-4 py-2 bg-blue-600 rounded-xl text-[13px] font-semibold shadow-md active:bg-blue-700 transition-colors">Perbaiki</button>
-            )}
-            {canDelete && (
-              <button onClick={handleDeleteReport} className="px-4 py-2 bg-white/10 text-red-200 rounded-xl text-[13px] font-semibold shadow-md hover:bg-white/20">Delete</button>
-            )}
-            <button onClick={handleCloseAreaReport} className="bg-white/10 hover:bg-white/20 w-8 h-8 rounded-xl flex items-center justify-center shrink-0"><HiOutlineX className="w-4 h-4" /></button>
-          </div>
-        )}
-        {selectedAreaReport && selectedAreaReport.status === 'solved' && (
+        {selectedAreaReport && selectedAreaReport.finished_date && (
           <div className="fixed bottom-20 left-3 right-3 bg-slate-800 text-white rounded-2xl py-3 px-4 flex items-center gap-3 shadow-xl z-[300] border border-slate-700">
             <div className="flex-1 min-w-0">
               <div className="text-[13px] font-semibold truncate">#{selectedAreaReport.id} · {selectedAreaReport.activity_type?.description ?? "-"}</div>
-              <div className="text-[11px] text-emerald-400 mt-0.5"><span className="text-emerald-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" /> Solved {formatDate(selectedAreaReport.finished_date)}</span></div>
+              <div className="text-[11px] text-slate-400 mt-0.5"><span className="text-emerald-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" /> Solved {formatDate(selectedAreaReport.finished_date)}</span></div>
             </div>
-            {canDelete && (
-              <button onClick={handleDeleteReport} className="px-4 py-2 bg-white/10 text-red-200 rounded-xl text-[13px] font-semibold shadow-md hover:bg-white/20">Delete</button>
+            {isReportEditable(selectedAreaReport) && (
+              <button onClick={() => openEditReport(selectedAreaReport)} className="px-4 py-2 bg-slate-100 text-slate-900 rounded-xl text-[13px] font-semibold shadow-md hover:bg-slate-200 transition-colors">Edit</button>
+            )}
+            {isReportDeletable(selectedAreaReport) && (
+              <button onClick={() => confirmDeleteReport(selectedAreaReport)} className="px-4 py-2 bg-red-600 rounded-xl text-[13px] font-semibold shadow-md active:bg-red-700 transition-colors">Delete</button>
             )}
             <button onClick={handleCloseAreaReport} className="bg-white/10 hover:bg-white/20 w-8 h-8 rounded-xl flex items-center justify-center shrink-0"><HiOutlineX className="w-4 h-4" /></button>
           </div>
@@ -617,10 +619,8 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
         </div>
       )}
 
-      <ReportForm isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} areas={areas} activities={activities} users={users} />
-      <ReportForm isOpen={showEditModal} onClose={handleCloseEditModal} report={selectedAreaReport} areas={areas} activities={activities} users={users} />
+      <ReportForm isOpen={isModalOpen} onClose={handleCloseReportModal} report={editReport} areas={areas} activities={activities} users={users} />
       <SolveForm isOpen={showSolveModal} onClose={handleCloseSolveModal} reportId={selectedAreaReport?.id} />
-      <RejectForm isOpen={showRejectModal} onClose={handleCloseRejectModal} reportId={selectedAreaReport?.id} />
       <ExportForm isOpen={showExportModal} onClose={() => setShowExportModal(false)} areas={exportAreas} activities={activities} users={exportUsers} canExportAll={canExportAll} canExportArea={canExportArea} canExportOwn={canExportOwn} assignedAreas={assignedAreas} />
     </AppLayout>
   );
