@@ -97,6 +97,7 @@ class RoleSeeder extends Seeder
             'reports.view.all',
             'reports.create',
             'reports.edit.all',
+            'reports.delete',
             'reports.solve.all',
             'areas.view',
             'activities.view',

@@ -99,7 +99,9 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   const canExportArea = can("reports.solve.own.area");
   const canExportOwn = can("reports.view.own");
   const canDelete = can("reports.delete");
-  const isAdmin = auth?.roles?.some((role) => role.name === "ADMIN" || role.name === "SUPER_ADMIN");
+  const isAdmin = auth?.roles?.some((role) => role === "ADMIN" || role === "SUPER_ADMIN");
+  const isSuperAdmin = auth?.roles?.some((role) => role === "SUPER_ADMIN");
+  const isManager = auth?.roles?.some((role) => role === "MANAGER");
   const assignedAreas = areas.filter((a) => a.pic_user_id == auth.id);
   const canExport = canExportAll || canExportArea || canExportOwn;
   const exportAreas = canExportAll ? areas : assignedAreas;
@@ -125,8 +127,10 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
 
   const isReportDeletable = (report) => {
     if (!canDelete || !report) return false;
-    if (isAdmin) return true;
-    if (report.author_id === auth?.id && report.finished_date === null) return true;
+    if (isSuperAdmin) return true;
+    if (report.finished_date !== null) return false;
+    if (isAdmin || isManager) return true;
+    if (report.author_id === auth?.id) return true;
     if (assignedAreas.some((areaRow) => areaRow.id === report.area_id)) return true;
     return false;
   };
