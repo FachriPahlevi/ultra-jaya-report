@@ -17,18 +17,12 @@ class Report extends Model
         'issue',
         'photo_before',
         'photo_after',
-        'status',
-        'rejected_comment',
-        'rejected_by',
-        'rejected_at',
-        'correction_comment',
         'is_content_edited',
         'finished_date'
     ];
     
     protected $casts = [
         'finished_date' => 'datetime',
-        'rejected_at' => 'datetime',
         'is_content_edited' => 'boolean'
     ];
     

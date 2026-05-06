@@ -21,8 +21,8 @@ class DashboardController extends Controller
         if ($user->can('reports.view.all')) {
             // SUPER_ADMIN, ADMIN, MANAGER bisa lihat semua report
             $totalReports = Report::count();
-            $pendingReports = Report::where('status', 'pending')->count();
-            $solvedReports = Report::where('status', 'solved')->count();
+            $pendingReports = Report::whereNull('finished_date')->count();
+            $solvedReports = Report::whereNotNull('finished_date')->count();
             $myReports = Report::where('author_id', $userId)->count();
             
             $topArea = Report::select('area_id', DB::raw('count(*) as total'))
@@ -45,7 +45,7 @@ class DashboardController extends Controller
                       });
                 })->count();
                 
-            $pendingReports = Report::where('status', 'pending')
+            $pendingReports = Report::whereNull('finished_date')
                 ->where(function($q) use ($userId) {
                     $q->where('author_id', $userId)
                       ->orWhereHas('area', function($q2) use ($userId) {
@@ -53,7 +53,7 @@ class DashboardController extends Controller
                       });
                 })->count();
                 
-            $solvedReports = Report::where('status', 'solved')
+            $solvedReports = Report::whereNotNull('finished_date')
                 ->where(function($q) use ($userId) {
                     $q->where('author_id', $userId)
                       ->orWhereHas('area', function($q2) use ($userId) {
@@ -89,8 +89,8 @@ class DashboardController extends Controller
         } else {
             // USER biasa: hanya lihat report sendiri
             $totalReports = Report::where('author_id', $userId)->count();
-            $pendingReports = Report::where('author_id', $userId)->where('status', 'pending')->count();
-            $solvedReports = Report::where('author_id', $userId)->where('status', 'solved')->count();
+            $pendingReports = Report::where('author_id', $userId)->whereNull('finished_date')->count();
+            $solvedReports = Report::where('author_id', $userId)->whereNotNull('finished_date')->count();
             $myReports = $totalReports;
             
             $topArea = Report::select('area_id', DB::raw('count(*) as total'))
@@ -111,7 +111,7 @@ class DashboardController extends Controller
             return [
                 'id' => $report->id,
                 'issue' => $report->issue,
-                'status' => $report->status ?? ($report->finished_date ? 'solved' : 'pending'),
+                'status' => $report->finished_date ? 'solved' : 'pending',
                 'area' => $report->area?->area ?? '-',
                 'submitted_by' => $report->author?->name ?? 'Unknown',
                 'created_at' => $report->created_at,

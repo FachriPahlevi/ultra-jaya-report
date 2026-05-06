@@ -24,10 +24,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{report}/solve', [ReportController::class, 'solve'])
             ->name('reports.solve')
             ->middleware('role_or_permission:reports.solve.own.area|reports.solve.all');
-
-        Route::post('/{report}/reject', [ReportController::class, 'reject'])
-            ->name('reports.reject')
-            ->middleware('role_or_permission:reports.solve.own.area|reports.solve.all');
         
         Route::get('/{report}', [ReportController::class, 'show'])
             ->name('reports.show')
