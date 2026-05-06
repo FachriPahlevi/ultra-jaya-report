@@ -17,7 +17,7 @@ const getInitials = (name) =>
     .map((w) => w[0]?.toUpperCase())
     .join("") ?? "U";
 
-const UsersTable = ({ users, onEdit, onDelete, onAdd }) => (
+const UsersTable = ({ users, onEdit, onDelete, onAdd, auth }) => (
   <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
     <div className="px-4 sm:px-6 py-4 border-b border-border bg-muted/30 flex items-center justify-between">
       <h2 className="text-[15px] font-bold text-foreground m-0">System Users</h2>
@@ -38,7 +38,7 @@ const UsersTable = ({ users, onEdit, onDelete, onAdd }) => (
           </tr>
         </thead>
         <tbody>
-          {users.data.map((user, i) => (
+          {users.data.filter(user => user.roles[0]?.name !== "SUPER_ADMIN" || user.id === auth.user.id).map((user, i) => (
             <tr key={user.id} className="border-b border-border/50 hover:bg-muted/30">
               <td className="p-3 text-xs text-muted-foreground font-mono">{(users.meta?.from ?? 1) + i}</td>
               <td className="p-3">
@@ -69,7 +69,7 @@ const UsersTable = ({ users, onEdit, onDelete, onAdd }) => (
       </table>
     </div>
     <div className="block sm:hidden divide-y divide-border">
-      {users.data.map((user, i) => (
+      {users.data.filter(user => user.roles[0]?.name !== "SUPER_ADMIN" || user.id === auth.user.id).map((user, i) => (
         <div key={user.id} className="p-4 hover:bg-muted/30 transition-colors">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3">
@@ -108,7 +108,7 @@ const UsersTable = ({ users, onEdit, onDelete, onAdd }) => (
   </div>
 );
 
-const RolesTable = ({ roles, onAdd, onEdit, onDelete, onManagePermissions }) => (
+const RolesTable = ({ roles, onAdd, onEdit, onDelete, onManagePermissions, isSuperadmin }) => (
   <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
     <div className="px-4 sm:px-6 py-4 border-b border-border bg-muted/30 flex items-center justify-between">
       <h2 className="text-[15px] font-bold text-foreground m-0">Roles</h2>
@@ -127,7 +127,7 @@ const RolesTable = ({ roles, onAdd, onEdit, onDelete, onManagePermissions }) => 
           </tr>
         </thead>
         <tbody>
-          {roles.map((role) => (
+          {roles.filter(role => isSuperadmin || role.name !== "SUPER_ADMIN").map((role) => (
             <tr key={role.id} className="border-b border-border/50 hover:bg-muted/30">
               <td className="p-3 font-medium text-foreground">{role.name}</td>
               <td className="p-3">
@@ -166,7 +166,7 @@ const RolesTable = ({ roles, onAdd, onEdit, onDelete, onManagePermissions }) => 
       </table>
     </div>
     <div className="block sm:hidden divide-y divide-border">
-      {roles.map((role) => (
+      {roles.filter(role => isSuperadmin || role.name !== "SUPER_ADMIN").map((role) => (
         <div key={role.id} className="p-4 hover:bg-muted/30 transition-colors">
           <div className="mb-2">
             <div className="font-semibold text-foreground text-sm">{role.name}</div>
@@ -206,7 +206,7 @@ const RolesTable = ({ roles, onAdd, onEdit, onDelete, onManagePermissions }) => 
   </div>
 );
 
-export default function Settings({ users, roles, permissions }) {
+export default function Settings({ users, auth, roles, permissions }) {
   const { setStatusModalProps } = useStatusModal();
   const [showUserModal, setShowUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -214,7 +214,7 @@ export default function Settings({ users, roles, permissions }) {
   const [selectedRole, setSelectedRole] = useState(null);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [roleForPermissions, setRoleForPermissions] = useState(null);
-
+  const isSuperadmin = auth.user.roles[0] === "SUPER_ADMIN";
   const showStatusModal = (type, title, message) =>
     setStatusModalProps({
       isOpen: true,
@@ -326,6 +326,7 @@ export default function Settings({ users, roles, permissions }) {
             setRoleForPermissions(role);
             setShowPermissionsModal(true);
           }}
+          isSuperadmin={isSuperadmin}
         />
 
         <UsersTable
@@ -339,10 +340,11 @@ export default function Settings({ users, roles, permissions }) {
             setShowUserModal(true);
           }}
           onDelete={confirmDeleteUser}
+          auth={auth}
         />
       </div>
 
-      <UserForm isOpen={showUserModal} onClose={() => setShowUserModal(false)} user={selectedUser} roles={roles} />
+      <UserForm isOpen={showUserModal} onClose={() => setShowUserModal(false)} user={selectedUser} roles={roles} isSuperadmin={isSuperadmin} />
       <RoleForm isOpen={showRoleModal} onClose={() => setShowRoleModal(false)} role={selectedRole} />
       <PermissionsForm isOpen={showPermissionsModal} onClose={() => setShowPermissionsModal(false)} role={roleForPermissions} permissions={permissions} />
     </AppLayout>
