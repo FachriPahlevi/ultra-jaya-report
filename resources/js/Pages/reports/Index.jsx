@@ -105,10 +105,11 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   const exportAreas = canExportAll ? areas : assignedAreas;
   const exportUsers = canExportAll ? users : [];
   const reports = areaReports.data ?? [];
-
+  const isFinished = selectedAreaReport?.finished_date !== null;
   const isReportEditable = (report) => {
-    if (!canEdit || !report) return false;
+    if (!canEdit || !report || isFinished) return false;
     if (can("reports.edit.all")) return true;
+
     return can("reports.edit.own") && report.author_id === auth?.id;
   };
 
