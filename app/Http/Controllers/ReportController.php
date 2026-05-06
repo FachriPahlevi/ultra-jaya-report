@@ -217,8 +217,20 @@ class ReportController extends Controller
 
     public function destroy(Report $report)
     {
-        if (!Auth::user()->can('reports.delete')) {
+        $user = Auth::user();
+
+        if (! $user->can('reports.delete')) {
             return back()->with('error', 'Anda tidak memiliki izin untuk menghapus laporan');
+        }
+
+        if ($user->hasRole('SUPER_ADMIN') || $user->hasRole('ADMIN')) {
+            // Admin and Super Admin can delete any report.
+        } elseif ($report->author_id === $user->id && $report->finished_date === null) {
+            // User can delete own pending reports.
+        } elseif ($user->can('reports.solve.own.area') && $report->area->pic_user_id === $user->id) {
+            // Supervisor can delete reports in assigned area.
+        } else {
+            return back()->with('error', 'Anda tidak memiliki izin untuk menghapus laporan ini');
         }
 
         if ($report->photo_before) {

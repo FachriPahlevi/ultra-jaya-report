@@ -6,10 +6,14 @@ import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
 import { HiOutlineX } from "react-icons/hi";
 
-export default function PermissionsForm({ isOpen, onClose, role, permissions }) {
+export default function PermissionsForm({ isOpen, onClose, role, permissions, auth }) {
   const { setStatusModalProps } = useStatusModal();
   const [processing, setProcessing] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState([]);
+  
+  // Check if current user is superadmin
+  const isSuperadmin = auth?.user?.roles?.[0] === "SUPER_ADMIN";
+  const isFormDisabled = !isSuperadmin;
 
   useEffect(() => {
     if (role && isOpen) {
@@ -54,10 +58,12 @@ export default function PermissionsForm({ isOpen, onClose, role, permissions }) 
   };
 
   const togglePermission = (permission) => {
+    if (isFormDisabled) return;
     setSelectedPermissions((prev) => (prev.includes(permission) ? prev.filter((p) => p !== permission) : [...prev, permission]));
   };
 
   const toggleGroup = (groupName) => {
+    if (isFormDisabled) return;
     const groupPermissions = permissionGroups[groupName].map((p) => p.name);
     const allSelected = groupPermissions.every((p) => selectedPermissions.includes(p));
 
@@ -75,6 +81,7 @@ export default function PermissionsForm({ isOpen, onClose, role, permissions }) 
   };
 
   const toggleAll = () => {
+    if (isFormDisabled) return;
     const allPermissions = Object.values(permissionGroups)
       .flat()
       .map((p) => p.name);
@@ -130,9 +137,16 @@ export default function PermissionsForm({ isOpen, onClose, role, permissions }) 
         </div>
 
         <div className="overflow-y-auto flex-1 p-4 sm:p-6">
+          {isFormDisabled && (
+            <div className="mb-4 p-3 rounded-md bg-yellow-50 border border-yellow-200">
+              <p className="text-xs sm:text-sm text-yellow-800 font-medium">
+                ⚠️ Admin tidak bisa mengubah permission. Hanya Superadmin yang dapat mengubah permission.
+              </p>
+            </div>
+          )}
           <div className="mb-6 pb-4 border-b border-border">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-              <button onClick={toggleAll} className="px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-white w-full sm:w-auto">
+              <button onClick={toggleAll} disabled={isFormDisabled} className="px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-white w-full sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed">
                 {selectedPermissions.length === Object.values(permissionGroups).flat().length ? "Deselect All" : "Select All"}
               </button>
               <span className="text-xs text-muted-foreground text-center sm:text-left">
@@ -150,9 +164,10 @@ export default function PermissionsForm({ isOpen, onClose, role, permissions }) 
                 <div className="flex items-center gap-3 mb-3">
                   <button
                     onClick={() => toggleGroup(group)}
+                    disabled={isFormDisabled}
                     className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
                       isFullySelected ? "bg-primary border-primary text-white" : isPartiallySelected ? "bg-primary/20 border-primary" : "border-border hover:border-primary"
-                    }`}
+                    } ${isFormDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
                   >
                     {isFullySelected && (
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -173,12 +188,13 @@ export default function PermissionsForm({ isOpen, onClose, role, permissions }) 
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 ml-0 sm:ml-7">
                   {perms.map((perm) => (
-                    <label key={perm.id} className="flex items-center gap-2 cursor-pointer group hover:bg-muted/50 p-1.5 sm:p-1 rounded">
+                    <label key={perm.id} className={`flex items-center gap-2 cursor-pointer group hover:bg-muted/50 p-1.5 sm:p-1 rounded ${isFormDisabled ? "opacity-50" : ""}`}>
                       <input
                         type="checkbox"
                         checked={selectedPermissions.includes(perm.name)}
                         onChange={() => togglePermission(perm.name)}
-                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer shrink-0"
+                        disabled={isFormDisabled}
+                        className="w-4 h-4 rounded border-border text-primary focus:ring-primary cursor-pointer shrink-0 disabled:cursor-not-allowed"
                       />
                       <span className="text-[12px] sm:text-[13px] text-foreground group-hover:text-primary transition-colors break-words">{perm.name}</span>
                     </label>
@@ -193,7 +209,7 @@ export default function PermissionsForm({ isOpen, onClose, role, permissions }) 
           <BtnDefault outline onClick={onClose} className="w-full sm:flex-1 order-2 sm:order-1">
             Cancel
           </BtnDefault>
-          <BtnDefault onClick={handleSave} loading={processing} className="w-full sm:flex-[2] order-1 sm:order-2">
+          <BtnDefault onClick={handleSave} loading={processing} disabled={isFormDisabled} className="w-full sm:flex-[2] order-1 sm:order-2 disabled:opacity-50 disabled:cursor-not-allowed">
             Save Permissions
           </BtnDefault>
         </div>

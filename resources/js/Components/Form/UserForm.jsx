@@ -9,7 +9,7 @@ import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
 import { HiOutlineX } from "react-icons/hi";
 
-export default function UserForm({ isOpen, onClose, user, roles }) {
+export default function UserForm({ isOpen, onClose, user, roles, isSuperadmin }) {
     const { setStatusModalProps } = useStatusModal();
     const [processing, setProcessing] = useState(false);
     const [form, setForm] = useState({
@@ -19,10 +19,12 @@ export default function UserForm({ isOpen, onClose, user, roles }) {
         password: "",
     });
 
-    const roleOptions = roles.map((role) => ({
-        label: role.name,
-        value: role.name,
-    }));
+    const roleOptions = roles
+        .filter(role => isSuperadmin || role.name !== "SUPER_ADMIN")
+        .map((role) => ({
+            label: role.name,
+            value: role.name,
+        }));
 
     const showStatusModal = (type, title, message) => {
         setStatusModalProps({
