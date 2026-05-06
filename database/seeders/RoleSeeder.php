@@ -82,6 +82,7 @@ class RoleSeeder extends Seeder
             'users.promote',
             'reports.view.all',
             'reports.create',
+            'reports.delete',
             'reports.solve.all',
             'reports.delete',
             'settings.view',
@@ -110,6 +111,7 @@ class RoleSeeder extends Seeder
             'reports.view.own',
             'reports.create',
             'reports.edit.own',
+            'reports.delete',
             'reports.solve.own.area',
             'areas.view',
             'activities.view',
@@ -122,6 +124,7 @@ class RoleSeeder extends Seeder
             'reports.view.own',
             'reports.create',
             'reports.edit.own',
+            'reports.delete',
         ]);
     }
 }

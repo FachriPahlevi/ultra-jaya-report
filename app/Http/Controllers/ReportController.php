@@ -274,7 +274,9 @@ class ReportController extends Controller
 
     public function destroy(Report $report)
     {
-        if (!Auth::user()->can('reports.delete')) {
+        $user = Auth::user();
+
+        if (! $user->can('reports.delete')) {
             return back()->with('error', 'Anda tidak memiliki izin untuk menghapus laporan');
         }
 

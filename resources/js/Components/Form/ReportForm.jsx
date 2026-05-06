@@ -1,9 +1,10 @@
-import { useForm, usePage } from "@inertiajs/react";
+import { useForm, usePage, router } from "@inertiajs/react";
 import { useState, useEffect } from "react";
 import InputText from "@/Components/Input/InputText";
 import InputDropdown from "@/Components/Input/InputDropdown";
 import BtnDefault from "@/Components/Button/BtnDefault";
 import ModalOverlay from "@/Components/Modal/ModalOverlay";
+import ExpandableImage from "@/Components/UI/ExpandableImage";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
 import { HiOutlinePhotograph, HiOutlineX } from "react-icons/hi";
 
@@ -11,8 +12,12 @@ export default function ReportForm({ isOpen, onClose, report = null, areas = [],
   const { setStatusModalProps } = useStatusModal();
   const { auth } = usePage().props;
   const currentUser = auth?.user;
-  const userRole = currentUser?.roles?.[0]?.toLowerCase() || "user";
+  const firstRole = currentUser?.roles?.[0];
+  const userRole = firstRole?.name?.toLowerCase?.() || (typeof firstRole === "string" ? firstRole.toLowerCase() : "user");
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [selectedAuthor, setSelectedAuthor] = useState(null);
+  const [selectedArea, setSelectedArea] = useState(null);
+  const [selectedActivity, setSelectedActivity] = useState(null);
 
   const { data, setData, post, put, processing, errors, reset } = useForm({
     author_id: currentUser?.id || "",
@@ -43,6 +48,9 @@ export default function ReportForm({ isOpen, onClose, report = null, areas = [],
     } else {
       reset();
       setData("author_id", currentUser?.id || "");
+      setSelectedAuthor(null);
+      setSelectedArea(null);
+      setSelectedActivity(null);
       setPhotoPreview(null);
     }
   }, [isOpen, report]);
@@ -66,14 +74,17 @@ export default function ReportForm({ isOpen, onClose, report = null, areas = [],
 
   const handleAuthorChange = (item) => {
     setData("author_id", item.value);
+    setSelectedAuthor(item);
   };
 
   const handleTypeActivityChange = (item) => {
     setData("type_activity", item.value);
+    setSelectedActivity(item);
   };
 
   const handleAreaActivityChange = (item) => {
     setData("area_activity", item.value);
+    setSelectedArea(item);
   };
 
   const handleActivityChange = (e) => {
@@ -130,8 +141,8 @@ export default function ReportForm({ isOpen, onClose, report = null, areas = [],
     <ModalOverlay isOpen={isOpen} onClose={handleCancel}>
       <div className="bg-card rounded-2xl border border-border shadow-xl w-full max-w-[500px] mx-auto">
         <div className="sticky top-0 bg-card border-b border-border px-4 sm:px-6 py-4 flex items-center justify-between rounded-t-2xl">
-          <h2 className="text-lg sm:text-xl font-bold text-foreground tracking-[-0.5px] m-0">Create Issue Report</h2>
-          <button onClick={handleCancel} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md shrink-0" aria-label="Close">
+          <button onClick={handleCancel} className="flex items-center gap-2 text-foreground hover:text-destructive transition-colors">
+            <h2 className="text-lg sm:text-xl font-bold text-foreground tracking-[-0.5px] m-0">{report ? "Edit Issue Report" : "Create Issue Report"}</h2>
             <HiOutlineX className="w-5 h-5" />
           </button>
         </div>
@@ -139,7 +150,7 @@ export default function ReportForm({ isOpen, onClose, report = null, areas = [],
         <div className="p-4 sm:p-6 max-h-[calc(90vh-80px)] overflow-y-auto">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 sm:gap-5">
             {canChangeAuthor ? (
-              <InputDropdown id="author_id" label="Name" itemList={userOptions} placeholder="Select user..." required setObject={handleAuthorChange} error={errors.author_id} />
+              <InputDropdown id="author_id" label="Name" itemList={userOptions} placeholder="Select user..." required setObject={handleAuthorChange} object={selectedAuthor} error={errors.author_id} />
             ) : (
               <>
                 <InputText label="Name" value={currentUser?.name ?? ""} disabled />
@@ -157,6 +168,7 @@ export default function ReportForm({ isOpen, onClose, report = null, areas = [],
               placeholder="Select area..."
               required
               setObject={handleAreaActivityChange}
+              object={selectedArea}
               error={errors.area_activity}
             />
 
@@ -170,6 +182,7 @@ export default function ReportForm({ isOpen, onClose, report = null, areas = [],
               placeholder="Select type..."
               required
               setObject={handleTypeActivityChange}
+              object={selectedActivity}
               error={errors.type_activity}
             />
 
@@ -208,7 +221,7 @@ export default function ReportForm({ isOpen, onClose, report = null, areas = [],
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                 <label className="text-[13px] font-semibold text-foreground">
-                  Photo <span className="text-destructive">*</span>
+                  Photo {report ? <span className="text-[11px] text-muted-foreground font-normal">(optional saat edit)</span> : <span className="text-destructive">*</span>}
                 </label>
                 <label
                   htmlFor="photo"
@@ -227,7 +240,9 @@ export default function ReportForm({ isOpen, onClose, report = null, areas = [],
                 }}
               >
                 {photoPreview ? (
-                  <img src={photoPreview} alt="Preview" className="w-full max-h-[240px] object-cover" />
+                  <ExpandableImage src={photoPreview} alt="Preview" className="w-full max-h-[240px] object-cover" />
+                ) : report?.photo_before ? (
+                  <ExpandableImage src={`/storage/${report.photo_before}`} alt="Existing" className="w-full max-h-[240px] object-cover" />
                 ) : (
                   <div className="text-center text-muted-foreground py-6">
                     <HiOutlinePhotograph className="w-9 h-9 mx-auto mb-2 opacity-40" />
@@ -243,7 +258,7 @@ export default function ReportForm({ isOpen, onClose, report = null, areas = [],
                 Cancel
               </BtnDefault>
               <BtnDefault type="submit" loading={processing} className="w-full sm:flex-[2] order-1 sm:order-2">
-                {processing ? "Submitting..." : "Submit Report"}
+                {processing ? (report ? "Updating..." : "Submitting...") : report ? "Update Report" : "Submit Report"}
               </BtnDefault>
             </div>
           </form>

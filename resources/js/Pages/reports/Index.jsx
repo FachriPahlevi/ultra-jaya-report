@@ -68,6 +68,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   const permissions = props.auth?.user?.permissions || [];
   const auth = props.auth?.user;
   const [selectedAreaReport, setSelectedAreaReport] = useState(null);
+  const [editReport, setEditReport] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showSolveModal, setShowSolveModal] = useState(false);
   const [showRejectModal, setShowRejectModal] = useState(false);
@@ -103,8 +104,10 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   const canExportAll = can("reports.view.all");
   const canExportArea = can("reports.solve.own.area");
   const canExportOwn = can("reports.view.own");
-  const canExport = canExportAll || canExportArea || canExportOwn;
+  const canDelete = can("reports.delete");
+  const isAdmin = auth?.roles?.some((role) => role.name === "ADMIN" || role.name === "SUPER_ADMIN");
   const assignedAreas = areas.filter((a) => a.pic_user_id == auth.id);
+  const canExport = canExportAll || canExportArea || canExportOwn;
   const exportAreas = canExportAll ? areas : assignedAreas;
   const exportUsers = canExportAll ? users : [];
   const reports = areaReports.data ?? [];
@@ -314,6 +317,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
                   {["No", "Date", "Submitted By", "Type"].map((col) => (
                     <th key={col} className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase whitespace-nowrap">{col}</th>
                   ))}
+                  <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase whitespace-nowrap">Area</th>
                   <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase min-w-[220px]">Activity / Issue</th>
                   <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase">Before</th>
                   <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase">After</th>
@@ -323,7 +327,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
               </thead>
               <tbody className="divide-y divide-border/60">
                 {reports.length === 0 ? (
-                  <tr><td colSpan={9} className="py-16 text-center text-muted-foreground text-[13px]">No data found</td></tr>
+                  <tr><td colSpan={10} className="py-16 text-center text-muted-foreground text-[13px]">No data found</td></tr>
                 ) : (
                   reports.map((report, index) => {
                     const isSolved = !!report.finished_date;
@@ -341,6 +345,9 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
                         <td className="px-4 py-3.5 whitespace-nowrap">
                           <p className="text-[12.5px] font-semibold text-foreground">{report.author?.name ?? "-"}</p>
                           {report.author?.role && <p className="text-[11px] text-muted-foreground mt-0.5">{report.author.role}</p>}
+                        </td>
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          <span className="inline-block px-2 py-1 rounded-xl bg-slate-100 text-slate-600 text-[11px] font-semibold">{report.area?.area ?? "-"}</span>
                         </td>
                         <td className="px-4 py-3.5">
                           <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[11.5px] font-semibold whitespace-nowrap">
@@ -435,6 +442,12 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
               <div className="text-[13px] font-semibold truncate">#{selectedAreaReport.id} · {selectedAreaReport.activity_type?.description ?? "-"} · {formatDate(selectedAreaReport.created_at)}</div>
               <div className="text-xs text-emerald-400 mt-0.5"><span className="text-emerald-400">✓ Solved {formatDate(selectedAreaReport.finished_date)}</span></div>
             </div>
+            {isReportEditable(selectedAreaReport) && (
+              <BtnDefault size="sm" onClick={() => openEditReport(selectedAreaReport)} className="shadow-lg bg-slate-100 text-slate-900 hover:bg-slate-200">Edit</BtnDefault>
+            )}
+            {isReportDeletable(selectedAreaReport) && (
+              <button onClick={() => confirmDeleteReport(selectedAreaReport)} className="px-4 py-2 bg-red-600 rounded-xl text-[13px] font-semibold shadow-lg active:bg-red-700 transition-colors">Delete</button>
+            )}
             <button onClick={handleCloseAreaReport} className="bg-white/10 hover:bg-white/20 w-7 h-7 rounded-lg flex items-center justify-center"><HiOutlineX className="w-3.5 h-3.5" /></button>
           </div>
         )}

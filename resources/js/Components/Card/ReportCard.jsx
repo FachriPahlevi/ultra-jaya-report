@@ -148,7 +148,10 @@ export default function ReportCard({ report, isSelected, onSelect }) {
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-[14px] font-semibold text-gray-900 leading-tight truncate">{report.author?.name ?? "-"}</p>
-                <p className="text-[11px] text-gray-400 mt-0.5">{formatDate(report.created_at)}</p>
+                <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[11px] text-gray-400">
+                  <span>{formatDate(report.created_at)}</span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{report.area?.area ?? "-"}</span>
+                </div>
               </div>
               <div className="shrink-0">
                 {isSolved ? (
