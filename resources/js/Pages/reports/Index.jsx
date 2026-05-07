@@ -93,18 +93,21 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
 
   const can = (permission) => permissions.includes(permission);
   const canCreate = can("reports.create");
-  const canSolve = can("reports.solve.all") || can("reports.solve.own.area");
+  const canViewAll = can("reports.view.all");
+  const canViewOwn = can("reports.view.own");
+  const canSolveOwnArea = can("reports.solve.own.area");
+  const canSolve = can("reports.solve.all") || canSolveOwnArea;
   const canEdit = can("reports.edit.all") || can("reports.edit.own");
-  const canExportAll = can("reports.view.all");
-  const canExportArea = can("reports.solve.own.area");
-  const canExportOwn = can("reports.view.own");
+  const canExportAll = canViewAll;
+  const canExportArea = canSolveOwnArea;
+  const canExportOwn = canViewOwn;
   const canDelete = can("reports.delete.all") || can("reports.delete.own");
   const isAdmin = auth?.roles?.some((role) => role === "ADMIN" || role === "SUPER_ADMIN");
   const isSuperAdmin = auth?.roles?.some((role) => role === "SUPER_ADMIN");
   const isManager = auth?.roles?.some((role) => role === "MANAGER");
   const assignedAreas = areas.filter((a) => a.pic_user_id == auth.id);
-    const canExport = canExportAll || canExportArea || canExportOwn;
-  const exportAreas = canExportAll ? areas : assignedAreas;
+  const canExport = canExportAll || canExportArea || canExportOwn;
+  const exportAreas = canExportAll ? areas : canExportArea ? assignedAreas : [];
   const exportUsers = canExportAll ? users : [];
   const reports = areaReports.data ?? [];
   const isFinished = selectedAreaReport?.finished_date !== null;
@@ -225,7 +228,21 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   const typeOptions = [{ label: "All Activities", value: "" }, ...activities.map((a) => ({ label: a.description, value: a.id.toString() }))];
   const statusOptions = [{ label: "All Statuses", value: "" }, { label: "Pending", value: "pending" }, { label: "Finished", value: "solved" }];
   const areaOptions = [{ label: "All Areas", value: "" }, ...areas.map((a) => ({ label: a.area, value: a.id.toString() }))];
-  const roleOptions = [{ label: "All Roles", value: "" }, { label: "Admin", value: "Admin" }, { label: "Supervisor", value: "Supervisor" }, { label: "Manager", value: "Manager" }];
+  const allRoleOptions = [{ label: "All Roles", value: "" }, { label: "Admin", value: "Admin" }, { label: "Supervisor", value: "Supervisor" }, { label: "Manager", value: "Manager" }];
+  const roleOptions = canViewAll || canSolveOwnArea ? allRoleOptions : [{ label: "User", value: "User" }];
+  const filterAreaOptions = canViewAll ? areaOptions : canSolveOwnArea ? [{ label: "All Assigned Areas", value: "" }, ...assignedAreas.map((a) => ({ label: a.area, value: a.id.toString() }))] : areaOptions;
+
+  useEffect(() => {
+    if (role && !roleOptions.some((opt) => opt.value === role)) {
+      setRole("");
+    }
+  }, [role, roleOptions]);
+
+  useEffect(() => {
+    if (tempRole && !roleOptions.some((opt) => opt.value === tempRole)) {
+      setTempRole("");
+    }
+  }, [tempRole, roleOptions]);
 
   const handleSelectAreaReport = (report) => setSelectedAreaReport(selectedAreaReport?.id === report.id ? null : report);
   const handleCloseAreaReport = () => setSelectedAreaReport(null);
@@ -266,7 +283,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
 
       {/* Area */}
       <div>
-        <InputDropdown label="Area" value={tempArea} setObject={(item) => setTempArea(item.value)} itemList={areaOptions} />
+        <InputDropdown label="Area" value={tempArea} setObject={(item) => setTempArea(item.value)} itemList={filterAreaOptions} />
       </div>
 
       {/* Role */}

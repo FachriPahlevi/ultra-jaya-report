@@ -71,11 +71,21 @@ class ReportController extends Controller
         }
 
         if ($request->filled('role')) {
-            $query->whereHas('author', function ($q) use ($request) {
-                $q->whereHas('roles', function ($q2) use ($request) {
-                    $q2->where('name', $request->role);
+            if ($user->can('reports.view.all') || $user->can('reports.solve.own.area')) {
+                $query->whereHas('author', function ($q) use ($request) {
+                    $q->whereHas('roles', function ($q2) use ($request) {
+                        $q2->where('name', $request->role);
+                    });
                 });
-            });
+            } elseif ($user->can('reports.view.own')) {
+                if ($request->role === 'User' || $request->role === $user->roles->first()->name) {
+                    $query->whereHas('author', function ($q) use ($request) {
+                        $q->whereHas('roles', function ($q2) use ($request) {
+                            $q2->where('name', $request->role);
+                        });
+                    });
+                }
+            }
         }
 
         if ($request->filled('date_from')) {
