@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { formatDate } from "@/lib/format.ts";
 import ExpandableImage from "@/Components/UI/ExpandableImage";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 
 const avatarColors = ["bg-violet-500", "bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-rose-500", "bg-cyan-500", "bg-fuchsia-500"];
 
@@ -119,7 +119,7 @@ function ContentSection({ label, children }) {
   );
 }
 
-export default function ReportCard({ report, isSelected, onSelect }) {
+export default function ReportCard({ report, isSelected, onSelect, onDelete, showDelete }) {
   const isSolved = !!report.finished_date;
   const activityLabel = report.activity_type?.description ?? report.activity_type?.name ?? "-";
   const hasPhotos = report.photo_before || report.photo_after;
@@ -151,7 +151,7 @@ export default function ReportCard({ report, isSelected, onSelect }) {
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{report.area?.area ?? "-"}</span>
                 </div>
               </div>
-              <div className="shrink-0">
+              <div className="shrink-0 flex items-center gap-2">
                 {isSolved ? (
                   <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
@@ -162,6 +162,14 @@ export default function ReportCard({ report, isSelected, onSelect }) {
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
                     Pending
                   </span>
+                )}
+                {showDelete && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                    className="w-6 h-6 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-600 hover:text-red-700 transition-colors"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 )}
               </div>
             </div>

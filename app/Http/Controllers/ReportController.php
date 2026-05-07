@@ -219,20 +219,20 @@ class ReportController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user->can('reports.delete')) {
+        if (! $user->can('reports.delete.all') && ! $user->can('reports.delete.own')) {
             return back()->with('error', 'Anda tidak memiliki izin untuk menghapus laporan');
         }
 
-        if ($user->hasRole('SUPER_ADMIN')) {
-            // Superadmin can delete any report.
-        } elseif ($user->hasRole('ADMIN') || $user->hasRole('MANAGER')) {
-            if ($report->finished_date !== null) {
-                return back()->with('error', 'Hanya laporan pending yang dapat dihapus oleh Admin atau Manager');
+        if ($report->finished_date !== null) {
+            return back()->with('error', 'Hanya laporan pending yang dapat dihapus');
+        }
+
+        if ($user->can('reports.delete.all')) {
+            // Can delete any pending report.
+        } elseif ($user->can('reports.delete.own')) {
+            if ($report->author_id !== $user->id) {
+                return back()->with('error', 'Anda hanya dapat menghapus laporan milik Anda sendiri');
             }
-        } elseif ($report->author_id === $user->id && $report->finished_date === null) {
-            // User can delete own pending reports.
-        } elseif ($user->can('reports.solve.own.area') && $report->area->pic_user_id === $user->id && $report->finished_date === null) {
-            // Supervisor can delete pending reports in assigned area.
         } else {
             return back()->with('error', 'Anda tidak memiliki izin untuk menghapus laporan ini');
         }

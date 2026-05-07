@@ -98,12 +98,12 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   const canExportAll = can("reports.view.all");
   const canExportArea = can("reports.solve.own.area");
   const canExportOwn = can("reports.view.own");
-  const canDelete = can("reports.delete");
+  const canDelete = can("reports.delete.all") || can("reports.delete.own");
   const isAdmin = auth?.roles?.some((role) => role === "ADMIN" || role === "SUPER_ADMIN");
   const isSuperAdmin = auth?.roles?.some((role) => role === "SUPER_ADMIN");
   const isManager = auth?.roles?.some((role) => role === "MANAGER");
   const assignedAreas = areas.filter((a) => a.pic_user_id == auth.id);
-  const canExport = canExportAll || canExportArea || canExportOwn;
+    const canExport = canExportAll || canExportArea || canExportOwn;
   const exportAreas = canExportAll ? areas : assignedAreas;
   const exportUsers = canExportAll ? users : [];
   const reports = areaReports.data ?? [];
@@ -126,12 +126,9 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
   };
 
   const isReportDeletable = (report) => {
-    if (!canDelete || !report) return false;
-    if (isSuperAdmin) return true;
-    if (report.finished_date !== null) return false;
-    if (isAdmin || isManager) return true;
-    if (report.author_id === auth?.id) return true;
-    if (assignedAreas.some((areaRow) => areaRow.id === report.area_id)) return true;
+    if (!report || report.finished_date !== null) return false;
+    if (can("reports.delete.all")) return true;
+    if (can("reports.delete.own") && report.author_id === auth?.id) return true;
     return false;
   };
 
@@ -354,11 +351,12 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-muted/40 text-left border-b border-border">
-                  {["No", "Date", "Submitted By", "Type"].map((col) => (
+                  {["No", "Date", "Submitted By"].map((col) => (
                     <th key={col} className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase whitespace-nowrap">{col}</th>
                   ))}
                   <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase whitespace-nowrap">Area</th>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase min-w-[220px]">Activity / Issue</th>
+                  <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase min-w-[220px]">Issue</th>
+                  <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase">Type Activity</th>
                   <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase">Before</th>
                   <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase">After</th>
                   <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase">Status</th>
@@ -390,24 +388,16 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
                           <span className="inline-block px-2 py-1 rounded-xl bg-slate-100 text-slate-600 text-[11px] font-semibold">{report.area?.area ?? "-"}</span>
                         </td>
                         <td className="px-4 py-3.5">
-                          <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[11.5px] font-semibold whitespace-nowrap">
-                            {report.activity_type?.name ?? "-"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5 max-w-[320px]">
-                          {report.activity && (
-                            <div className="mb-2">
-                              <span className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide">Activity</span>
-                              <RichText text={report.activity} maxLines={2} />
-                            </div>
-                          )}
-                          {report.issue && (
+                         {report.issue && (
                             <div className={report.activity ? "pt-2 border-t border-border/50" : ""}>
-                              <span className="text-[10.5px] font-semibold text-muted-foreground uppercase tracking-wide">Issue</span>
                               <RichText text={report.issue} maxLines={3} />
                             </div>
                           )}
-                          {!report.activity && !report.issue && <span className="text-muted-foreground text-[12px]">–</span>}
+                        </td>
+                         <td className="px-4 py-3.5">
+                          <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[11.5px] font-semibold whitespace-nowrap">
+                            {report.activity_type?.name ?? "-"}
+                          </span>
                         </td>
                         <td className="px-4 py-3.5">
                           {report.photo_before
@@ -538,7 +528,7 @@ export default function Index({ areaReports = { data: [], links: [], meta: {} },
               )}
             </div>
           ) : (
-            reports.map((report) => <ReportCard key={report.id} report={report} isSelected={selectedAreaReport?.id === report.id} onSelect={handleSelectAreaReport} />)
+            reports.map((report) => <ReportCard key={report.id} report={report} isSelected={selectedAreaReport?.id === report.id} onSelect={handleSelectAreaReport} onDelete={() => confirmDeleteReport(report)} showDelete={isReportDeletable(report)} />)
           )}
         </div>
         <Pagination links={areaReports.links} center />
