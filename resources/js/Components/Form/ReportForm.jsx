@@ -145,9 +145,9 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
   return (
     <ModalOverlay isOpen={isOpen} onClose={handleCancel}>
       <div className="bg-card rounded-2xl border border-border shadow-xl w-full max-w-[500px] mx-auto">
-        <div className="sticky top-0 bg-card border-b border-border px-4 sm:px-6 py-4 flex items-center justify-between rounded-t-2xl">
+        <div className="flex justify-between sticky top-0 bg-card border-b border-border px-4 sm:px-6 py-4 flex items-center justify-between rounded-t-2xl">
+          <h2 className="text-lg sm:text-xl font-bold text-foreground tracking-[-0.5px] m-0">{report ? "Edit Issue Report" : "Create Issue Report"}</h2>
           <button onClick={handleCancel} className="flex items-center gap-2 text-foreground hover:text-destructive transition-colors">
-            <h2 className="text-lg sm:text-xl font-bold text-foreground tracking-[-0.5px] m-0">{report ? "Edit Issue Report" : "Create Issue Report"}</h2>
             <HiOutlineX className="w-5 h-5" />
           </button>
         </div>
@@ -242,11 +242,11 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
               {errors.photo && <p className="text-xs text-destructive mt-1">{errors.photo}</p>}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 mt-1">
-              <BtnDefault type="button" outline onClick={handleCancel} className="w-full sm:flex-1 order-2 sm:order-1">
+            <div className="flex gap-3 mt-1">
+              <BtnDefault type="button" outline onClick={handleCancel} className="w-full sm:flex-1">
                 Cancel
               </BtnDefault>
-              <BtnDefault type="submit" loading={processing} className="w-full sm:flex-[2] order-1 sm:order-2">
+              <BtnDefault type="submit" loading={processing} className="w-full">
                 {processing ? (report ? "Updating..." : "Submitting...") : report ? "Update Report" : "Submit Report"}
               </BtnDefault>
             </div>
