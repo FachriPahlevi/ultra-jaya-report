@@ -1,6 +1,4 @@
-import { useState, useEffect } from "react";
-import { Head, router, usePage } from "@inertiajs/react";
-import { debounce } from "lodash";
+import { Head, usePage } from "@inertiajs/react";
 import AppLayout from "@/Layouts/AppLayout";
 import { formatDate } from "@/lib/format.ts";
 import BtnDefault from "@/Components/Button/BtnDefault";
@@ -10,629 +8,534 @@ import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import ReportForm from "@/Components/Form/ReportForm";
 import SolveForm from "@/Components/Form/SolveForm";
 import ExportForm from "@/Components/Form/ExportReportForm";
-import { useStatusModal } from "@/Components/Context/StatusModalContext";
-import { HiOutlineX, HiOutlinePlus } from "react-icons/hi";
 import ExpandableImage from "@/Components/UI/ExpandableImage";
-import { SlidersHorizontal, FileDown, ChevronRight, File, X, ChevronDown, ChevronUp } from "lucide-react";
-import Pagination from "@/Components/Navigation/Pagination";
 import ReportCard from "@/Components/Card/ReportCard";
+import Pagination from "@/Components/Navigation/Pagination";
+import { useReports } from "@/hooks/useReports";
+import { HiOutlineX, HiOutlinePlus } from "react-icons/hi";
+import { SlidersHorizontal, File, FileDown, ChevronDown, ChevronUp, X } from "lucide-react";
+import { useState } from "react";
 
 const RichText = ({ text, maxLines = 3 }) => {
-  const [expanded, setExpanded] = useState(false);
-  if (!text || text === "-") return <span className="text-muted-foreground text-[12px]">–</span>;
-  const lines = text.split(/\n/).map((l) => l.trim()).filter(Boolean);
-  const isList = lines.length > 1 && lines.every((l) => /^[-•*]|^\d+[.)]\s/.test(l));
-  const cleanLine = (l) => l.replace(/^[-•*]\s*|^\d+[.)]\s*/, "");
-  const visibleLines = expanded ? lines : lines.slice(0, maxLines);
-  const hasMore = lines.length > maxLines;
-  if (isList) {
+    const [expanded, setExpanded] = useState(false);
+    if (!text || text === "-") return <span className="text-muted-foreground text-[12px]">–</span>;
+    const lines = text.split(/\n/).map((l) => l.trim()).filter(Boolean);
+    const isList = lines.length > 1 && lines.every((l) => /^[-•*]|^\d+[.)]\s/.test(l));
+    const cleanLine = (l) => l.replace(/^[-•*]\s*|^\d+[.)]\s*/, "");
+    const visibleLines = expanded ? lines : lines.slice(0, maxLines);
+    const hasMore = lines.length > maxLines;
+    if (isList) {
+        return (
+            <div className="space-y-0.5">
+                <ul className="space-y-0.5 list-none m-0 p-0">
+                    {visibleLines.map((line, i) => (
+                        <li key={i} className="flex items-start gap-1.5 text-[12.5px] text-foreground leading-snug">
+                            <span className="mt-1 w-1.5 h-1.5 rounded-full bg-primary/50 shrink-0" />
+                            <span>{cleanLine(line)}</span>
+                        </li>
+                    ))}
+                </ul>
+                {hasMore && (
+                    <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} className="flex items-center gap-1 text-[11px] text-primary font-medium mt-1 hover:underline">
+                        {expanded ? <><ChevronUp className="w-3 h-3" /> Show less</> : <><ChevronDown className="w-3 h-3" /> +{lines.length - maxLines} more</>}
+                    </button>
+                )}
+            </div>
+        );
+    }
+    const fullText = lines.join(" ");
+    const isLong = fullText.length > 120 || lines.length > maxLines;
+    const shortText = fullText.slice(0, 120);
     return (
-      <div className="space-y-0.5">
-        <ul className="space-y-0.5 list-none m-0 p-0">
-          {visibleLines.map((line, i) => (
-            <li key={i} className="flex items-start gap-1.5 text-[12.5px] text-foreground leading-snug">
-              <span className="mt-1 w-1.5 h-1.5 rounded-full bg-primary/50 shrink-0" />
-              <span>{cleanLine(line)}</span>
-            </li>
-          ))}
-        </ul>
-        {hasMore && (
-          <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} className="flex items-center gap-1 text-[11px] text-primary font-medium mt-1 hover:underline">
-            {expanded ? <><ChevronUp className="w-3 h-3" /> Show less</> : <><ChevronDown className="w-3 h-3" /> +{lines.length - maxLines} more</>}
-          </button>
-        )}
-      </div>
+        <div>
+            <p className="text-[12.5px] text-foreground leading-snug whitespace-pre-wrap break-words">
+                {expanded || !isLong ? fullText : shortText + "…"}
+            </p>
+            {isLong && (
+                <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} className="flex items-center gap-1 text-[11px] text-primary font-medium mt-1 hover:underline">
+                    {expanded ? <><ChevronUp className="w-3 h-3" /> Show less</> : <><ChevronDown className="w-3 h-3" /> Show more</>}
+                </button>
+            )}
+        </div>
     );
-  }
-  const shortText = lines.slice(0, maxLines).join(" ");
-  const fullText = lines.join(" ");
-  const isLong = fullText.length > 120 || lines.length > maxLines;
-  return (
-    <div>
-      <p className="text-[12.5px] text-foreground leading-snug whitespace-pre-wrap break-words">
-        {expanded || !isLong ? fullText : shortText.slice(0, 120) + "…"}
-      </p>
-      {isLong && (
-        <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} className="flex items-center gap-1 text-[11px] text-primary font-medium mt-1 hover:underline">
-          {expanded ? <><ChevronUp className="w-3 h-3" /> Show less</> : <><ChevronDown className="w-3 h-3" /> Show more</>}
-        </button>
-      )}
-    </div>
-  );
 };
 
-export default function Index({ areaReports = { data: [], links: [], meta: {} }, areas = [], activities = [], users = [], filters = {} }) {
-  const { props } = usePage();
-  const { setStatusModalProps } = useStatusModal();
-  const permissions = props.auth?.user?.permissions || [];
-  const auth = props.auth?.user;
-  const [selectedAreaReport, setSelectedAreaReport] = useState(null);
-  const [editReport, setEditReport] = useState(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [showSolveModal, setShowSolveModal] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  const [showFilterSheet, setShowFilterSheet] = useState(false);
-
-  const [search, setSearch] = useState(filters.search || "");
-  const [status, setStatus] = useState(filters.status || "");
-  const [type, setType] = useState(filters.type || "");
-  const [area, setArea] = useState(filters.area || "");
-  const [role, setRole] = useState(filters.role || "");
-  const [dateFrom, setDateFrom] = useState(filters.date_from || "");
-  const [dateTo, setDateTo] = useState(filters.date_to || "");
-  const [myReportsOnly, setMyReportsOnly] = useState(filters.my_reports_only === "true" || false);
-
-  const [tempStatus, setTempStatus] = useState("");
-  const [tempType, setTempType] = useState("");
-  const [tempArea, setTempArea] = useState("");
-  const [tempRole, setTempRole] = useState("");
-  const [tempDateFrom, setTempDateFrom] = useState("");
-  const [tempDateTo, setTempDateTo] = useState("");
-  const [tempMyReportsOnly, setTempMyReportsOnly] = useState(false);
-
-  const can = (permission) => permissions.includes(permission);
-  const canCreate = can("reports.create");
-  const canViewAll = can("reports.view.all");
-  const canViewOwn = can("reports.view.own");
-  const canSolveOwnArea = can("reports.solve.own.area");
-  const canSolve = can("reports.solve.all") || canSolveOwnArea;
-  const canEdit = can("reports.edit.all") || can("reports.edit.own");
-  const canExportAll = canViewAll;
-  const canExportArea = canSolveOwnArea;
-  const canExportOwn = canViewOwn;
-  const canDelete = can("reports.delete.all") || can("reports.delete.own");
-  const isAdmin = auth?.roles?.some((role) => role === "ADMIN" || role === "SUPER_ADMIN");
-  const isSuperAdmin = auth?.roles?.some((role) => role === "SUPER_ADMIN");
-  const isManager = auth?.roles?.some((role) => role === "MANAGER");
-  const assignedAreas = areas.filter((a) => a.pic_user_id == auth.id);
-  const canExport = canExportAll || canExportArea || canExportOwn;
-  const exportAreas = canExportAll ? areas : canExportArea ? assignedAreas : [];
-  const exportUsers = canExportAll ? users : [];
-  const reports = areaReports.data ?? [];
-  const isFinished = selectedAreaReport?.finished_date !== null;
-  const isReportEditable = (report) => {
-    if (!canEdit || !report || isFinished) return false;
-    if (can("reports.edit.all")) return true;
-
-    return can("reports.edit.own") && report.author_id === auth?.id;
-  };
-
-  const openEditReport = (report) => {
-    setEditReport(report);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseReportModal = () => {
-    setIsModalOpen(false);
-    setEditReport(null);
-  };
-
-  const isReportDeletable = (report) => {
-    if (!report || report.finished_date !== null) return false;
-    if (can("reports.delete.all")) return true;
-    if (can("reports.delete.own") && report.author_id === auth?.id) return true;
-    return false;
-  };
-
-  const confirmDeleteReport = (report) => {
-    if (!report) return;
-
-    setStatusModalProps({
-      isOpen: true,
-      type: "warning",
-      title: "Delete Report",
-      message: `Apakah Anda yakin ingin menghapus laporan #${report.id}?`,
-      button1: {
-        text: "Hapus",
-        onClick: () => {
-          router.delete(route("reports.destroy", report.id), {
-            preserveScroll: true,
-            onSuccess: () => {
-              setStatusModalProps({
-                isOpen: true,
-                type: "success",
-                title: "Berhasil",
-                message: "Laporan berhasil dihapus",
-                button1: { text: "OK" },
-              });
-            },
-            onError: () => {
-              setStatusModalProps({
-                isOpen: true,
-                type: "error",
-                title: "Gagal",
-                message: "Gagal menghapus laporan. Silakan coba lagi.",
-                button1: { text: "OK" },
-              });
-            },
-          });
-        },
-      },
-      button2: { text: "Batal" },
-    });
-  };
-
-  useEffect(() => {
-    const debouncedFilter = debounce(() => {
-      const params = {};
-      if (search) params.search = search;
-      if (status) params.status = status;
-      if (type) params.type = type;
-      if (area) params.area = area;
-      if (role) params.role = role;
-      if (dateFrom) params.date_from = dateFrom;
-      if (dateTo) params.date_to = dateTo;
-      if (myReportsOnly) params.my_reports_only = true;
-      router.get(route("reports.index"), params, { preserveState: true, preserveScroll: true, replace: true });
-    }, 300);
-    debouncedFilter();
-    return () => debouncedFilter.cancel();
-  }, [search, status, type, area, role, dateFrom, dateTo, myReportsOnly]);
-
-  const handleReset = () => {
-    setSearch(""); setStatus(""); setType(""); setArea(""); setRole("");
-    setDateFrom(""); setDateTo(""); setMyReportsOnly(false);
-    router.get(route("reports.index"), {}, { preserveScroll: true });
-  };
-
-  const openFilter = () => {
-    setTempStatus(status); setTempType(type); setTempArea(area);
-    setTempRole(role); setTempDateFrom(dateFrom); setTempDateTo(dateTo);
-    setTempMyReportsOnly(myReportsOnly);
-  };
-  const openFilterModal = () => { openFilter(); setShowFilterModal(true); };
-  const openFilterSheet = () => { openFilter(); setShowFilterSheet(true); };
-
-  const applyFilter = () => {
-    setStatus(tempStatus); setType(tempType); setArea(tempArea);
-    setRole(tempRole); setDateFrom(tempDateFrom); setDateTo(tempDateTo);
-    setMyReportsOnly(tempMyReportsOnly);
-  };
-  const applyFilterModal = () => { applyFilter(); setShowFilterModal(false); };
-  const applyFilterSheet = () => { applyFilter(); setShowFilterSheet(false); };
-  const resetFilter = () => {
-    setTempStatus(""); setTempType(""); setTempArea(""); setTempRole("");
-    setTempDateFrom(""); setTempDateTo(""); setTempMyReportsOnly(false);
-  };
-
-  const activeFilterChips = [
-    ...(dateFrom || dateTo ? [{ key: "periode", label: `Periode: ${dateFrom || "..."} – ${dateTo || "..."}`, clear: () => { setDateFrom(""); setDateTo(""); } }] : []),
-    ...(status ? [{ key: "status", label: `Status: ${status.charAt(0).toUpperCase() + status.slice(1)}`, clear: () => setStatus("") }] : []),
-    ...(area ? [{ key: "area", label: `Area: ${areas.find((a) => a.id == area)?.area ?? area}`, clear: () => setArea("") }] : []),
-    ...(role ? [{ key: "role", label: `Role: ${role}`, clear: () => setRole("") }] : []),
-    ...(type ? [{ key: "type", label: `Activity: ${activities.find((a) => a.id == type)?.description ?? type}`, clear: () => setType("") }] : []),
-    ...(myReportsOnly ? [{ key: "my_reports", label: "My Reports Only", clear: () => setMyReportsOnly(false) }] : []),
-  ];
-
-  const typeOptions = [{ label: "All Activities", value: "" }, ...activities.map((a) => ({ label: a.description, value: a.id.toString() }))];
-  const statusOptions = [{ label: "All Statuses", value: "" }, { label: "Pending", value: "pending" }, { label: "Finished", value: "solved" }];
-  const areaOptions = [{ label: "All Areas", value: "" }, ...areas.map((a) => ({ label: a.area, value: a.id.toString() }))];
-  const allRoleOptions = [{ label: "All Roles", value: "" }, { label: "Admin", value: "Admin" }, { label: "Supervisor", value: "Supervisor" }, { label: "Manager", value: "Manager" }];
-  const roleOptions = canViewAll || canSolveOwnArea ? allRoleOptions : [{ label: "User", value: "User" }];
-  const filterAreaOptions = canViewAll ? areaOptions : canSolveOwnArea ? [{ label: "All Assigned Areas", value: "" }, ...assignedAreas.map((a) => ({ label: a.area, value: a.id.toString() }))] : areaOptions;
-
-  useEffect(() => {
-    if (role && !roleOptions.some((opt) => opt.value === role)) {
-      setRole("");
-    }
-  }, [role, roleOptions]);
-
-  useEffect(() => {
-    if (tempRole && !roleOptions.some((opt) => opt.value === tempRole)) {
-      setTempRole("");
-    }
-  }, [tempRole, roleOptions]);
-
-  const handleSelectAreaReport = (report) => setSelectedAreaReport(selectedAreaReport?.id === report.id ? null : report);
-  const handleCloseAreaReport = () => setSelectedAreaReport(null);
-  const handleSolveClick = () => setShowSolveModal(true);
-  const handleCloseSolveModal = () => { setShowSolveModal(false); setSelectedAreaReport(null); };
-  const areaOfAuthUser = areas.find((a) => a.pic_user_id == auth.id);
-
-  // Shared filter form — rendered inside both modal and bottom sheet
-  const FilterFields = () => (
-    <div className="flex flex-col gap-5">
-      {/* Periode */}
-      <div>
-        <label className="block text-[12px] font-semibold text-foreground mb-2">Periode</label>
-        <div className="flex items-center gap-2">
-          <input type="date" value={tempDateFrom} onChange={(e) => setTempDateFrom(e.target.value)}
-            className="flex-1 border border-border rounded-xl px-3 py-2.5 text-[13px] text-foreground bg-background outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-          <span className="text-muted-foreground text-sm font-medium shrink-0">–</span>
-          <input type="date" value={tempDateTo} onChange={(e) => setTempDateTo(e.target.value)}
-            className="flex-1 border border-border rounded-xl px-3 py-2.5 text-[13px] text-foreground bg-background outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-        </div>
-      </div>
-
-      {/* Status — pill buttons */}
-      <div>
-        <label className="block text-[12px] font-semibold text-foreground mb-2">Status</label>
-        <div className="flex gap-2">
-          {statusOptions.map((opt) => (
-            <button key={opt.value} onClick={() => setTempStatus(opt.value)}
-              className={`flex-1 py-2.5 rounded-xl text-[12.5px] font-semibold border transition-all
-                ${tempStatus === opt.value
-                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                  : "bg-background text-foreground border-border hover:border-primary/40"}`}>
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Area */}
-      <div>
-        <InputDropdown label="Area" value={tempArea} setObject={(item) => setTempArea(item.value)} itemList={filterAreaOptions} />
-      </div>
-
-      {/* Role */}
-      <div>
-        <InputDropdown label="Role" value={tempRole} setObject={(item) => setTempRole(item.value)} itemList={roleOptions} />
-      </div>
-
-      {/* Activity */}
-      <div>
-        <InputDropdown label="Activity" value={tempType} setObject={(item) => setTempType(item.value)} itemList={typeOptions} />
-      </div>
-
-      {/* My Reports Only — toggle switch */}
-      <label className="flex items-center justify-between gap-3 cursor-pointer py-0.5">
-        <span className="text-[13px] text-foreground font-medium">Show only my reports</span>
-        <div onClick={() => setTempMyReportsOnly((v) => !v)}
-          className={`w-10 h-6 rounded-full transition-colors relative shrink-0 cursor-pointer ${tempMyReportsOnly ? "bg-primary" : "bg-border"}`}>
-          <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${tempMyReportsOnly ? "left-5" : "left-1"}`} />
-        </div>
-      </label>
-    </div>
-  );
-
-  return (
-    <AppLayout title="Report Lists">
-      <Head><title>Reports</title></Head>
-
-      {/* ── DESKTOP ── */}
-      <div className="hidden sm:flex flex-col gap-5">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h2 className="text-2xl font-semibold text-foreground tracking-[-0.3px]">Report Lists</h2>
-            <p className="text-sm text-muted-foreground mt-1">Manage and track all reports</p>
-          </div>
-          {canCreate && (
-            <BtnDefault onClick={() => setIsModalOpen(true)} size="md" className="gap-2 px-4 h-10 rounded-xl shadow-sm">
-              <HiOutlinePlus className="w-4 h-4" />New Issue
-            </BtnDefault>
-          )}
-        </div>
-
-        <div className="bg-card rounded-2xl border border-border p-4 shadow-sm">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex-1 min-w-[220px]">
-              <InputText placeholder="Search by issue, submitter, or activity..." value={search} onChange={(e) => setSearch(e.target.value)} />
+// Add this component inside the file (before the Index component)
+function ReportDetailModal({ report, isOpen, onClose, onSolve, onEdit, onDelete, perms, isReportEditable, isReportDeletable, formatDate }) {
+    if (!report) return null;
+    
+    return (
+        <ModalOverlay id="report-detail-modal" isOpen={isOpen} onClose={onClose}>
+            <div className="bg-slate-800 rounded-xl w-full max-w-md shadow-xl border border-slate-700">
+                {/* Modal Header */}
+                <div className="flex items-center justify-between p-5 border-b border-slate-700">
+                    <h3 className="text-lg font-semibold text-white">Report Details</h3>
+                    <button 
+                        onClick={onClose}
+                        className="text-slate-400 hover:text-white transition-colors"
+                    >
+                        <HiOutlineX className="w-5 h-5" />
+                    </button>
+                </div>
+                
+                {/* Modal Body */}
+                <div className="p-5 space-y-4">
+                    <div>
+                        <div className="text-sm text-slate-400">Activity</div>
+                        <div className="text-white font-medium mt-1">
+                         {report.activity ?? "-"}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <div className="text-sm text-slate-400">Created At</div>
+                        <div className="text-white mt-1">{formatDate(report.created_at)}</div>
+                    </div>
+                    
+                    {report.author && (
+                        <div>
+                            <div className="text-sm text-slate-400">Submitted By</div>
+                            <div className="text-white mt-1">{report.author.name}</div>
+                            {report.author.role && (
+                                <div className="text-xs text-slate-400 mt-0.5">{report.author.role}</div>
+                            )}
+                        </div>
+                    )}
+                    
+                    {report.area && (
+                        <div>
+                            <div className="text-sm text-slate-400">Area</div>
+                            <div className="text-white mt-1">{report.area.area}</div>
+                        </div>
+                    )}
+                    
+                    {report.issue && (
+                        <div>
+                            <div className="text-sm text-slate-400">Issue</div>
+                            <div className="text-white mt-1 text-sm">{report.issue}</div>
+                        </div>
+                    )}
+                    
+                    <div>
+                        <div className="text-sm text-slate-400">Status</div>
+                        <div className="mt-1">
+                            {report.finished_date ? (
+                                <div className="text-emerald-400 flex items-center gap-2">
+                                    <span>✓ Solved</span>
+                                    <span className="text-sm">{formatDate(report.finished_date)}</span>
+                                </div>
+                            ) : (
+                                <div className="text-amber-400 flex items-center gap-2">
+                                    <span>● Pending</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                
+                {/* Modal Footer */}
+                <div className="flex items-center justify-end gap-3 p-5 border-t border-slate-700">
+                    {perms.canSolve && !report.finished_date && (
+                        <button
+                            onClick={() => {
+                                onSolve();
+                                onClose();
+                            }}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                        >
+                            Solve
+                        </button>
+                    )}
+                    {isReportEditable(report) && (
+                        <button
+                            onClick={() => {
+                                onEdit(report);
+                                onClose();
+                            }}
+                            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-lg text-sm font-semibold transition-colors"
+                        >
+                            Edit
+                        </button>
+                    )}
+                    {isReportDeletable(report) && (
+                        <button
+                            onClick={() => {
+                                onDelete(report);
+                                onClose();
+                            }}
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                        >
+                            Delete
+                        </button>
+                    )}
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-semibold transition-colors"
+                    >
+                        Close
+                    </button>
+                </div>
             </div>
-            <BtnDefault outline onClick={openFilterModal} className="gap-2 h-10 rounded-xl px-4">
-              <SlidersHorizontal className="w-4 h-4" />
-              Filter
-              {activeFilterChips.length > 0 && (
-                <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
-                  {activeFilterChips.length}
-                </span>
-              )}
-            </BtnDefault>
-            {canExport && (
-              <BtnDefault outline onClick={() => setShowExportModal(true)} className="gap-2 h-10 px-4 rounded-xl text-sm">
-                <File className="w-4 h-4" />Export Dokumen
-              </BtnDefault>
-            )}
-          </div>
-          {activeFilterChips.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap mt-3 pt-3 border-t border-border">
-              <span className="text-xs text-muted-foreground font-medium">Active Filters:</span>
-              {activeFilterChips.map((chip) => (
-                <span key={chip.key} className="inline-flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 rounded-md px-2.5 py-1 text-xs font-semibold">
-                  {chip.label}
-                  <button onClick={chip.clear} className="hover:text-primary/70 transition-colors"><X className="w-3 h-3" /></button>
-                </span>
-              ))}
-              <button onClick={handleReset} className="text-xs text-primary font-semibold hover:underline ml-1">Clear all</button>
-            </div>
-          )}
-        </div>
+        </ModalOverlay>
+    );
+}
 
-        <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center justify-between">
-            <h3 className="text-[15px] font-bold text-foreground">Report <span>{areaOfAuthUser?.area ?? "Area"}</span></h3>
-            <span className="text-[12px] text-muted-foreground">{reports.length} records</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-muted/40 text-left border-b border-border">
-                  {["No", "Date", "Submitted By"].map((col) => (
-                    <th key={col} className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase whitespace-nowrap">{col}</th>
-                  ))}
-                  <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase whitespace-nowrap">Area</th>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase min-w-[220px]">Issue</th>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase">Type Activity</th>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase">Before</th>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase">After</th>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase">Status</th>
-                  <th className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase whitespace-nowrap">Finished</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {reports.length === 0 ? (
-                  <tr><td colSpan={10} className="py-16 text-center text-muted-foreground text-[13px]">No data found</td></tr>
-                ) : (
-                  reports.map((report, index) => {
-                    const isSolved = !!report.finished_date;
-                    const isSelected = selectedAreaReport?.id === report.id;
-                    return (
-                      <tr key={report.id} onClick={() => handleSelectAreaReport(report)}
-                        className={`cursor-pointer transition-all duration-150 align-top hover:bg-muted/50
-                          ${isSelected ? "bg-primary/5 ring-1 ring-inset ring-primary/20" : ""}
-                          ${isSolved ? "bg-emerald-50/30 dark:bg-emerald-950/10" : ""}`}>
-                        <td className="px-4 py-3.5 text-[12px] text-muted-foreground font-semibold w-10 shrink-0">{index + 1}</td>
-                        <td className="px-4 py-3.5 whitespace-nowrap">
-                          <p className="text-[12.5px] font-medium text-foreground">{formatDate(report.created_at)}</p>
-                          {report.updated_at !== report.created_at && <p className="text-[11px] text-muted-foreground mt-0.5">↑ {formatDate(report.updated_at)}</p>}
-                        </td>
-                        <td className="px-4 py-3.5 whitespace-nowrap">
-                          <p className="text-[12.5px] font-semibold text-foreground">{report.author?.name ?? "-"}</p>
-                          {report.author?.role && <p className="text-[11px] text-muted-foreground mt-0.5">{report.author.role}</p>}
-                        </td>
-                        <td className="px-4 py-3.5 whitespace-nowrap">
-                          <span className="inline-block px-2 py-1 rounded-xl bg-slate-100 text-slate-600 text-[11px] font-semibold">{report.area?.area ?? "-"}</span>
-                        </td>
-                        <td className="px-4 py-3.5">
-                         {report.issue && (
-                            <div className={report.activity ? "pt-2 border-t border-border/50" : ""}>
-                              <RichText text={report.issue} maxLines={3} />
-                            </div>
-                          )}
-                        </td>
-                         <td className="px-4 py-3.5">
-                          <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[11.5px] font-semibold whitespace-nowrap">
-                            {report.activity_type?.name ?? "-"}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3.5">
-                          {report.photo_before
-                            ? <ExpandableImage src={`/storage/${report.photo_before}`} alt="Before" className="w-14 h-14 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity border border-border" />
-                            : <div className="w-14 h-14 rounded-lg border border-dashed border-border flex items-center justify-center"><span className="text-muted-foreground text-[10px]">–</span></div>}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          {report.photo_after
-                            ? <ExpandableImage src={`/storage/${report.photo_after}`} alt="After" className="w-14 h-14 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity border border-border" />
-                            : <div className="w-14 h-14 rounded-lg border border-dashed border-border flex items-center justify-center"><span className="text-muted-foreground text-[10px]">–</span></div>}
-                        </td>
-                        <td className="px-4 py-3.5">
-                          {isSolved
-                            ? <span className="inline-flex items-center gap-1.5 text-emerald-600 text-[11.5px] font-semibold bg-emerald-50 px-2.5 py-1 rounded-full whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />Finished</span>
-                            : <span className="inline-flex items-center gap-1.5 text-amber-600 text-[11.5px] font-semibold bg-amber-50 px-2.5 py-1 rounded-full whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />Pending</span>}
-                        </td>
-                        <td className="px-4 py-3.5 whitespace-nowrap">
-                          {isSolved
-                            ? <span className="text-emerald-600 text-[12px] font-semibold">{formatDate(report.finished_date)}</span>
-                            : <span className="text-muted-foreground text-xs">–</span>}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-          <Pagination links={areaReports.links} />
-        </div>
+export default function Index({ reports = [], areas = [], activities = [], users = [] }) {
+    const { props } = usePage();
+    const r = useReports(reports);
 
-        {selectedAreaReport && !selectedAreaReport.finished_date && (
-          <div className="fixed bottom-7 left-1/2 -translate-x-1/2 bg-slate-800 text-white rounded-xl py-3 px-5 flex items-center gap-4 shadow-xl z-[300] min-w-[340px] border border-slate-700">
-            <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold truncate">#{selectedAreaReport.id} · {selectedAreaReport.activity_type?.description ?? "-"} · {formatDate(selectedAreaReport.created_at)}</div>
-              <div className="text-xs text-slate-400 mt-0.5"><span className="text-amber-400">● Pending</span></div>
-            </div>
-            {canSolve && (
-              <BtnDefault size="sm" onClick={handleSolveClick} className="shadow-lg">Solve</BtnDefault>
-            )}
-            {isReportEditable(selectedAreaReport) && (
-              <BtnDefault size="sm" onClick={() => openEditReport(selectedAreaReport)} className="shadow-lg bg-slate-100 text-slate-900 hover:bg-slate-200">Edit</BtnDefault>
-            )}
-            {isReportDeletable(selectedAreaReport) && (
-              <button onClick={() => confirmDeleteReport(selectedAreaReport)} className="px-4 py-2 bg-red-600 rounded-xl text-[13px] font-semibold shadow-lg active:bg-red-700 transition-colors">Delete</button>
-            )}
-            <button onClick={handleCloseAreaReport} className="bg-white/10 hover:bg-white/20 w-7 h-7 rounded-lg flex items-center justify-center"><HiOutlineX className="w-3.5 h-3.5" /></button>
-          </div>
-        )}
-        {selectedAreaReport && selectedAreaReport.finished_date && (
-          <div className="fixed bottom-7 left-1/2 -translate-x-1/2 bg-slate-800 text-white rounded-xl py-3 px-5 flex items-center gap-4 shadow-xl z-[300] min-w-[340px] border border-slate-700">
-            <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold truncate">#{selectedAreaReport.id} · {selectedAreaReport.activity_type?.description ?? "-"} · {formatDate(selectedAreaReport.created_at)}</div>
-              <div className="text-xs text-slate-400 mt-0.5"><span className="text-emerald-400">✓ Solved {formatDate(selectedAreaReport.finished_date)}</span></div>
-            </div>
-            {isReportEditable(selectedAreaReport) && (
-              <BtnDefault size="sm" onClick={() => openEditReport(selectedAreaReport)} className="shadow-lg bg-slate-100 text-slate-900 hover:bg-slate-200">Edit</BtnDefault>
-            )}
-            {isReportDeletable(selectedAreaReport) && (
-              <button onClick={() => confirmDeleteReport(selectedAreaReport)} className="px-4 py-2 bg-red-600 rounded-xl text-[13px] font-semibold shadow-lg active:bg-red-700 transition-colors">Delete</button>
-            )}
-            <button onClick={handleCloseAreaReport} className="bg-white/10 hover:bg-white/20 w-7 h-7 rounded-lg flex items-center justify-center"><HiOutlineX className="w-3.5 h-3.5" /></button>
-          </div>
-        )}
-      </div>
+    const assignedAreas  = areas.filter((a) => a.pic_user_id == r.auth?.id);
+    const exportAreas    = r.perms.canExportAll ? areas : r.perms.canExportArea ? assignedAreas : [];
+    const exportUsers    = r.perms.canExportAll ? users : [];
+    const areaOfAuthUser = areas.find((a) => a.pic_user_id == r.auth?.id);
 
-      {/* ── MOBILE ── */}
-      <div className="flex sm:hidden flex-col gap-0 bg-[#f5f6fa] min-h-screen -mx-4 -mt-4">
-        <div className="sticky top-0 z-10 bg-white px-4 pt-4 pb-3 border-b border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
+    const statusOptions = [
+        { label: "All Statuses", value: "" },
+        { label: "Pending", value: "pending" },
+        { label: "Finished", value: "solved" },
+    ];
+    const typeOptions = [{ label: "All Activities", value: "" }, ...activities.map((a) => ({ label: a.description, value: String(a.id) }))];
+    const areaOptions = [{ label: "All Areas", value: "" }, ...areas.map((a) => ({ label: a.area, value: String(a.id) }))];
+    const roleOptions = r.perms.canViewAll || r.perms.canSolveOwnArea
+        ? [{ label: "All Roles", value: "" }, { label: "Admin", value: "Admin" }, { label: "Supervisor", value: "Supervisor" }, { label: "Manager", value: "Manager" }]
+        : [{ label: "User", value: "User" }];
+    const filterAreaOptions = r.perms.canViewAll
+        ? areaOptions
+        : r.perms.canSolveOwnArea
+            ? [{ label: "All Assigned Areas", value: "" }, ...assignedAreas.map((a) => ({ label: a.area, value: String(a.id) }))]
+            : areaOptions;
+
+    const { temp } = r;
+
+    const FilterFields = () => (
+        <div className="flex flex-col gap-5">
             <div>
-              <h2 className="text-[17px] font-bold text-gray-900 leading-tight">Report Lists</h2>
-              <p className="text-[12px] text-gray-400 mt-0.5">Manage reports</p>
+                <label className="block text-[12px] font-semibold text-foreground mb-2">Periode</label>
+                <div className="flex items-center gap-2">
+                    <input type="date" value={temp.tempDateFrom} onChange={(e) => temp.setTempDateFrom(e.target.value)}
+                        className="flex-1 border border-border rounded-xl px-3 py-2.5 text-[13px] text-foreground bg-background outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                    <span className="text-muted-foreground text-sm font-medium shrink-0">–</span>
+                    <input type="date" value={temp.tempDateTo} onChange={(e) => temp.setTempDateTo(e.target.value)}
+                        className="flex-1 border border-border rounded-xl px-3 py-2.5 text-[13px] text-foreground bg-background outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                </div>
             </div>
-            {canCreate && (
-              <button onClick={() => setIsModalOpen(true)} className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center shadow-md active:scale-95 transition-transform">
-                <HiOutlinePlus className="w-5 h-5 text-white" />
-              </button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" strokeLinecap="round" />
-              </svg>
-              <input type="text" placeholder="Search reports..." value={search} onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-gray-100 text-[13px] text-gray-800 placeholder-gray-400 border-0 outline-none focus:ring-2 focus:ring-blue-500/30" />
+            <div>
+                <label className="block text-[12px] font-semibold text-foreground mb-2">Status</label>
+                <div className="flex gap-2">
+                    {statusOptions.map((opt) => (
+                        <button key={opt.value} onClick={() => temp.setTempStatus(opt.value)}
+                            className={`flex-1 py-2.5 rounded-xl text-[12.5px] font-semibold border transition-all
+                                ${temp.tempStatus === opt.value
+                                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                    : "bg-background text-foreground border-border hover:border-primary/40"}`}>
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
             </div>
-            <button onClick={openFilterSheet} className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 text-[13px] font-medium text-gray-600 active:bg-gray-200 transition-colors">
-              <SlidersHorizontal className="w-4 h-4" />Filter
-              {activeFilterChips.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
-                  {activeFilterChips.length}
-                </span>
-              )}
-            </button>
-            {canExport && (
-              <button onClick={() => setShowExportModal(true)} className="flex items-center px-3 py-2 rounded-xl bg-gray-100 text-gray-600 active:bg-gray-200 transition-colors">
-                <FileDown className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-          {activeFilterChips.length > 0 && (
-            <div className="flex items-center gap-1.5 flex-wrap mt-2.5 pt-2.5 border-t border-gray-100">
-              {activeFilterChips.map((chip) => (
-                <span key={chip.key} className="inline-flex items-center gap-1 bg-blue-50 text-blue-600 border border-blue-100 rounded-full px-2 py-0.5 text-[11px] font-semibold">
-                  {chip.label}
-                  <button onClick={chip.clear}><X className="w-2.5 h-2.5" /></button>
-                </span>
-              ))}
-              <button onClick={handleReset} className="text-[11px] text-blue-600 font-semibold">Clear all</button>
-            </div>
-          )}
+            <InputDropdown label="Area" value={temp.tempArea} setObject={(item) => temp.setTempArea(item.value)} itemList={filterAreaOptions} />
+            <InputDropdown label="Role" value={temp.tempRole} setObject={(item) => temp.setTempRole(item.value)} itemList={roleOptions} />
+            <InputDropdown label="Activity" value={temp.tempType} setObject={(item) => temp.setTempType(item.value)} itemList={typeOptions} />
+            <label className="flex items-center justify-between gap-3 cursor-pointer py-0.5">
+                <span className="text-[13px] text-foreground font-medium">Show only my reports</span>
+                <div onClick={() => temp.setTempMyReportsOnly((v) => !v)}
+                    className={`w-10 h-6 rounded-full transition-colors relative shrink-0 cursor-pointer ${temp.tempMyReportsOnly ? "bg-primary" : "bg-border"}`}>
+                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${temp.tempMyReportsOnly ? "left-5" : "left-1"}`} />
+                </div>
+            </label>
         </div>
+    );
 
-        <div className="px-3 py-3 flex flex-col gap-2.5">
-          {reports.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-              <div className="w-20 h-20 mb-4 opacity-30">
-                <svg viewBox="0 0 80 80" fill="none"><path d="M40 8L72 24V56L40 72L8 56V24L40 8Z" stroke="#94a3b8" strokeWidth="2" fill="none" /><path d="M40 8V72M8 24L72 56M72 24L8 56" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 3" /><circle cx="55" cy="18" r="4" fill="#cbd5e1" /><path d="M52 26l6-4" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" /></svg>
-              </div>
-              <p className="text-[16px] font-semibold text-gray-700 mb-1">Belum ada laporan</p>
-              <p className="text-[13px] text-gray-400 mb-5">Laporan yang Anda buat akan muncul di sini.</p>
-              {canCreate && (
-                <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-semibold shadow-md active:scale-95 transition-transform">
-                  <HiOutlinePlus className="w-4 h-4" />Buat Laporan Baru
-                </button>
-              )}
-            </div>
-          ) : (
-            reports.map((report) => <ReportCard key={report.id} report={report} isSelected={selectedAreaReport?.id === report.id} onSelect={handleSelectAreaReport} onDelete={() => confirmDeleteReport(report)} showDelete={isReportDeletable(report)} />)
-          )}
-        </div>
-        <Pagination links={areaReports.links} center />
+    return (
+        <AppLayout title="Report Lists">
+            <Head><title>Reports</title></Head>
 
-        {selectedAreaReport && !selectedAreaReport.finished_date && (
-          <div className="fixed bottom-20 left-3 right-3 bg-slate-800 text-white rounded-2xl py-3 px-4 flex items-center gap-3 shadow-xl z-[300] border border-slate-700">
-            <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold truncate">#{selectedAreaReport.id} · {selectedAreaReport.activity_type?.description ?? "-"}</div>
-              <div className="text-[11px] text-slate-400 mt-0.5"><span className="text-amber-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" /> Pending</span></div>
-            </div>
-            {canSolve && (
-              <button onClick={handleSolveClick} className="px-4 py-2 bg-blue-600 rounded-xl text-[13px] font-semibold shadow-md active:bg-blue-700 transition-colors">Solve</button>
-            )}
-            {isReportEditable(selectedAreaReport) && (
-              <button onClick={() => openEditReport(selectedAreaReport)} className="px-4 py-2 bg-slate-100 text-slate-900 rounded-xl text-[13px] font-semibold shadow-md hover:bg-slate-200 transition-colors">Edit</button>
-            )}
-            {isReportDeletable(selectedAreaReport) && (
-              <button onClick={() => confirmDeleteReport(selectedAreaReport)} className="px-4 py-2 bg-red-600 rounded-xl text-[13px] font-semibold shadow-md active:bg-red-700 transition-colors">Delete</button>
-            )}
-            <button onClick={handleCloseAreaReport} className="bg-white/10 hover:bg-white/20 w-8 h-8 rounded-xl flex items-center justify-center shrink-0"><HiOutlineX className="w-4 h-4" /></button>
-          </div>
-        )}
-        {selectedAreaReport && selectedAreaReport.finished_date && (
-          <div className="fixed bottom-20 left-3 right-3 bg-slate-800 text-white rounded-2xl py-3 px-4 flex items-center gap-3 shadow-xl z-[300] border border-slate-700">
-            <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold truncate">#{selectedAreaReport.id} · {selectedAreaReport.activity_type?.description ?? "-"}</div>
-              <div className="text-[11px] text-slate-400 mt-0.5"><span className="text-emerald-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" /> Solved {formatDate(selectedAreaReport.finished_date)}</span></div>
-            </div>
-            {isReportEditable(selectedAreaReport) && (
-              <button onClick={() => openEditReport(selectedAreaReport)} className="px-4 py-2 bg-slate-100 text-slate-900 rounded-xl text-[13px] font-semibold shadow-md hover:bg-slate-200 transition-colors">Edit</button>
-            )}
-            {isReportDeletable(selectedAreaReport) && (
-              <button onClick={() => confirmDeleteReport(selectedAreaReport)} className="px-4 py-2 bg-red-600 rounded-xl text-[13px] font-semibold shadow-md active:bg-red-700 transition-colors">Delete</button>
-            )}
-            <button onClick={handleCloseAreaReport} className="bg-white/10 hover:bg-white/20 w-8 h-8 rounded-xl flex items-center justify-center shrink-0"><HiOutlineX className="w-4 h-4" /></button>
-          </div>
-        )}
-      </div>
+            <div className="hidden sm:flex flex-col gap-5">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                        <h2 className="text-2xl font-semibold text-foreground tracking-[-0.3px]">Report Lists</h2>
+                        <p className="text-sm text-muted-foreground mt-1">Manage and track all reports</p>
+                    </div>
+                    {r.perms.canCreate && (
+                        <BtnDefault onClick={r.openCreateModal} size="md" className="gap-2 px-4 h-10 rounded-xl shadow-sm">
+                            <HiOutlinePlus className="w-4 h-4" />New Issue
+                        </BtnDefault>
+                    )}
+                </div>
 
-      {/* ── FILTER MODAL (desktop) ── */}
-      <ModalOverlay isOpen={showFilterModal} onClose={() => setShowFilterModal(false)}>
-        <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-[520px] max-h-[90vh] flex flex-col">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-            <h2 className="text-base font-bold text-foreground">Filter Reports</h2>
-            <button onClick={() => setShowFilterModal(false)} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
-              <HiOutlineX className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="px-6 py-5 overflow-y-auto flex-1">
-            <FilterFields />
-          </div>
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/20 shrink-0">
-            <BtnDefault outline onClick={resetFilter} className="h-9 px-5 rounded-xl text-sm">Reset</BtnDefault>
-            <BtnDefault onClick={applyFilterModal} className="h-9 px-5 rounded-xl text-sm">Apply Filter</BtnDefault>
-          </div>
-        </div>
-      </ModalOverlay>
+                <div className="bg-card rounded-2xl border border-border p-4 shadow-sm">
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <div className="flex-1 min-w-[220px]">
+                            <InputText placeholder="Search by issue, submitter, or activity..." value={r.search} onChange={(e) => { r.setSearch(e.target.value); r.setPage(1); }} />
+                        </div>
+                        <BtnDefault outline onClick={r.openFilterModal} className="gap-2 h-10 rounded-xl px-4">
+                            <SlidersHorizontal className="w-4 h-4" />
+                            Filter
+                            {r.hasActiveFilter && (
+                                <span className="w-4 h-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">!</span>
+                            )}
+                        </BtnDefault>
+                        {r.perms.canExport && (
+                            <BtnDefault outline onClick={() => r.setIsExportModalOpen(true)} className="gap-2 h-10 px-4 rounded-xl text-sm">
+                                <File className="w-4 h-4" />Export Dokumen
+                            </BtnDefault>
+                        )}
+                    </div>
+                    {r.hasActiveFilter && (
+                        <div className="flex items-center gap-2 flex-wrap mt-3 pt-3 border-t border-border">
+                            <span className="text-xs text-muted-foreground font-medium">Filters active</span>
+                            <button onClick={r.resetAllFilters} className="text-xs text-primary font-semibold hover:underline ml-1">Clear all</button>
+                        </div>
+                    )}
+                </div>
 
-      {/* ── FILTER BOTTOM SHEET (mobile) — same FilterFields component ── */}
-      {showFilterSheet && (
-        <div className="sm:hidden fixed inset-0 z-[400]">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowFilterSheet(false)} />
-          <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[88vh] flex flex-col"
-            style={{ "--foreground": "#111827", "--muted-foreground": "#9ca3af", "--border": "#e5e7eb", "--background": "#ffffff", "--primary": "#2563eb", "--primary-foreground": "#ffffff" }}>
-            <div className="flex items-center justify-center pt-3 pb-1 shrink-0">
-              <div className="w-10 h-1 bg-gray-200 rounded-full" />
-            </div>
-            <div className="flex items-center justify-between px-5 pt-2 pb-3 border-b border-gray-100 shrink-0">
-              <h3 className="text-[17px] font-bold text-gray-900">Filter Reports</h3>
-              <button onClick={() => setShowFilterSheet(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-                <HiOutlineX className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="px-5 py-4 overflow-y-auto flex-1">
-              <FilterFields />
-            </div>
-            <div className="flex gap-3 px-5 py-4 border-t border-gray-100 shrink-0">
-              <button onClick={resetFilter} className="flex-1 py-3.5 rounded-2xl border border-gray-200 text-[14px] font-semibold text-gray-700 active:bg-gray-50 transition-colors">Reset</button>
-              <button onClick={applyFilterSheet} className="flex-1 py-3.5 rounded-2xl bg-blue-600 text-white text-[14px] font-semibold shadow-md active:bg-blue-700 transition-colors">Apply Filter</button>
-            </div>
-          </div>
-        </div>
-      )}
+                <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+                    <div className="px-6 py-4 border-b border-border bg-muted/30 flex items-center justify-between">
+                        <h3 className="text-[15px] font-bold text-foreground">
+                            Report <span>{areaOfAuthUser?.area ?? "Area"}</span>
+                        </h3>
+                        <span className="text-[12px] text-muted-foreground">{r.filtered.length} records</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="bg-muted/40 text-left border-b border-border">
+                                    {["No", "Date", "Submitted By", "Area", "Issue", "Type Activity", "Before", "After", "Status", "Finished"].map((col) => (
+                                        <th key={col} className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase whitespace-nowrap">{col}</th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/60">
+                                {r.paginated.length === 0 ? (
+                                    <tr><td colSpan={10} className="py-16 text-center text-muted-foreground text-[13px]">No data found</td></tr>
+                                ) : (
+                                    r.paginated.map((report, index) => {
+                                        const isSolved = !!report.finished_date;
+                                        const isSelected = r.selectedReport?.id === report.id;
+                                        return (
+                                            <tr key={report.id} onClick={() => r.handleSelectReport(report)}
+                                                className={`cursor-pointer transition-all duration-150 align-top hover:bg-muted/50
+                                                    ${isSelected ? "bg-primary/5 ring-1 ring-inset ring-primary/20" : ""}
+                                                    ${isSolved ? "bg-emerald-50/30 dark:bg-emerald-950/10" : ""}`}>
+                                                <td className="px-4 py-3.5 text-[12px] text-muted-foreground font-semibold w-10">
+                                                    {(r.page - 1) * 10 + index + 1}
+                                                </td>
+                                                <td className="px-4 py-3.5 whitespace-nowrap">
+                                                    <p className="text-[12.5px] font-medium text-foreground">{formatDate(report.created_at)}</p>
+                                                    {report.updated_at !== report.created_at && (
+                                                        <p className="text-[11px] text-muted-foreground mt-0.5">↑ {formatDate(report.updated_at)}</p>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3.5 whitespace-nowrap">
+                                                    <p className="text-[12.5px] font-semibold text-foreground">{report.author?.name ?? "-"}</p>
+                                                    {report.author?.role && <p className="text-[11px] text-muted-foreground mt-0.5">{report.author.role}</p>}
+                                                </td>
+                                                <td className="px-4 py-3.5 whitespace-nowrap">
+                                                    <span className="inline-block px-2 py-1 rounded-xl bg-slate-100 text-slate-600 text-[11px] font-semibold">{report.area?.area ?? "-"}</span>
+                                                </td>
+                                                <td className="px-4 py-3.5 min-w-[220px]">
+                                                    {report.issue && <RichText text={report.issue} maxLines={3} />}
+                                                </td>
+                                                <td className="px-4 py-3.5">
+                                                    <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[11.5px] font-semibold whitespace-nowrap">
+                                                        {report.activity_type?.name ?? "-"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3.5">
+                                                    {report.photo_before
+                                                        ? <ExpandableImage src={`/storage/${report.photo_before}`} alt="Before" className="w-14 h-14 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity border border-border" />
+                                                        : <div className="w-14 h-14 rounded-lg border border-dashed border-border flex items-center justify-center"><span className="text-muted-foreground text-[10px]">–</span></div>}
+                                                </td>
+                                                <td className="px-4 py-3.5">
+                                                    {report.photo_after
+                                                        ? <ExpandableImage src={`/storage/${report.photo_after}`} alt="After" className="w-14 h-14 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity border border-border" />
+                                                        : <div className="w-14 h-14 rounded-lg border border-dashed border-border flex items-center justify-center"><span className="text-muted-foreground text-[10px]">–</span></div>}
+                                                </td>
+                                                <td className="px-4 py-3.5">
+                                                    {isSolved
+                                                        ? <span className="inline-flex items-center gap-1.5 text-emerald-600 text-[11.5px] font-semibold bg-emerald-50 px-2.5 py-1 rounded-full whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />Finished</span>
+                                                        : <span className="inline-flex items-center gap-1.5 text-amber-600 text-[11.5px] font-semibold bg-amber-50 px-2.5 py-1 rounded-full whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />Pending</span>}
+                                                </td>
+                                                <td className="px-4 py-3.5 whitespace-nowrap">
+                                                    {isSolved
+                                                        ? <span className="text-emerald-600 text-[12px] font-semibold">{formatDate(report.finished_date)}</span>
+                                                        : <span className="text-muted-foreground text-xs">–</span>}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                    <Pagination page={r.page} totalPages={r.totalPages} onChange={r.setPage} />
+                </div>
 
-      <ReportForm isOpen={isModalOpen} onClose={handleCloseReportModal} report={editReport} areas={areas} activities={activities} users={users} />
-      <SolveForm isOpen={showSolveModal} onClose={handleCloseSolveModal} reportId={selectedAreaReport?.id} />
-      <ExportForm isOpen={showExportModal} onClose={() => setShowExportModal(false)} areas={exportAreas} activities={activities} users={exportUsers} canExportAll={canExportAll} canExportArea={canExportArea} canExportOwn={canExportOwn} assignedAreas={assignedAreas} />
-    </AppLayout>
-  );
+                {/* Replace the floating bar with ModalOverlay */}
+                <ReportDetailModal
+                    report={r.selectedReport}
+                    isOpen={!!r.selectedReport}
+                    onClose={r.handleCloseSelected}
+                    onSolve={r.openSolveModal}
+                    onEdit={(report) => r.openEditModal(report)}
+                    onDelete={(report) => r.confirmDelete(report)}
+                    perms={r.perms}
+                    isReportEditable={r.isReportEditable}
+                    isReportDeletable={r.isReportDeletable}
+                    formatDate={formatDate}
+                />
+            </div>
+
+            <div className="flex sm:hidden flex-col gap-0 bg-[#f5f6fa] min-h-screen -mx-4 -mt-4">
+                <div className="sticky top-0 z-10 bg-white px-4 pt-4 pb-3 border-b border-gray-100 shadow-sm">
+                    <div className="flex items-center justify-between mb-3">
+                        <div>
+                            <h2 className="text-[17px] font-bold text-gray-900 leading-tight">Report Lists</h2>
+                            <p className="text-[12px] text-gray-400 mt-0.5">Manage reports</p>
+                        </div>
+                        {r.perms.canCreate && (
+                            <button onClick={r.openCreateModal} className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center shadow-md active:scale-95 transition-transform">
+                                <HiOutlinePlus className="w-5 h-5 text-white" />
+                            </button>
+                        )}
+                    </div>
+                    <div className="flex gap-2">
+                        <div className="flex-1 relative">
+                            <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" strokeLinecap="round" />
+                            </svg>
+                            <input type="text" placeholder="Search reports..." value={r.search}
+                                onChange={(e) => { r.setSearch(e.target.value); r.setPage(1); }}
+                                className="w-full pl-9 pr-3 py-2 rounded-xl bg-gray-100 text-[13px] text-gray-800 placeholder-gray-400 border-0 outline-none focus:ring-2 focus:ring-blue-500/30" />
+                        </div>
+                        <button onClick={r.openFilterSheet} className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 text-[13px] font-medium text-gray-600 active:bg-gray-200 transition-colors">
+                            <SlidersHorizontal className="w-4 h-4" />Filter
+                            {r.hasActiveFilter && (
+                                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">!</span>
+                            )}
+                        </button>
+                        {r.perms.canExport && (
+                            <button onClick={() => r.setIsExportModalOpen(true)} className="flex items-center px-3 py-2 rounded-xl bg-gray-100 text-gray-600 active:bg-gray-200 transition-colors">
+                                <FileDown className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
+                    {r.hasActiveFilter && (
+                        <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-gray-100">
+                            <span className="text-[11px] text-gray-500">Filters active</span>
+                            <button onClick={r.resetAllFilters} className="text-[11px] text-blue-600 font-semibold">Clear all</button>
+                        </div>
+                    )}
+                </div>
+
+                <div className="px-3 py-3 flex flex-col gap-2.5">
+                    {r.paginated.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+                            <div className="w-20 h-20 mb-4 opacity-30">
+                                <svg viewBox="0 0 80 80" fill="none"><path d="M40 8L72 24V56L40 72L8 56V24L40 8Z" stroke="#94a3b8" strokeWidth="2" fill="none" /><path d="M40 8V72M8 24L72 56M72 24L8 56" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 3" /></svg>
+                            </div>
+                            <p className="text-[16px] font-semibold text-gray-700 mb-1">Belum ada laporan</p>
+                            <p className="text-[13px] text-gray-400 mb-5">Laporan yang Anda buat akan muncul di sini.</p>
+                            {r.perms.canCreate && (
+                                <button onClick={r.openCreateModal} className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-semibold shadow-md active:scale-95 transition-transform">
+                                    <HiOutlinePlus className="w-4 h-4" />Buat Laporan Baru
+                                </button>
+                            )}
+                        </div>
+                    ) : (
+                        r.paginated.map((report) => (
+                            <ReportCard
+                                key={report.id}
+                                report={report}
+                                isSelected={r.selectedReport?.id === report.id}
+                                onSelect={r.handleSelectReport}
+                                onDelete={() => r.confirmDelete(report)}
+                                showDelete={r.isReportDeletable(report)}
+                            />
+                        ))
+                    )}
+                </div>
+
+                <Pagination page={r.page} totalPages={r.totalPages} onChange={r.setPage} center />
+
+                {/* Replace the mobile floating bar with ModalOverlay */}
+                <ReportDetailModal
+                    report={r.selectedReport}
+                    isOpen={!!r.selectedReport}
+                    onClose={r.handleCloseSelected}
+                    onSolve={r.openSolveModal}
+                    onEdit={(report) => r.openEditModal(report)}
+                    onDelete={(report) => r.confirmDelete(report)}
+                    perms={r.perms}
+                    isReportEditable={r.isReportEditable}
+                    isReportDeletable={r.isReportDeletable}
+                    formatDate={formatDate}
+                />
+            </div>
+
+            <ModalOverlay isOpen={r.isFilterModalOpen} onClose={() => r.setIsFilterModalOpen(false)}>
+                <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-[520px] max-h-[90vh] flex flex-col">
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+                        <h2 className="text-base font-bold text-foreground">Filter Reports</h2>
+                        <button onClick={() => r.setIsFilterModalOpen(false)} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground">
+                            <HiOutlineX className="w-4 h-4" />
+                        </button>
+                    </div>
+                    <div className="px-6 py-5 overflow-y-auto flex-1"><FilterFields /></div>
+                    <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/20 shrink-0">
+                        <BtnDefault outline onClick={r.resetTempFilter} className="h-9 px-5 rounded-xl text-sm">Reset</BtnDefault>
+                        <BtnDefault onClick={r.applyFilterModal} className="h-9 px-5 rounded-xl text-sm">Apply Filter</BtnDefault>
+                    </div>
+                </div>
+            </ModalOverlay>
+
+            {r.isFilterSheetOpen && (
+                <div className="sm:hidden fixed inset-0 z-[400]">
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => r.setIsFilterSheetOpen(false)} />
+                    <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[88vh] flex flex-col"
+                        style={{ "--foreground": "#111827", "--muted-foreground": "#9ca3af", "--border": "#e5e7eb", "--background": "#ffffff", "--primary": "#2563eb", "--primary-foreground": "#ffffff" }}>
+                        <div className="flex items-center justify-center pt-3 pb-1 shrink-0">
+                            <div className="w-10 h-1 bg-gray-200 rounded-full" />
+                        </div>
+                        <div className="flex items-center justify-between px-5 pt-2 pb-3 border-b border-gray-100 shrink-0">
+                            <h3 className="text-[17px] font-bold text-gray-900">Filter Reports</h3>
+                            <button onClick={() => r.setIsFilterSheetOpen(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
+                                <HiOutlineX className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="px-5 py-4 overflow-y-auto flex-1"><FilterFields /></div>
+                        <div className="flex gap-3 px-5 py-4 border-t border-gray-100 shrink-0">
+                            <button onClick={r.resetTempFilter} className="flex-1 py-3.5 rounded-2xl border border-gray-200 text-[14px] font-semibold text-gray-700 active:bg-gray-50 transition-colors">Reset</button>
+                            <button onClick={r.applyFilterSheet} className="flex-1 py-3.5 rounded-2xl bg-blue-600 text-white text-[14px] font-semibold shadow-md active:bg-blue-700 transition-colors">Apply Filter</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <ReportForm
+                isOpen={r.isReportModalOpen}
+                onClose={r.closeReportModal}
+                report={r.editReport}
+                areas={areas}
+                activities={activities}
+                users={users}
+            />
+            <SolveForm
+                isOpen={r.isSolveModalOpen}
+                onClose={r.closeSolveModal}
+                reportId={r.selectedReport?.id}
+            />
+            <ExportForm
+                isOpen={r.isExportModalOpen}
+                onClose={() => r.setIsExportModalOpen(false)}
+                areas={exportAreas}
+                activities={activities}
+                users={exportUsers}
+                canExportAll={r.perms.canExportAll}
+                canExportArea={r.perms.canExportArea}
+                canExportOwn={r.perms.canExportOwn}
+                assignedAreas={assignedAreas}
+            />
+        </AppLayout>
+    );
 }

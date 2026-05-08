@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { formatDate } from "@/lib/format.ts";
 import ExpandableImage from "@/Components/UI/ExpandableImage";
+import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { HiOutlineX } from "react-icons/hi";
 
 const avatarColors = ["bg-violet-500", "bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-rose-500", "bg-cyan-500", "bg-fuchsia-500"];
 
@@ -98,99 +100,155 @@ function ContentSection({ label, children }) {
     );
 }
 
+// Delete confirmation modal component
+function DeleteConfirmModal({ isOpen, onClose, onConfirm, report }) {
+    if (!report) return null;
+    
+    return (
+        <ModalOverlay id="delete-confirm-modal" isOpen={isOpen} onClose={onClose}>
+            <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl border border-gray-200">
+                <div className="flex items-center justify-between p-5 border-b border-gray-100">
+                    <h3 className="text-lg font-semibold text-gray-900">Delete Report</h3>
+                    <button 
+                        onClick={onClose}
+                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                        <HiOutlineX className="w-5 h-5" />
+                    </button>
+                </div>
+                
+                <div className="p-5">
+                    <p className="text-gray-600 text-sm">
+                        Are you sure you want to delete report #{report.id}?
+                    </p>
+                    <p className="text-gray-400 text-xs mt-2">
+                        This action cannot be undone.
+                    </p>
+                </div>
+                
+                <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-100">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={() => {
+                            onConfirm();
+                            onClose();
+                        }}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                    >
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </ModalOverlay>
+    );
+}
+
 export default function ReportCard({ report, isSelected, onSelect, onDelete, showDelete }) {
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
     const isSolved = !!report.finished_date;
     const activityLabel = report.activity_type?.description ?? report.activity_type?.name ?? "-";
     const hasPhotos = report.photo_before || report.photo_after;
     const hasActivity = report.activity && report.activity !== "-";
     const hasIssue = report.issue && report.issue !== "-";
 
-    return (
-        <div
-            onClick={() => onSelect(report)}
-            className={`bg-white rounded-2xl border transition-all duration-150 overflow-hidden active:scale-[0.99] cursor-pointer
-                ${isSelected ? "border-blue-400 shadow-blue-100 shadow-md" : "border-gray-100 shadow-sm"}`}
-        >
-            {isSolved
-                ? <div className="h-0.5 bg-gradient-to-r from-emerald-400 to-emerald-300" />
-                : <div className="h-0.5 bg-gradient-to-r from-amber-400 to-amber-300" />
-            }
+    const handleDeleteClick = (e) => {
+        e.stopPropagation();
+        setShowDeleteModal(true);
+    };
 
-            <div className="p-3.5">
-                <div className="flex items-start gap-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white text-[13px] font-bold ${getAvatarColor(report.author?.name)}`}>
-                        {getInitials(report.author?.name)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                                <p className="text-[14px] font-semibold text-gray-900 leading-tight truncate">{report.author?.name ?? "-"}</p>
-                                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 text-[11px] text-gray-400">
-                                    {report.author?.role && (
-                                        <span>{report.author.role}</span>
+    const handleConfirmDelete = () => {
+        onDelete();
+    };
+
+    return (
+        <>
+            <div
+                onClick={() => onSelect(report)}
+                className={`bg-white rounded-2xl border transition-all duration-150 overflow-hidden active:scale-[0.99] cursor-pointer
+                    ${isSelected ? "border-blue-400 shadow-blue-100 shadow-md" : "border-gray-100 shadow-sm"}`}
+            >
+                {isSolved
+                    ? <div className="h-0.5 bg-gradient-to-r from-emerald-400 to-emerald-300" />
+                    : <div className="h-0.5 bg-gradient-to-r from-amber-400 to-amber-300" />
+                }
+
+                <div className="p-3.5">
+                    <div className="flex items-start gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white text-[13px] font-bold ${getAvatarColor(report.author?.name)}`}>
+                            {getInitials(report.author?.name)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="min-w-0">
+                                    <p className="text-[14px] font-semibold text-gray-900 leading-tight truncate">{report.author?.name ?? "-"}</p>
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5 text-[11px] text-gray-400">
+                                        {report.author?.role && (
+                                            <span>{report.author.role}</span>
+                                        )}
+                                        <span>{formatDate(report.created_at)}</span>
+                                        {report.updated_at && report.updated_at !== report.created_at && (
+                                            <span className="text-gray-300">↑ {formatDate(report.updated_at)}</span>
+                                        )}
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{report.area?.area ?? "-"}</span>
+                                    </div>
+                                </div>
+                                <div className="shrink-0 flex items-center gap-2">
+                                    {isSolved ? (
+                                        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />Solved
+                                        </span>
+                                    ) : (
+                                        <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />Pending
+                                        </span>
                                     )}
-                                    <span>{formatDate(report.created_at)}</span>
-                                    {report.updated_at && report.updated_at !== report.created_at && (
-                                        <span className="text-gray-300">↑ {formatDate(report.updated_at)}</span>
-                                    )}
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">{report.area?.area ?? "-"}</span>
                                 </div>
                             </div>
-                            <div className="shrink-0 flex items-center gap-2">
-                                {isSolved ? (
-                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />Solved
-                                    </span>
-                                ) : (
-                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />Pending
-                                    </span>
-                                )}
-                                {showDelete && (
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                                        className="w-6 h-6 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-600 hover:text-red-700 transition-colors"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                )}
-                            </div>
                         </div>
-                        {/* <div className="mt-1.5">
-                            <span className="inline-block px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md text-[11px] font-semibold">{activityLabel}</span>
-                        </div> */}
                     </div>
+
+                    {(hasActivity || hasIssue) && (
+                        <div className="mt-3 flex flex-col gap-3">
+                            {hasActivity && (
+                                <ContentSection label="Activity">
+                                    <RichText text={report.activity} maxLines={3} />
+                                </ContentSection>
+                            )}
+                            {hasIssue && (
+                                <ContentSection label="Issue">
+                                    <RichText text={report.issue} maxLines={3} />
+                                </ContentSection>
+                            )}
+                        </div>
+                    )}
+
+                    {hasPhotos && (
+                        <div className="mt-3 pt-3 border-t border-gray-100 flex gap-4">
+                            <PhotoSlot src={report.photo_before} label="Before" />
+                            <PhotoSlot src={report.photo_after} label="After" />
+                        </div>
+                    )}
+
+                    {isSolved && report.finished_date && (
+                        <div className="mt-2.5 pt-2.5 border-t border-gray-100 flex items-center justify-between">
+                            <span className="text-[10.5px] text-gray-400">Finished at</span>
+                            <span className="text-[11px] font-semibold text-emerald-600">{formatDate(report.finished_date)}</span>
+                        </div>
+                    )}
                 </div>
-
-                {(hasActivity || hasIssue) && (
-                    <div className="mt-3 flex flex-col gap-3">
-                        {hasActivity && (
-                            <ContentSection label="Activity">
-                                <RichText text={report.activity} maxLines={3} />
-                            </ContentSection>
-                        )}
-                        {hasIssue && (
-                            <ContentSection label="Issue">
-                                <RichText text={report.issue} maxLines={3} />
-                            </ContentSection>
-                        )}
-                    </div>
-                )}
-
-                {hasPhotos && (
-                    <div className="mt-3 pt-3 border-t border-gray-100 flex gap-4">
-                        <PhotoSlot src={report.photo_before} label="Before" />
-                        <PhotoSlot src={report.photo_after} label="After" />
-                    </div>
-                )}
-
-                {isSolved && report.finished_date && (
-                    <div className="mt-2.5 pt-2.5 border-t border-gray-100 flex items-center justify-between">
-                        <span className="text-[10.5px] text-gray-400">Finished at</span>
-                        <span className="text-[11px] font-semibold text-emerald-600">{formatDate(report.finished_date)}</span>
-                    </div>
-                )}
             </div>
-        </div>
+
+            <DeleteConfirmModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={handleConfirmDelete}
+                report={report}
+            />
+        </>
     );
 }
