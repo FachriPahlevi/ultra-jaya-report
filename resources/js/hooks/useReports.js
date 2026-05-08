@@ -57,7 +57,8 @@ export function useReports(reports = []) {
     const [isExportModalOpen, setIsExportModalOpen]   = useState(false);
     const [isFilterModalOpen, setIsFilterModalOpen]   = useState(false);
     const [isFilterSheetOpen, setIsFilterSheetOpen]   = useState(false);
-
+    const [reportToSolve, setReportToSolve] = useState(null);
+    
     const [tempStatus, setTempStatus]             = useState("");
     const [tempType, setTempType]                 = useState("");
     const [tempArea, setTempArea]                 = useState("");
@@ -142,8 +143,19 @@ export function useReports(reports = []) {
     const openEditModal   = (report) => { setEditReport(report); setIsReportModalOpen(true); };
     const closeReportModal = () => { setIsReportModalOpen(false); setEditReport(null); };
 
-    const openSolveModal  = () => setIsSolveModalOpen(true);
-    const closeSolveModal = () => { setIsSolveModalOpen(false); setSelectedReport(null); };
+    const openSolveModal = (report) => {
+    if (!report || !report.id) {
+        console.error("Cannot open solve modal: invalid report", report);
+        return;
+    }
+
+    setReportToSolve(report);
+    setIsSolveModalOpen(true);
+};
+   const closeSolveModal = () => {
+    setIsSolveModalOpen(false);
+    setReportToSolve(null);
+};
 
     const confirmDelete = (report) => {
         if (!report) return;
@@ -196,5 +208,6 @@ export function useReports(reports = []) {
         openSolveModal, closeSolveModal,
         confirmDelete,
         temp,
+        reportToSolve,
     };
 }

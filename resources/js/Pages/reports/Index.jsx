@@ -138,7 +138,7 @@ function ReportDetailModal({ report, isOpen, onClose, onSolve, onEdit, onDelete,
                     {perms.canSolve && !report.finished_date && (
                         <button
                             onClick={() => {
-                                onSolve();
+                                onSolve(report);
                                 onClose();
                             }}
                             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors"
@@ -376,7 +376,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
                     report={r.selectedReport}
                     isOpen={!!r.selectedReport}
                     onClose={r.handleCloseSelected}
-                    onSolve={r.openSolveModal}
+                    onSolve={(report) => r.openSolveModal(report)}
                     onEdit={(report) => r.openEditModal(report)}
                     onDelete={(report) => r.confirmDelete(report)}
                     perms={r.perms}
@@ -463,7 +463,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
                     report={r.selectedReport}
                     isOpen={!!r.selectedReport}
                     onClose={r.handleCloseSelected}
-                    onSolve={r.openSolveModal}
+                    onSolve={(report) => r.openSolveModal(report)}
                     onEdit={(report) => r.openEditModal(report)}
                     onDelete={(report) => r.confirmDelete(report)}
                     perms={r.perms}
@@ -523,7 +523,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
             <SolveForm
                 isOpen={r.isSolveModalOpen}
                 onClose={r.closeSolveModal}
-                reportId={r.selectedReport?.id}
+                reportId={r.reportToSolve?.id}
             />
             <ExportForm
                 isOpen={r.isExportModalOpen}

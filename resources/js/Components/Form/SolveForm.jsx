@@ -11,14 +11,9 @@ export default function SolveForm({ isOpen, onClose, reportId }) {
   const [solvePhoto, setSolvePhoto] = useState(null);
   const [solvePhotoPreview, setSolvePhotoPreview] = useState(null);
   const [processing, setProcessing] = useState(false);
+  const [reportToSolve, setReportToSolve] = useState(null);
+  console.log(reportId)
 
-  // Debug logging
-  useEffect(() => {
-    console.log("SolveForm received reportId:", reportId);
-    console.log("SolveForm isOpen:", isOpen);
-  }, [reportId, isOpen]);
-
-  // Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
       setSolvePhoto(null);
@@ -37,6 +32,20 @@ export default function SolveForm({ isOpen, onClose, reportId }) {
     });
   };
 
+  const openSolveModal = (report) => {
+        if (!report || !report.id) {
+            console.error("Cannot open solve modal: invalid report", report);
+            return;
+        }
+
+        setReportToSolve(report);
+        setIsSolveModalOpen(true);
+    };
+
+    const closeSolveModal = () => {
+        setIsSolveModalOpen(false);
+        setReportToSolve(null);
+    };
   const handleSolveSubmit = () => {
     console.log("handleSolveSubmit called with reportId:", reportId);
     
@@ -58,9 +67,7 @@ export default function SolveForm({ isOpen, onClose, reportId }) {
 
     // Gunakan route helper jika tersedia, atau hardcode URL
     const url = route ? route("reports.solve", reportId) : `/reports/${reportId}/solve`;
-    console.log("Submitting to URL:", url);
-    console.log("Report ID type:", typeof reportId);
-    console.log("Report ID value:", reportId);
+
 
     router.post(url, formData, {
       onSuccess: () => {
@@ -97,11 +104,6 @@ export default function SolveForm({ isOpen, onClose, reportId }) {
         </div>
 
         <div className="p-4 sm:p-6">
-          {!reportId ? (
-            <div className="text-center py-8 text-red-500">
-              Error: Report ID tidak valid. Silakan tutup dan buka kembali.
-            </div>
-          ) : (
             <div className="flex flex-col gap-4 sm:gap-5">
               <div>
                 <label className="text-[13px] font-semibold text-foreground mb-1.5 block">
@@ -158,7 +160,6 @@ export default function SolveForm({ isOpen, onClose, reportId }) {
                 </BtnDefault>
               </div>
             </div>
-          )}
         </div>
       </div>
     </ModalOverlay>
