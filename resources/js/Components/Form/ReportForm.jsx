@@ -19,7 +19,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
   const [selectedArea, setSelectedArea] = useState(null);
   const [selectedActivity, setSelectedActivity] = useState(null);
 
-  const { data, setData, post, put, processing, errors, reset } = useForm({
+  const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
     author_id: currentUser?.id || "",
     type_activity: "",
     area_activity: "",
@@ -29,9 +29,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
   });
 
   useEffect(() => {
-    if (!isOpen) {
-      return;
-    }
+    if (!isOpen) return;
 
     if (report) {
       setData({
@@ -53,13 +51,14 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
       setPhotoPreview(null);
     } else {
       reset();
+      clearErrors();
       setData("author_id", currentUser?.id || "");
       setSelectedAuthor(null);
       setSelectedArea(null);
       setSelectedActivity(null);
       setPhotoPreview(null);
     }
-  }, [isOpen, report, areas, activities, users]);
+  }, [isOpen, report]);
 
   const showStatusModal = (type, title, message) => {
     setStatusModalProps({
@@ -101,9 +100,18 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
     setData("issue", e.target.value);
   };
 
-  const handleCancel = () => {
+  const resetForm = () => {
     reset();
+    clearErrors();
+    setData("author_id", currentUser?.id || "");
+    setSelectedAuthor(null);
+    setSelectedArea(null);
+    setSelectedActivity(null);
     setPhotoPreview(null);
+  };
+
+  const handleCancel = () => {
+    resetForm();
     onClose();
   };
 
@@ -123,8 +131,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
       forceFormData: true,
       onSuccess: () => {
         showStatusModal("success", "Success", successMessage);
-        reset();
-        setPhotoPreview(null);
+        resetForm();
         onClose();
         router.reload();
       },
