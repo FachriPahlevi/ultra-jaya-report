@@ -60,14 +60,53 @@ const RichText = ({ text, maxLines = 3 }) => {
     );
 };
 
-// Add this component inside the file (before the Index component)
+function FilterFields({ temp, statusOptions, filterAreaOptions, roleOptions, typeOptions }) {
+    return (
+        <div className="flex flex-col gap-5">
+            <div>
+                <label className="block text-[12px] font-semibold text-foreground mb-2">Periode</label>
+                <div className="flex items-center gap-2">
+                    <input type="date" value={temp.tempDateFrom} onChange={(e) => temp.setTempDateFrom(e.target.value)}
+                        className="flex-1 border border-border rounded-xl px-3 py-2.5 text-[13px] text-foreground bg-background outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                    <span className="text-muted-foreground text-sm font-medium shrink-0">–</span>
+                    <input type="date" value={temp.tempDateTo} onChange={(e) => temp.setTempDateTo(e.target.value)}
+                        className="flex-1 border border-border rounded-xl px-3 py-2.5 text-[13px] text-foreground bg-background outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                </div>
+            </div>
+            <div>
+                <label className="block text-[12px] font-semibold text-foreground mb-2">Status</label>
+                <div className="flex gap-2">
+                    {statusOptions.map((opt) => (
+                        <button key={opt.value} onClick={() => temp.setTempStatus(opt.value)}
+                            className={`flex-1 py-2.5 rounded-xl text-[12.5px] font-semibold border transition-all
+                                ${temp.tempStatus === opt.value
+                                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                    : "bg-background text-foreground border-border hover:border-primary/40"}`}>
+                            {opt.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+            <InputDropdown label="Area" defaultValue={temp.tempArea} setObject={(item) => temp.setTempArea(item.value)} itemList={filterAreaOptions} />
+            <InputDropdown label="Role" defaultValue={temp.tempRole} setObject={(item) => temp.setTempRole(item.value)} itemList={roleOptions} />
+            <InputDropdown label="Activity" defaultValue={temp.tempType} setObject={(item) => temp.setTempType(item.value)} itemList={typeOptions} />
+            <label className="flex items-center justify-between gap-3 cursor-pointer py-0.5">
+                <span className="text-[13px] text-foreground font-medium">Show only my reports</span>
+                <div onClick={() => temp.setTempMyReportsOnly((v) => !v)}
+                    className={`w-10 h-6 rounded-full transition-colors relative shrink-0 cursor-pointer ${temp.tempMyReportsOnly ? "bg-primary" : "bg-border"}`}>
+                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${temp.tempMyReportsOnly ? "left-5" : "left-1"}`} />
+                </div>
+            </label>
+        </div>
+    );
+}
+
 function ReportDetailModal({ report, isOpen, onClose, onSolve, onEdit, onDelete, perms, isReportEditable, isReportDeletable, formatDate }) {
     if (!report) return null;
     
     return (
         <ModalOverlay id="report-detail-modal" isOpen={isOpen} onClose={onClose}>
             <div className="bg-slate-800 rounded-xl w-full max-w-md shadow-xl border border-slate-700">
-                {/* Modal Header */}
                 <div className="flex items-center justify-between p-5 border-b border-slate-700">
                     <h3 className="text-lg font-semibold text-white">Report Details</h3>
                     <button 
@@ -78,7 +117,6 @@ function ReportDetailModal({ report, isOpen, onClose, onSolve, onEdit, onDelete,
                     </button>
                 </div>
                 
-                {/* Modal Body */}
                 <div className="p-5 space-y-4">
                     <div>
                         <div className="text-sm text-slate-400">Activity</div>
@@ -133,7 +171,6 @@ function ReportDetailModal({ report, isOpen, onClose, onSolve, onEdit, onDelete,
                     </div>
                 </div>
                 
-                {/* Modal Footer */}
                 <div className="flex items-center justify-end gap-3 p-5 border-t border-slate-700">
                     {perms.canSolve && !report.finished_date && (
                         <button
@@ -206,45 +243,6 @@ export default function Index({ reports = [], areas = [], activities = [], users
             : areaOptions;
 
     const { temp } = r;
-
-    const FilterFields = () => (
-        <div className="flex flex-col gap-5">
-            <div>
-                <label className="block text-[12px] font-semibold text-foreground mb-2">Periode</label>
-                <div className="flex items-center gap-2">
-                    <input type="date" value={temp.tempDateFrom} onChange={(e) => temp.setTempDateFrom(e.target.value)}
-                        className="flex-1 border border-border rounded-xl px-3 py-2.5 text-[13px] text-foreground bg-background outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-                    <span className="text-muted-foreground text-sm font-medium shrink-0">–</span>
-                    <input type="date" value={temp.tempDateTo} onChange={(e) => temp.setTempDateTo(e.target.value)}
-                        className="flex-1 border border-border rounded-xl px-3 py-2.5 text-[13px] text-foreground bg-background outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
-                </div>
-            </div>
-            <div>
-                <label className="block text-[12px] font-semibold text-foreground mb-2">Status</label>
-                <div className="flex gap-2">
-                    {statusOptions.map((opt) => (
-                        <button key={opt.value} onClick={() => temp.setTempStatus(opt.value)}
-                            className={`flex-1 py-2.5 rounded-xl text-[12.5px] font-semibold border transition-all
-                                ${temp.tempStatus === opt.value
-                                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                                    : "bg-background text-foreground border-border hover:border-primary/40"}`}>
-                            {opt.label}
-                        </button>
-                    ))}
-                </div>
-            </div>
-            <InputDropdown label="Area" value={temp.tempArea} setObject={(item) => temp.setTempArea(item.value)} itemList={filterAreaOptions} />
-            <InputDropdown label="Role" value={temp.tempRole} setObject={(item) => temp.setTempRole(item.value)} itemList={roleOptions} />
-            <InputDropdown label="Activity" value={temp.tempType} setObject={(item) => temp.setTempType(item.value)} itemList={typeOptions} />
-            <label className="flex items-center justify-between gap-3 cursor-pointer py-0.5">
-                <span className="text-[13px] text-foreground font-medium">Show only my reports</span>
-                <div onClick={() => temp.setTempMyReportsOnly((v) => !v)}
-                    className={`w-10 h-6 rounded-full transition-colors relative shrink-0 cursor-pointer ${temp.tempMyReportsOnly ? "bg-primary" : "bg-border"}`}>
-                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${temp.tempMyReportsOnly ? "left-5" : "left-1"}`} />
-                </div>
-            </label>
-        </div>
-    );
 
     return (
         <AppLayout title="Report Lists">
@@ -371,7 +369,6 @@ export default function Index({ reports = [], areas = [], activities = [], users
                     <Pagination page={r.page} totalPages={r.totalPages} onChange={r.setPage} />
                 </div>
 
-                {/* Replace the floating bar with ModalOverlay */}
                 <ReportDetailModal
                     report={r.selectedReport}
                     isOpen={!!r.selectedReport}
@@ -458,7 +455,6 @@ export default function Index({ reports = [], areas = [], activities = [], users
 
                 <Pagination page={r.page} totalPages={r.totalPages} onChange={r.setPage} center />
 
-                {/* Replace the mobile floating bar with ModalOverlay */}
                 <ReportDetailModal
                     report={r.selectedReport}
                     isOpen={!!r.selectedReport}
@@ -481,7 +477,9 @@ export default function Index({ reports = [], areas = [], activities = [], users
                             <HiOutlineX className="w-4 h-4" />
                         </button>
                     </div>
-                    <div className="px-6 py-5 overflow-y-auto flex-1"><FilterFields /></div>
+                    <div className="px-6 py-5 overflow-y-auto flex-1">
+                        <FilterFields temp={temp} statusOptions={statusOptions} filterAreaOptions={filterAreaOptions} roleOptions={roleOptions} typeOptions={typeOptions} />
+                    </div>
                     <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/20 shrink-0">
                         <BtnDefault outline onClick={r.resetTempFilter} className="h-9 px-5 rounded-xl text-sm">Reset</BtnDefault>
                         <BtnDefault onClick={r.applyFilterModal} className="h-9 px-5 rounded-xl text-sm">Apply Filter</BtnDefault>
@@ -503,7 +501,9 @@ export default function Index({ reports = [], areas = [], activities = [], users
                                 <HiOutlineX className="w-4 h-4" />
                             </button>
                         </div>
-                        <div className="px-5 py-4 overflow-y-auto flex-1"><FilterFields /></div>
+                        <div className="px-5 py-4 overflow-y-auto flex-1">
+                            <FilterFields temp={temp} statusOptions={statusOptions} filterAreaOptions={filterAreaOptions} roleOptions={roleOptions} typeOptions={typeOptions} />
+                        </div>
                         <div className="flex gap-3 px-5 py-4 border-t border-gray-100 shrink-0">
                             <button onClick={r.resetTempFilter} className="flex-1 py-3.5 rounded-2xl border border-gray-200 text-[14px] font-semibold text-gray-700 active:bg-gray-50 transition-colors">Reset</button>
                             <button onClick={r.applyFilterSheet} className="flex-1 py-3.5 rounded-2xl bg-blue-600 text-white text-[14px] font-semibold shadow-md active:bg-blue-700 transition-colors">Apply Filter</button>
