@@ -60,7 +60,7 @@ const RichText = ({ text, maxLines = 3 }) => {
     );
 };
 
-function FilterFields({ temp, statusOptions, filterAreaOptions, roleOptions, typeOptions }) {
+function FilterFields({ temp, statusOptions, filterAreaOptions, typeOptions }) {
     return (
         <div className="flex flex-col gap-5">
             <div>
@@ -88,7 +88,6 @@ function FilterFields({ temp, statusOptions, filterAreaOptions, roleOptions, typ
                 </div>
             </div>
             <InputDropdown label="Area" defaultValue={temp.tempArea} setObject={(item) => temp.setTempArea(item.value)} itemList={filterAreaOptions} />
-            <InputDropdown label="Role" defaultValue={temp.tempRole} setObject={(item) => temp.setTempRole(item.value)} itemList={roleOptions} />
             <InputDropdown label="Activity" defaultValue={temp.tempType} setObject={(item) => temp.setTempType(item.value)} itemList={typeOptions} />
             <label className="flex items-center justify-between gap-3 cursor-pointer py-0.5">
                 <span className="text-[13px] text-foreground font-medium">Show only my reports</span>
@@ -233,9 +232,6 @@ export default function Index({ reports = [], areas = [], activities = [], users
     ];
     const typeOptions = [{ label: "All Activities", value: "" }, ...activities.map((a) => ({ label: a.description, value: String(a.id) }))];
     const areaOptions = [{ label: "All Areas", value: "" }, ...areas.map((a) => ({ label: a.area, value: String(a.id) }))];
-    const roleOptions = r.perms.canViewAll || r.perms.canSolveOwnArea
-        ? [{ label: "All Roles", value: "" }, { label: "Admin", value: "Admin" }, { label: "Supervisor", value: "Supervisor" }, { label: "Manager", value: "Manager" }]
-        : [{ label: "User", value: "User" }];
     const filterAreaOptions = r.perms.canViewAll
         ? areaOptions
         : r.perms.canSolveOwnArea
@@ -478,7 +474,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
                         </button>
                     </div>
                     <div className="px-6 py-5 overflow-y-auto flex-1">
-                        <FilterFields temp={temp} statusOptions={statusOptions} filterAreaOptions={filterAreaOptions} roleOptions={roleOptions} typeOptions={typeOptions} />
+                        <FilterFields temp={temp} statusOptions={statusOptions} filterAreaOptions={filterAreaOptions} typeOptions={typeOptions} />
                     </div>
                     <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/20 shrink-0">
                         <BtnDefault outline onClick={r.resetTempFilter} className="h-9 px-5 rounded-xl text-sm">Reset</BtnDefault>
@@ -502,7 +498,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
                             </button>
                         </div>
                         <div className="px-5 py-4 overflow-y-auto flex-1">
-                            <FilterFields temp={temp} statusOptions={statusOptions} filterAreaOptions={filterAreaOptions} roleOptions={roleOptions} typeOptions={typeOptions} />
+                            <FilterFields temp={temp} statusOptions={statusOptions} filterAreaOptions={filterAreaOptions} typeOptions={typeOptions} />
                         </div>
                         <div className="flex gap-3 px-5 py-4 border-t border-gray-100 shrink-0">
                             <button onClick={r.resetTempFilter} className="flex-1 py-3.5 rounded-2xl border border-gray-200 text-[14px] font-semibold text-gray-700 active:bg-gray-50 transition-colors">Reset</button>
