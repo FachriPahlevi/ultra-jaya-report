@@ -22,6 +22,9 @@ class Report extends Model
     ];
     
     protected $casts = [
+        'author_id' => 'integer',
+        'area_id' => 'integer',
+        'activity_id' => 'integer',
         'finished_date' => 'datetime',
         'is_content_edited' => 'boolean'
     ];

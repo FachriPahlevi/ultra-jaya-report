@@ -31,13 +31,13 @@ export function useReports(reports = []) {
     const isReportEditable = (report) => {
         if (!report || report.finished_date) return false;
         if (perms.canEditAll) return true;
-        return perms.canEditOwn && report.author_id === auth?.id;
+        return perms.canEditOwn && String(report.author_id) === String(auth?.id);
     };
 
     const isReportDeletable = (report) => {
         if (!report || report.finished_date) return false;
         if (perms.canDeleteAll) return true;
-        return perms.canDeleteOwn && report.author_id === auth?.id;
+        return perms.canDeleteOwn && String(report.author_id) === String(auth?.id);
     };
 
     const [search, setSearch]               = useState("");
