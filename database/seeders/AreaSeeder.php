@@ -29,29 +29,30 @@ class AreaSeeder extends Seeder
         }
 
         $areas = [
-            ['area' => 'Fresh Milk Reception', 'pic_user_id' => null],
-            ['area' => 'Processing', 'pic_user_id' => null],
-            ['area' => 'CIP Kitchen', 'pic_user_id' => null],
-            ['area' => 'Filling', 'pic_user_id' => null],
-            ['area' => 'Packing', 'pic_user_id' => null],
+            ['area' => 'Fresh Milk Reception'],
+            ['area' => 'Processing'],
+            ['area' => 'CIP Kitchen'],
+            ['area' => 'Filling'],
+            ['area' => 'Packing'],
         ];
 
-        // Assign 1 SPV untuk 1 area (berurutan)
-        foreach ($areas as $index => $area) {
-            if (isset($supervisors[$index])) {
-                $areas[$index]['pic_user_id'] = $supervisors[$index]->id;
-            }
-        }
-
-        foreach ($areas as $area) {
-            Area::updateOrCreate(
-                ['area' => $area['area']],
-                ['pic_user_id' => $area['pic_user_id']]
+        foreach ($areas as $index => $areaData) {
+            $area = Area::updateOrCreate(
+                ['area' => $areaData['area']],
+                ['area' => $areaData['area']]
             );
+
+            $assignedSupervisorIds = [];
+
+            if (isset($supervisors[$index])) {
+                $assignedSupervisorIds[] = $supervisors[$index]->id;
+            }
+
+            $area->pics()->sync($assignedSupervisorIds);
         }
 
         $this->command->info(count($areas) . ' areas seeded successfully.');
-        $this->command->info('Each supervisor assigned to 1 area.');
+        $this->command->info('Supervisors assigned through area_user pivot.');
     }
 
     private function createDummySupervisors()

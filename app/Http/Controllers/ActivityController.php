@@ -10,12 +10,27 @@ class ActivityController extends Controller
 {
     public function index()
     {
-        $activities = Activity::select('id', 'name', 'description')
+        $activities = Activity::with('parent:id,name')
             ->latest()
             ->paginate(10);
-        
+
+        $activities->through(function (Activity $activity) {
+            return [
+                'id' => $activity->id,
+                'name' => $activity->name,
+                'description' => $activity->description,
+                'parent_id' => $activity->parent_id,
+                'parent' => $activity->parent ? [
+                    'id' => $activity->parent->id,
+                    'name' => $activity->parent->name,
+                ] : null,
+                'level' => $activity->parent_id ? 'sub' : 'parent',
+            ];
+        });
+
         return Inertia::render('activities/Index', [
-            'activities' => $activities
+            'activities' => $activities,
+            'parentActivities' => Activity::whereNull('parent_id')->select('id', 'name')->orderBy('name')->get(),
         ]);
     }
 
@@ -24,11 +39,13 @@ class ActivityController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:activities,name',
             'description' => 'nullable|string|max:500',
+            'parent_id' => 'nullable|exists:activities,id',
         ]);
 
         Activity::create([
             'name' => $validated['name'],
             'description' => $validated['description'],
+            'parent_id' => $validated['parent_id'] ?? null,
         ]);
 
         return redirect()->route('activities.index');
@@ -39,11 +56,13 @@ class ActivityController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:activities,name,' . $activity->id,
             'description' => 'nullable|string|max:500',
+            'parent_id' => 'nullable|exists:activities,id|not_in:' . $activity->id,
         ]);
 
         $activity->update([
             'name' => $validated['name'],
             'description' => $validated['description'],
+            'parent_id' => $validated['parent_id'] ?? null,
         ]);
 
         return redirect()->route('activities.index');

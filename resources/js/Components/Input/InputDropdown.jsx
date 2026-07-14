@@ -35,6 +35,12 @@ export default function InputDropdown({
     }, [object]);
 
     useEffect(() => {
+        if (!object) {
+            setValue(defaultValue);
+        }
+    }, [defaultValue]);
+
+    useEffect(() => {
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setShowDropdown(false);

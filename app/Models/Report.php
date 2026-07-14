@@ -13,16 +13,23 @@ class Report extends Model
         'author_id',
         'area_id',
         'activity_id',
+        'sub_activity_id',
         'activity',
         'issue',
+        'status',
         'photo_before',
         'photo_after',
         'is_content_edited',
-        'finished_date'
+        'closed_at',
+        'closed_by',
     ];
     
     protected $casts = [
-        'finished_date' => 'datetime',
+        'author_id' => 'integer',
+        'area_id' => 'integer',
+        'activity_id' => 'integer',
+        'sub_activity_id' => 'integer',
+        'closed_at' => 'datetime',
         'is_content_edited' => 'boolean'
     ];
     
@@ -39,5 +46,15 @@ class Report extends Model
     public function activityType()
     {
         return $this->belongsTo(Activity::class, 'activity_id');
+    }
+
+    public function subActivity()
+    {
+        return $this->belongsTo(Activity::class, 'sub_activity_id');
+    }
+
+    public function closer()
+    {
+        return $this->belongsTo(User::class, 'closed_by');
     }
 }

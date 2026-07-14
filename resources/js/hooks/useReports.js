@@ -29,15 +29,15 @@ export function useReports(reports = []) {
     perms.canExport = perms.canExportAll || perms.canExportArea || perms.canExportOwn;
 
     const isReportEditable = (report) => {
-        if (!report || report.finished_date) return false;
+        if (!report || report.status === "closed") return false;
         if (perms.canEditAll) return true;
-        return perms.canEditOwn && report.author_id === auth?.id;
+        return perms.canEditOwn && String(report.author_id) === String(auth?.id);
     };
 
     const isReportDeletable = (report) => {
-        if (!report || report.finished_date) return false;
+        if (!report || report.status === "closed") return false;
         if (perms.canDeleteAll) return true;
-        return perms.canDeleteOwn && report.author_id === auth?.id;
+        return perms.canDeleteOwn && String(report.author_id) === String(auth?.id);
     };
 
     const [search, setSearch]               = useState("");
@@ -71,8 +71,7 @@ export function useReports(reports = []) {
         const q = search.toLowerCase();
         return reports.filter((r) => {
             if (myReportsOnly && r.author_id !== auth?.id) return false;
-            if (statusFilter === "pending" && r.finished_date) return false;
-            if (statusFilter === "solved" && !r.finished_date) return false;
+            if (statusFilter && r.status !== statusFilter) return false;
             if (typeFilter && String(r.activity_id) !== String(typeFilter)) return false;
             if (areaFilter && String(r.area_id) !== String(areaFilter)) return false;
             if (roleFilter && r.author?.role !== roleFilter) return false;
@@ -85,6 +84,8 @@ export function useReports(reports = []) {
                     r.author?.name,
                     r.activity_type?.name,
                     r.activity_type?.description,
+                    r.sub_activity?.name,
+                    r.sub_activity?.description,
                 ].filter(Boolean).join(" ").toLowerCase();
                 if (!searchable.includes(q)) return false;
             }
