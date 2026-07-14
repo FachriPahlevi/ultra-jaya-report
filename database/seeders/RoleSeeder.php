@@ -46,7 +46,8 @@ class RoleSeeder extends Seeder
             'reports.create',
             'reports.edit.own',
             'reports.edit.all',
-            'reports.delete',
+            'reports.delete.own',
+            'reports.delete.all',
             'reports.solve.own.area',
             'reports.solve.all',
         ];
@@ -82,7 +83,7 @@ class RoleSeeder extends Seeder
             'users.promote',
             'reports.view.all',
             'reports.create',
-            'reports.delete',
+            'reports.delete.all',
             'reports.solve.all',
             'settings.view',
         ]);
@@ -97,6 +98,7 @@ class RoleSeeder extends Seeder
             'reports.view.all',
             'reports.create',
             'reports.edit.all',
+            'reports.delete.own',
             'reports.solve.all',
             'areas.view',
             'activities.view',
@@ -109,7 +111,7 @@ class RoleSeeder extends Seeder
             'reports.view.own',
             'reports.create',
             'reports.edit.own',
-            'reports.delete',
+            'reports.delete.own',
             'reports.solve.own.area',
             'areas.view',
             'activities.view',
@@ -122,7 +124,7 @@ class RoleSeeder extends Seeder
             'reports.view.own',
             'reports.create',
             'reports.edit.own',
-            'reports.delete',
+            'reports.delete.own',
         ]);
     }
 }

@@ -35,7 +35,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         
         Route::delete('/{report}', [ReportController::class, 'destroy'])
             ->name('reports.destroy')
-            ->middleware('can:reports.delete');
+            ->middleware('role_or_permission:reports.delete.own|reports.delete.all');
         
         Route::get('/export/{type}', [ReportController::class, 'export'])
             ->name('reports.export')

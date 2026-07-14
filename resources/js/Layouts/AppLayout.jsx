@@ -21,17 +21,19 @@ const MenuIcon = () => (
     </div>
 );
 
-const MobileHeader = ({ title, onToggleMenu }) => (
+const MobileHeader = ({ onToggleMenu }) => (
     <header className="hidden items-center gap-3 px-4 py-3 bg-[var(--card)] border-b border-[var(--border)] sticky top-0 z-[30] max-lg:flex">
         <button
             onClick={onToggleMenu}
-            className="p-2 rounded-md hover:bg-[var(--muted)] transition-colors"
+            className="p-2 rounded-md hover:bg-[var(--muted)] transition-colors shrink-0"
         >
             <MenuIcon />
         </button>
 
-        <span className="text-sm font-semibold text-[var(--foreground)]">
-            {title}
+        <img src="/img/logo/logo_uj.svg" className="w-8 h-8 object-contain shrink-0" alt="logo" />
+
+        <span className="text-[13px] font-bold text-[var(--foreground)] leading-tight truncate">
+            PT Ultrajaya Milk Industry
         </span>
     </header>
 );
@@ -45,8 +47,8 @@ export default function Layout({ title = "", children }) {
 
             <SidebarOverlay isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-            <div className="flex-1 flex flex-col lg:ml-[240px] min-w-0">
-                <MobileHeader title={title} onToggleMenu={() => setSidebarOpen(prev => !prev)} />
+            <div className="flex-1 flex flex-col lg:ml-[220px] min-w-0">
+                <MobileHeader onToggleMenu={() => setSidebarOpen(prev => !prev)} />
 
                 <main className="flex-1 px-8 py-6 max-sm:px-4 max-sm:py-4">
                     <div className="max-w-[1400px] mx-auto">

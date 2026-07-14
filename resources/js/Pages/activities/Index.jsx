@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Head, router } from "@inertiajs/react";
+import { Head, router, usePage } from "@inertiajs/react";
 import axios from "axios";
 import AppLayout from "@/Layouts/AppLayout";
 import InputText from "@/Components/Input/InputText";
@@ -10,6 +10,13 @@ import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineX } from "reac
 
 export default function Index({ activities = { data: [], links: [], meta: {} } }) {
   const { setStatusModalProps } = useStatusModal();
+  const { props } = usePage();
+  const permissions = props.auth?.user?.permissions || [];
+  const canAdd = permissions.includes("activities.create");
+  const canEdit = permissions.includes("activities.edit");
+  const canDelete = permissions.includes("activities.delete");
+  const hasActions = canEdit || canDelete;
+
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [processing, setProcessing] = useState(false);
@@ -117,7 +124,6 @@ export default function Index({ activities = { data: [], links: [], meta: {} } }
   const deleteActivity = (activity) => {
     confirmDelete(activity);
   };
-
   return (
     <AppLayout title="Master Activity">
       <Head>
@@ -129,10 +135,12 @@ export default function Index({ activities = { data: [], links: [], meta: {} } }
             <h1 className="text-2xl font-bold text-foreground tracking-[-0.5px] m-0">Master Activity</h1>
             <p className="text-sm text-muted-foreground mt-1">Manage activities</p>
           </div>
-          <BtnDefault onClick={openAdd} size="md" className="gap-2 shadow-sm shrink-0">
-            <HiOutlinePlus className="w-4 h-4" />
-            Add Activity
-          </BtnDefault>
+          {canAdd && (
+            <BtnDefault onClick={openAdd} size="md" className="gap-2 shadow-sm shrink-0">
+              <HiOutlinePlus className="w-4 h-4" />
+              Add Activity
+            </BtnDefault>
+          )}
         </div>
         <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
@@ -142,13 +150,13 @@ export default function Index({ activities = { data: [], links: [], meta: {} } }
                   <th className="p-3 w-12">No</th>
                   <th className="p-3">Name</th>
                   <th className="p-3">Description</th>
-                  <th className="p-3 w-24">Actions</th>
+                  {hasActions && <th className="p-3 w-24">Actions</th>}
                 </tr>
               </thead>
               <tbody>
                 {activities.data.length === 0 ? (
                   <tr>
-                    <td colSpan="4" className="py-12 text-center text-muted-foreground">
+                    <td colSpan={hasActions ? 4 : 3} className="py-12 text-center text-muted-foreground">
                       No activities found
                     </td>
                   </tr>
@@ -158,16 +166,22 @@ export default function Index({ activities = { data: [], links: [], meta: {} } }
                       <td className="p-3 text-xs text-muted-foreground font-mono">{(activities.meta?.from ?? 1) + i}</td>
                       <td className="p-3 font-medium text-foreground">{activity.name}</td>
                       <td className="p-3 text-muted-foreground text-xs">{activity.description ?? "-"}</td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => openEdit(activity)} className="text-primary hover:text-primary/80 transition-colors p-1" title="Edit">
-                            <HiOutlinePencil className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => deleteActivity(activity)} className="text-destructive hover:text-destructive/80 transition-colors p-1" title="Delete">
-                            <HiOutlineTrash className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
+                      {hasActions && (
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            {canEdit && (
+                              <button onClick={() => openEdit(activity)} className="text-primary hover:text-primary/80 transition-colors p-1" title="Edit">
+                                <HiOutlinePencil className="w-4 h-4" />
+                              </button>
+                            )}
+                            {canDelete && (
+                              <button onClick={() => deleteActivity(activity)} className="text-destructive hover:text-destructive/80 transition-colors p-1" title="Delete">
+                                <HiOutlineTrash className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))
                 )}

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Activity;
 use App\Models\Area;
 use App\Models\Report;
+use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,93 +14,54 @@ use Inertia\Inertia;
 
 class ReportController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
         $user = Auth::user();
-        $query = Report::with(['author', 'area', 'activityType']);
 
-        // Filter my reports only (priority)
-        if ($request->boolean('my_reports_only')) {
-            $query->where('author_id', $user->id);
+        $query = Report::with(['author.roles', 'area', 'activityType']);
 
-            if ($user->can('reports.solve.own.area') && ! $user->can('reports.view.all')) {
-                $query->whereHas('area', function ($q2) use ($user) {
-                    $q2->where('pic_user_id', $user->id);
-                });
-            }
+        if ($user->can('reports.view.all')) {
+        } elseif ($user->can('reports.solve.own.area')) {
+            $query->whereHas('area', fn($q) => $q->where('pic_user_id', $user->id));
         } else {
-            if ($user->can('reports.view.all')) {
-                // SUPER_ADMIN, ADMIN, MANAGER bisa lihat semua report
-            } elseif ($user->can('reports.solve.own.area')) {
-                $query->whereHas('area', function ($q2) use ($user) {
-                    $q2->where('pic_user_id', $user->id);
-                });
-            } else {
-                $query->where('author_id', $user->id);
-            }
+            $query->where('author_id', $user->id);
         }
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('issue', 'like', "%{$search}%")
-                    ->orWhere('activity', 'like', "%{$search}%")
-                    ->orWhereHas('author', function ($q2) use ($search) {
-                        $q2->where('name', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('activityType', function ($q2) use ($search) {
-                        $q2->where('name', 'like', "%{$search}%")
-                            ->orWhere('description', 'like', "%{$search}%");
-                    });
-            });
-        }
-
-        if ($request->filled('status')) {
-            if ($request->status === 'pending') {
-                $query->whereNull('finished_date');
-            } elseif ($request->status === 'solved') {
-                $query->whereNotNull('finished_date');
-            }
-        }
-
-        if ($request->filled('type')) {
-            $query->where('activity_id', $request->type);
-        }
-
-        if ($request->filled('area')) {
-            $query->where('area_id', $request->area);
-        }
-
-        if ($request->filled('role')) {
-            $query->whereHas('author', function ($q) use ($request) {
-                $q->whereHas('roles', function ($q2) use ($request) {
-                    $q2->where('name', $request->role);
-                });
-            });
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
-
-        $areaReports = $query->latest()->paginate(10)->withQueryString();
-
-        $areas = Area::with('pic')->select('id', 'area', 'pic_user_id')->get();
-        $activities = Activity::select('id', 'description')->get();
-        $users = \App\Models\User::select('id', 'name')->get();
+        $reports = $query->latest()->get()->map(function ($report) {
+            return [
+                'id'            => $report->id,
+                'author_id'     => $report->author_id,
+                'area_id'       => $report->area_id,
+                'activity_id'   => $report->activity_id,
+                'activity'      => $report->activity,
+                'issue'         => $report->issue,
+                'photo_before'  => $report->photo_before,
+                'photo_after'   => $report->photo_after,
+                'finished_date' => $report->finished_date,
+                'created_at'    => $report->created_at,
+                'updated_at'    => $report->updated_at,
+                'author' => $report->author ? [
+                    'id'   => $report->author->id,
+                    'name' => $report->author->name,
+                    'role' => $report->author->roles->first()?->name,
+                ] : null,
+                'area'          => $report->area ? ['id' => $report->area->id, 'area' => $report->area->area] : null,
+                'activity_type' => $report->activityType ? [
+                    'id'          => $report->activityType->id,
+                    'name'        => $report->activityType->name,
+                    'description' => $report->activityType->description,
+                ] : null,
+            ];
+        });
 
         return Inertia::render('reports/Index', [
-            'areaReports' => $areaReports,
-            'areas' => $areas,
-            'activities' => $activities,
-            'users' => $users,
-            'filters' => $request->only(['search', 'status', 'type', 'area', 'role', 'date_from', 'date_to', 'my_reports_only']),
+            'reports'    => $reports,
+            'areas'      => Area::with('pic')->select('id', 'area', 'pic_user_id')->get(),
+            'activities' => Activity::select('id', 'name', 'description')->get(),
+            'users'      => User::select('id', 'name')->get(),
         ]);
     }
+
     public function store(Request $request)
     {
         if (!Auth::user()->can('reports.create')) {
@@ -107,71 +69,32 @@ class ReportController extends Controller
         }
 
         $validated = $request->validate([
-            'author_id' => 'required|exists:users,id',
+            'author_id'     => 'required|exists:users,id',
             'type_activity' => 'required|exists:activities,id',
             'area_activity' => 'required|exists:areas,id',
-            'activity' => 'nullable|string|max:255',
-            'issue' => 'required|string',
-            'photo' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            'activity'      => 'nullable|string|max:255',
+            'issue'         => 'required|string',
+            'photo'         => 'required|image|mimes:jpeg,png,jpg|max:2048',
         ]);
-
-        $photoPath = $request->file('photo')->store('reports/photos', 'public');
 
         Report::create([
-            'author_id' => $validated['author_id'],
+            'author_id'   => $validated['author_id'],
             'activity_id' => $validated['type_activity'],
-            'area_id' => $validated['area_activity'],
-            'activity' => $validated['activity'],
-            'issue' => $validated['issue'],
-            'photo_before' => $photoPath,
-            'finished_date' => null,
-            'is_content_edited' => false,
+            'area_id'     => $validated['area_activity'],
+            'activity'    => $validated['activity'],
+            'issue'       => $validated['issue'],
+            'photo_before' => $request->file('photo')->store('reports/photos', 'public'),
         ]);
 
-        return redirect()->back()->with('success', 'Laporan berhasil dibuat');
-    }
-
-    public function solve(Request $request, Report $report)
-    {
-        $user = Auth::user();
-
-        // Cek permission solve
-        if ($user->can('reports.solve.all')) {
-            // SUPER_ADMIN, ADMIN, MANAGER bisa solve semua
-        } elseif ($user->can('reports.solve.own.area')) {
-            // SUPERVISOR: cek apakah report berada di area yang dia menjadi PIC
-            // Gunakan pic_user_id, bukan supervisor_id
-            if ($report->area->pic_user_id !== $user->id) {
-                return back()->with('error', 'Anda tidak memiliki izin untuk menyelesaikan laporan di area ini');
-            }
-        } else {
-            return back()->with('error', 'Anda tidak memiliki izin untuk menyelesaikan laporan');
-        }
-
-        $validated = $request->validate([
-            'photo_after' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-        ]);
-
-        $photoPath = $request->file('photo_after')->store('reports/photos-after', 'public');
-
-        $report->update([
-            'photo_after' => $photoPath,
-            'finished_date' => now(),
-            'solved_by' => $user->id,
-        ]);
-
-        return redirect()->back()->with('success', 'Laporan berhasil diselesaikan');
+        return back()->with('success', 'Laporan berhasil dibuat');
     }
 
     public function update(Request $request, Report $report)
     {
         $user = Auth::user();
 
-        // Cek permission edit
         if ($user->can('reports.edit.all')) {
-            // Bisa edit semua
         } elseif ($user->can('reports.edit.own') && $report->author_id === $user->id) {
-            // Bisa edit punya sendiri
         } else {
             return back()->with('error', 'Anda tidak memiliki izin untuk mengedit laporan ini');
         }
@@ -179,70 +102,74 @@ class ReportController extends Controller
         $validated = $request->validate([
             'type_activity' => 'sometimes|exists:activities,id',
             'area_activity' => 'sometimes|exists:areas,id',
-            'activity' => 'nullable|string|max:255',
-            'issue' => 'sometimes|string',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'activity'      => 'nullable|string|max:255',
+            'issue'         => 'sometimes|string',
+            'photo'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        $updateData = ['is_content_edited' => true];
+        $data = ['is_content_edited' => true];
+
+        if (isset($validated['type_activity'])) $data['activity_id'] = $validated['type_activity'];
+        if (isset($validated['area_activity'])) $data['area_id'] = $validated['area_activity'];
+        if (array_key_exists('activity', $validated)) $data['activity'] = $validated['activity'];
+        if (isset($validated['issue'])) $data['issue'] = $validated['issue'];
 
         if ($request->hasFile('photo')) {
-            if ($report->photo_before) {
-                Storage::disk('public')->delete($report->photo_before);
+            if ($report->photo_before) Storage::disk('public')->delete($report->photo_before);
+            $data['photo_before'] = $request->file('photo')->store('reports/photos', 'public');
+        }
+
+        $report->update($data);
+
+        return back()->with('success', 'Laporan berhasil diupdate');
+    }
+
+    public function solve(Request $request, Report $report)
+    {
+        $user = Auth::user();
+
+        if ($user->can('reports.solve.all')) {
+        } elseif ($user->can('reports.solve.own.area')) {
+            if ($report->area->pic_user_id !== $user->id) {
+                return back()->with('error', 'Anda tidak memiliki izin untuk menyelesaikan laporan di area ini');
             }
-            $photoPath = $request->file('photo')->store('reports/photos', 'public');
-            $updateData['photo_before'] = $photoPath;
+        } else {
+            return back()->with('error', 'Anda tidak memiliki izin untuk menyelesaikan laporan');
         }
 
-        if (isset($validated['type_activity'])) {
-            $updateData['activity_id'] = $validated['type_activity'];
-        }
+        $request->validate([
+            'photo_after' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
 
-        if (isset($validated['area_activity'])) {
-            $updateData['area_id'] = $validated['area_activity'];
-        }
+        $report->update([
+            'photo_after'   => $request->file('photo_after')->store('reports/photos-after', 'public'),
+            'finished_date' => now(),
+            'solved_by'     => $user->id,
+        ]);
 
-        if (isset($validated['activity'])) {
-            $updateData['activity'] = $validated['activity'];
-        }
-
-        if (isset($validated['issue'])) {
-            $updateData['issue'] = $validated['issue'];
-        }
-
-        $report->update($updateData);
-
-        return redirect()->back()->with('success', 'Laporan berhasil diupdate');
+        return back()->with('success', 'Laporan berhasil diselesaikan');
     }
 
     public function destroy(Report $report)
     {
         $user = Auth::user();
 
-        if (! $user->can('reports.delete')) {
-            return back()->with('error', 'Anda tidak memiliki izin untuk menghapus laporan');
+        if ($report->finished_date !== null) {
+            return back()->with('error', 'Hanya laporan pending yang dapat dihapus');
         }
 
-        if ($user->hasRole('SUPER_ADMIN') || $user->hasRole('ADMIN')) {
-            // Admin and Super Admin can delete any report.
-        } elseif ($report->author_id === $user->id && $report->finished_date === null) {
-            // User can delete own pending reports.
-        } elseif ($user->can('reports.solve.own.area') && $report->area->pic_user_id === $user->id) {
-            // Supervisor can delete reports in assigned area.
+        if ($user->can('reports.delete.all')) {
+        } elseif ($user->can('reports.delete.own') && $report->author_id === $user->id) {
         } else {
             return back()->with('error', 'Anda tidak memiliki izin untuk menghapus laporan ini');
         }
 
-        if ($report->photo_before) {
-            Storage::disk('public')->delete($report->photo_before);
-        }
-        if ($report->photo_after) {
-            Storage::disk('public')->delete($report->photo_after);
-        }
+        if ($report->photo_before) Storage::disk('public')->delete($report->photo_before);
+        if ($report->photo_after) Storage::disk('public')->delete($report->photo_after);
 
         $report->delete();
 
-        return redirect()->back()->with('success', 'Laporan berhasil dihapus');
+        return back()->with('success', 'Laporan berhasil dihapus');
     }
 
     public function show(Report $report)
@@ -250,11 +177,8 @@ class ReportController extends Controller
         $user = Auth::user();
 
         if ($user->can('reports.view.all')) {
-            // allowed
         } elseif ($user->can('reports.view.own') && $report->author_id === $user->id) {
-            // allowed
         } elseif ($user->can('reports.solve.own.area') && $report->area->pic_user_id === $user->id) {
-            // allowed
         } else {
             abort(403, 'Anda tidak memiliki izin untuk melihat laporan ini');
         }
@@ -264,77 +188,49 @@ class ReportController extends Controller
         ]);
     }
 
-    public function export(Request $request, $type)
+    public function export(Request $request, string $type)
     {
         $user = Auth::user();
         $query = Report::with(['author', 'area', 'activityType']);
 
+        if ($user->can('reports.view.all')) {
+        } elseif ($user->can('reports.solve.own.area')) {
+            $query->whereHas('area', fn($q) => $q->where('pic_user_id', $user->id));
+        } else {
+            $query->where('author_id', $user->id);
+        }
+
         if ($request->boolean('my_reports_only')) {
             $query->where('author_id', $user->id);
-
-            if ($user->can('reports.solve.own.area') && ! $user->can('reports.view.all')) {
-                $query->whereHas('area', function ($q2) use ($user) {
-                    $q2->where('pic_user_id', $user->id);
-                });
-            }
-        } else {
-            if ($user->can('reports.view.all')) {
-                // Bisa export semua
-            } elseif ($user->can('reports.solve.own.area')) {
-                $query->whereHas('area', function ($q2) use ($user) {
-                    $q2->where('pic_user_id', $user->id);
-                });
-            } else {
-                $query->where('author_id', $user->id);
-            }
         }
-
-        if ($request->filled('start_date')) {
-            $query->whereDate('created_at', '>=', $request->start_date);
-        }
-        if ($request->filled('end_date')) {
-            $query->whereDate('created_at', '<=', $request->end_date);
-        }
-        if ($request->filled('area_ids')) {
-            $query->whereIn('area_id', $request->area_ids);
-        }
-        if ($request->filled('activity_ids')) {
-            $query->whereIn('activity_id', $request->activity_ids);
-        }
+        if ($request->filled('start_date')) $query->whereDate('created_at', '>=', $request->start_date);
+        if ($request->filled('end_date')) $query->whereDate('created_at', '<=', $request->end_date);
+        if ($request->filled('area_ids')) $query->whereIn('area_id', $request->area_ids);
+        if ($request->filled('activity_ids')) $query->whereIn('activity_id', $request->activity_ids);
         if ($request->filled('status')) {
-            if ($request->status === 'pending') {
-                $query->whereNull('finished_date');
-            } elseif ($request->status === 'solved') {
-                $query->whereNotNull('finished_date');
-            }
+            $request->status === 'pending'
+                ? $query->whereNull('finished_date')
+                : $query->whereNotNull('finished_date');
         }
-        if ($request->filled('author_ids')) {
-            $query->whereIn('author_id', $request->author_ids);
-        }
+        if ($request->filled('author_ids')) $query->whereIn('author_id', $request->author_ids);
 
         $reports = $query->latest()->get();
 
-        if ($type === 'excel') {
-            return $this->exportCsv($reports);
-        } else {
-            return $this->exportPdf($reports);
-        }
+        return $type === 'excel' ? $this->exportCsv($reports) : $this->exportPdf($reports);
     }
+
     private function exportCsv($reports)
     {
-        $filename = 'reports_' . date('Y-m-d_H-i-s') . '.csv';
         $handle = fopen('php://output', 'w');
-
         header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Content-Disposition: attachment; filename="reports_' . date('Y-m-d_H-i-s') . '.csv"');
         header('Cache-Control: max-age=0');
 
-        fputcsv($handle, ['No', 'ID', 'Author', 'Area', 'Type Activity', 'User Activity', 'Issue', 'Photo Before', 'Photo After', 'Status', 'Created At', 'Updated At'], ',', '"', '\\');
+        fputcsv($handle, ['No', 'ID', 'Author', 'Area', 'Type Activity', 'Activity', 'Issue', 'Photo Before', 'Photo After', 'Status', 'Created At'], ',', '"', '\\');
 
-        $row = 1;
-        foreach ($reports as $report) {
+        foreach ($reports as $i => $report) {
             fputcsv($handle, [
-                $row++,
+                $i + 1,
                 $report->id,
                 $report->author?->name ?? '-',
                 $report->area?->area ?? '-',
@@ -345,7 +241,6 @@ class ReportController extends Controller
                 $report->photo_after ? 'Yes' : 'No',
                 $report->finished_date ? 'Solved' : 'Pending',
                 $report->created_at,
-                $report->updated_at,
             ], ',', '"', '\\');
         }
 
@@ -358,10 +253,10 @@ class ReportController extends Controller
         $pdf = Pdf::loadView('exports.reports', ['reports' => $reports]);
         $pdf->setPaper('a4', 'landscape');
         $pdf->setOptions([
-            'defaultFont' => 'Times New Roman',
-            'isRemoteEnabled' => false,
+            'defaultFont'        => 'Times New Roman',
+            'isRemoteEnabled'    => false,
             'isHtml5ParserEnabled' => true,
-            'isPhpEnabled' => false
+            'isPhpEnabled'       => false,
         ]);
         return $pdf->download('Laporan_Issue_Report_' . date('Y-m-d') . '.pdf');
     }

@@ -68,7 +68,7 @@ const Sidebar = ({ sidebarOpen, closeSidebar }) => {
             `}
         >
             <div className="flex items-center gap-2.5 px-5 py-5 border-b border-[var(--sidebar-border)]">
-                    <img src="/img/logo/logo_uj.svg" className="w-12 h-12 object-contain" alt="logo" />
+                <img src="/img/logo/logo_uj.svg" className="w-12 h-12 object-contain" alt="logo" />
                 <span className="text-[13px] font-bold text-[var(--sidebar-foreground)] leading-tight">
                     PT Ultrajaya Milk Industry
                 </span>
