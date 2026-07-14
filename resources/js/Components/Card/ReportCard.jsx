@@ -150,8 +150,8 @@ function DeleteConfirmModal({ isOpen, onClose, onConfirm, report }) {
 
 export default function ReportCard({ report, isSelected, onSelect, onDelete, showDelete }) {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const isSolved = !!report.finished_date;
-    const activityLabel = report.activity_type?.description ?? report.activity_type?.name ?? "-";
+    const isSolved = report.status === "closed";
+    const activityLabel = report.sub_activity?.name ?? report.activity_type?.name ?? "-";
     const hasPhotos = report.photo_before || report.photo_after;
     const hasActivity = report.activity && report.activity !== "-";
     const hasIssue = report.issue && report.issue !== "-";
@@ -200,11 +200,11 @@ export default function ReportCard({ report, isSelected, onSelect, onDelete, sho
                                 <div className="shrink-0 flex items-center gap-2">
                                     {isSolved ? (
                                         <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />Solved
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />Closed
                                         </span>
                                     ) : (
                                         <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />Pending
+                                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />Open
                                         </span>
                                     )}
                                 </div>
@@ -216,7 +216,7 @@ export default function ReportCard({ report, isSelected, onSelect, onDelete, sho
                         <div className="mt-3 flex flex-col gap-3">
                             {hasActivity && (
                                 <ContentSection label="Activity">
-                                    <RichText text={report.activity} maxLines={3} />
+                                    <RichText text={`${activityLabel}${report.activity ? `\n${report.activity}` : ""}`} maxLines={3} />
                                 </ContentSection>
                             )}
                             {hasIssue && (
@@ -234,10 +234,10 @@ export default function ReportCard({ report, isSelected, onSelect, onDelete, sho
                         </div>
                     )}
 
-                    {isSolved && report.finished_date && (
+                    {isSolved && (report.closed_at || report.finished_date) && (
                         <div className="mt-2.5 pt-2.5 border-t border-gray-100 flex items-center justify-between">
-                            <span className="text-[10.5px] text-gray-400">Finished at</span>
-                            <span className="text-[11px] font-semibold text-emerald-600">{formatDate(report.finished_date)}</span>
+                            <span className="text-[10.5px] text-gray-400">Closed at</span>
+                            <span className="text-[11px] font-semibold text-emerald-600">{formatDate(report.closed_at ?? report.finished_date)}</span>
                         </div>
                     )}
                 </div>

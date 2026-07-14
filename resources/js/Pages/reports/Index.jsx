@@ -156,14 +156,14 @@ function ReportDetailModal({ report, isOpen, onClose, onSolve, onEdit, onDelete,
                     <div>
                         <div className="text-sm text-slate-400">Status</div>
                         <div className="mt-1">
-                            {report.finished_date ? (
+                            {report.status === "closed" ? (
                                 <div className="text-emerald-400 flex items-center gap-2">
-                                    <span>✓ Solved</span>
-                                    <span className="text-sm">{formatDate(report.finished_date)}</span>
+                                    <span>✓ Closed</span>
+                                    <span className="text-sm">{formatDate(report.closed_at ?? report.finished_date)}</span>
                                 </div>
                             ) : (
                                 <div className="text-amber-400 flex items-center gap-2">
-                                    <span>● Pending</span>
+                                    <span>● Open</span>
                                 </div>
                             )}
                         </div>
@@ -171,7 +171,7 @@ function ReportDetailModal({ report, isOpen, onClose, onSolve, onEdit, onDelete,
                 </div>
                 
                 <div className="flex items-center justify-end gap-3 p-5 border-t border-slate-700">
-                    {perms.canSolve && !report.finished_date && (
+                    {perms.canSolve && report.status !== "closed" && (
                         <button
                             onClick={() => {
                                 onSolve(report);
@@ -220,17 +220,17 @@ export default function Index({ reports = [], areas = [], activities = [], users
     const { props } = usePage();
     const r = useReports(reports);
 
-    const assignedAreas  = areas.filter((a) => a.pic_user_id == r.auth?.id);
+    const assignedAreas  = areas.filter((a) => a.pic_user_ids?.includes(r.auth?.id));
     const exportAreas    = r.perms.canExportAll ? areas : r.perms.canExportArea ? assignedAreas : [];
     const exportUsers    = r.perms.canExportAll ? users : [];
-    const areaOfAuthUser = areas.find((a) => a.pic_user_id == r.auth?.id);
+    const areaOfAuthUser = areas.find((a) => a.pic_user_ids?.includes(r.auth?.id));
 
     const statusOptions = [
         { label: "All Statuses", value: "" },
-        { label: "Pending", value: "pending" },
-        { label: "Finished", value: "solved" },
+        { label: "Open", value: "open" },
+        { label: "Closed", value: "closed" },
     ];
-    const typeOptions = [{ label: "All Activities", value: "" }, ...activities.map((a) => ({ label: a.description, value: String(a.id) }))];
+    const typeOptions = [{ label: "All Activities", value: "" }, ...activities.map((a) => ({ label: a.name, value: String(a.id) }))];
     const areaOptions = [{ label: "All Areas", value: "" }, ...areas.map((a) => ({ label: a.area, value: String(a.id) }))];
     const filterAreaOptions = r.perms.canViewAll
         ? areaOptions
@@ -294,7 +294,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="bg-muted/40 text-left border-b border-border">
-                                    {["No", "Date", "Submitted By", "Area", "Issue", "Type Activity", "Before", "After", "Status", "Finished"].map((col) => (
+                                    {["No", "Date", "Submitted By", "Area", "Issue", "Type Activity", "Before", "After", "Status", "Closed"].map((col) => (
                                         <th key={col} className="px-4 py-3 text-[11px] font-semibold text-muted-foreground tracking-wide uppercase whitespace-nowrap">{col}</th>
                                     ))}
                                 </tr>
@@ -304,7 +304,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
                                     <tr><td colSpan={10} className="py-16 text-center text-muted-foreground text-[13px]">No data found</td></tr>
                                 ) : (
                                     r.paginated.map((report, index) => {
-                                        const isSolved = !!report.finished_date;
+                                        const isSolved = report.status === "closed";
                                         const isSelected = r.selectedReport?.id === report.id;
                                         return (
                                             <tr key={report.id} onClick={() => r.handleSelectReport(report)}
@@ -332,7 +332,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
                                                 </td>
                                                 <td className="px-4 py-3.5">
                                                     <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary rounded-md text-[11.5px] font-semibold whitespace-nowrap">
-                                                        {report.activity_type?.name ?? "-"}
+                                                        {report.sub_activity?.name ?? report.activity_type?.name ?? "-"}
                                                     </span>
                                                 </td>
                                                 <td className="px-4 py-3.5">
@@ -347,12 +347,12 @@ export default function Index({ reports = [], areas = [], activities = [], users
                                                 </td>
                                                 <td className="px-4 py-3.5">
                                                     {isSolved
-                                                        ? <span className="inline-flex items-center gap-1.5 text-emerald-600 text-[11.5px] font-semibold bg-emerald-50 px-2.5 py-1 rounded-full whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />Finished</span>
-                                                        : <span className="inline-flex items-center gap-1.5 text-amber-600 text-[11.5px] font-semibold bg-amber-50 px-2.5 py-1 rounded-full whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />Pending</span>}
+                                                        ? <span className="inline-flex items-center gap-1.5 text-emerald-600 text-[11.5px] font-semibold bg-emerald-50 px-2.5 py-1 rounded-full whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />Closed</span>
+                                                        : <span className="inline-flex items-center gap-1.5 text-amber-600 text-[11.5px] font-semibold bg-amber-50 px-2.5 py-1 rounded-full whitespace-nowrap"><span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />Open</span>}
                                                 </td>
                                                 <td className="px-4 py-3.5 whitespace-nowrap">
                                                     {isSolved
-                                                        ? <span className="text-emerald-600 text-[12px] font-semibold">{formatDate(report.finished_date)}</span>
+                                                        ? <span className="text-emerald-600 text-[12px] font-semibold">{formatDate(report.closed_at ?? report.finished_date)}</span>
                                                         : <span className="text-muted-foreground text-xs">–</span>}
                                                 </td>
                                             </tr>

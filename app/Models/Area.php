@@ -4,8 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Area extends Model
 {
@@ -13,12 +13,11 @@ class Area extends Model
 
     protected $fillable = [
         'area',
-        'pic_user_id',
     ];
 
-    public function pic(): BelongsTo
+    public function pics(): BelongsToMany
     {
-        return $this->belongsTo(User::class, 'pic_user_id');
+        return $this->belongsToMany(User::class)->withTimestamps();
     }
 
     public function reports(): HasMany

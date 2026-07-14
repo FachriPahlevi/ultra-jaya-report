@@ -47,20 +47,20 @@ export default function Solve({ report = {}, areas = [], activities = [] }) {
     };
 
     return (
-        <AppLayout title="Solve Report">
+        <AppLayout title="Close Ticket">
             <div className="max-w-[600px]">
                 <div className="mb-6">
                     <div className="text-[11px] font-bold tracking-[3px] text-primary mb-1 uppercase">UPDATE REPORT</div>
-                    <h2 className="text-2xl font-bold text-foreground tracking-[-0.5px] m-0">Solve Report</h2>
+                    <h2 className="text-2xl font-bold text-foreground tracking-[-0.5px] m-0">Close Ticket</h2>
                     {report.id && (
                         <div className="mt-2 flex items-center gap-2">
                             <span className="text-[12.5px] text-muted-foreground">Report #{report.id}</span>
                             <span className="w-1 h-1 rounded-full bg-border inline-block" />
                             <span className="text-[12.5px] text-muted-foreground">{formatDate(report.created_at)}</span>
-                            {report.finished_date ? (
-                                <span className="text-xs font-semibold text-[#16a34a] bg-[#16a34a]/10 px-2 py-0.5 rounded-full">Solved</span>
+                            {report.status === "closed" ? (
+                                <span className="text-xs font-semibold text-[#16a34a] bg-[#16a34a]/10 px-2 py-0.5 rounded-full">Closed</span>
                             ) : (
-                                <span className="text-xs font-semibold text-[#d97706] bg-[#d97706]/10 px-2 py-0.5 rounded-full">Pending</span>
+                                <span className="text-xs font-semibold text-[#d97706] bg-[#d97706]/10 px-2 py-0.5 rounded-full">Open</span>
                             )}
                         </div>
                     )}

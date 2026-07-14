@@ -6,6 +6,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
@@ -32,9 +33,9 @@ class User extends Authenticatable
         ];
     }
 
-    public function areas(): HasMany
+    public function assignedAreas(): BelongsToMany
     {
-        return $this->hasMany(Area::class, 'pic_user_id');
+        return $this->belongsToMany(Area::class)->withTimestamps();
     }
 
     public function reports(): HasMany

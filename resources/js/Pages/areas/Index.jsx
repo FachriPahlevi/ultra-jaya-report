@@ -3,7 +3,6 @@ import { Head, router, usePage } from "@inertiajs/react";
 import axios from "axios";
 import AppLayout from "@/Layouts/AppLayout";
 import InputText from "@/Components/Input/InputText";
-import InputDropdown from "@/Components/Input/InputDropdown";
 import BtnDefault from "@/Components/Button/BtnDefault";
 import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
@@ -15,14 +14,13 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [processing, setProcessing] = useState(false);
-  const [form, setForm] = useState({ name: "", pic_user_id: "" });
+  const [form, setForm] = useState({ name: "", pic_user_ids: [] });
   const [errors, setErrors] = useState({});
 
   const permissions = props.auth?.user?.permissions || [];
   const users = props.users || [];
   const canAssignPic = permissions.includes("areas.assign.supervisor");
 
-  const userOptions = [{ label: "Select PIC", value: "" }, ...users.map((user) => ({ label: user.name, value: user.id.toString() }))];
   const canAdd = permissions.includes("areas.create");
   const canEdit = permissions.includes("areas.edit");
   const canDelete = permissions.includes("areas.delete");
@@ -31,10 +29,10 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
     if (showModal && editTarget) {
       setForm({
         name: editTarget.area,
-        pic_user_id: editTarget.pic_user_id?.toString() || "",
+        pic_user_ids: editTarget.pic_user_ids?.map(String) || [],
       });
     } else if (showModal && !editTarget) {
-      setForm({ name: "", pic_user_id: "" });
+      setForm({ name: "", pic_user_ids: [] });
     }
   }, [showModal, editTarget]);
 
@@ -84,7 +82,7 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
 
     const submitData = {
       name: form.name,
-      pic_user_id: form.pic_user_id || null,
+      pic_user_ids: form.pic_user_ids.map(Number),
     };
 
     try {
@@ -199,7 +197,17 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
                     <tr key={area.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                       <td className="p-3 text-xs text-muted-foreground font-mono">{(areas.meta?.from ?? 1) + i}</td>
                       <td className="p-3 font-medium text-foreground">{area.area}</td>
-                      <td className="p-3 text-muted-foreground">{area.pic?.name || "-"}</td>
+                      <td className="p-3 text-muted-foreground">
+                        {area.pics?.length ? (
+                          <div className="flex flex-wrap gap-2">
+                            {area.pics.map((pic) => (
+                              <span key={pic.id} className="rounded-full bg-muted px-2.5 py-1 text-xs text-foreground">
+                                {pic.name}
+                              </span>
+                            ))}
+                          </div>
+                        ) : "-"}
+                      </td>
                       <td className="p-3">
                         <div className="flex items-center gap-2">
                           {canEdit && (
@@ -253,14 +261,36 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
             <InputText label="Name" placeholder="Enter area name" value={form.name} onChange={(e) => handleFormChange("name", e.target.value)} error={errors.name} required />
 
             {canAssignPic && (
-              <InputDropdown
-                label="PIC (Supervisor)"
-                placeholder="Select PIC"
-                value={form.pic_user_id}
-                setObject={(item) => handleFormChange("pic_user_id", item.value)}
-                itemList={userOptions}
-                error={errors.pic_user_id}
-              />
+              <div>
+                <label className="text-[13px] font-semibold text-foreground mb-2 block">PIC Area</label>
+                <div className="border border-border rounded-xl p-3 max-h-[220px] overflow-y-auto space-y-2">
+                  {users.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No supervisor available.</p>
+                  ) : (
+                    users.map((user) => {
+                      const checked = form.pic_user_ids.includes(String(user.id));
+
+                      return (
+                        <label key={user.id} className="flex items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              const next = e.target.checked
+                                ? [...form.pic_user_ids, String(user.id)]
+                                : form.pic_user_ids.filter((id) => id !== String(user.id));
+                              handleFormChange("pic_user_ids", next);
+                            }}
+                            className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                          />
+                          <span className="text-sm text-foreground">{user.name}</span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                {errors.pic_user_ids && <p className="mt-1 text-xs text-destructive">{errors.pic_user_ids}</p>}
+              </div>
             )}
 
             <div className="flex items-center gap-3 pt-4">

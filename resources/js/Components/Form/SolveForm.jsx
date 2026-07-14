@@ -11,8 +11,6 @@ export default function SolveForm({ isOpen, onClose, reportId }) {
   const [solvePhoto, setSolvePhoto] = useState(null);
   const [solvePhotoPreview, setSolvePhotoPreview] = useState(null);
   const [processing, setProcessing] = useState(false);
-  const [reportToSolve, setReportToSolve] = useState(null);
-  console.log(reportId)
 
   useEffect(() => {
     if (!isOpen) {
@@ -32,26 +30,8 @@ export default function SolveForm({ isOpen, onClose, reportId }) {
     });
   };
 
-  const openSolveModal = (report) => {
-        if (!report || !report.id) {
-            console.error("Cannot open solve modal: invalid report", report);
-            return;
-        }
-
-        setReportToSolve(report);
-        setIsSolveModalOpen(true);
-    };
-
-    const closeSolveModal = () => {
-        setIsSolveModalOpen(false);
-        setReportToSolve(null);
-    };
   const handleSolveSubmit = () => {
-    console.log("handleSolveSubmit called with reportId:", reportId);
-    
-    // VALIDASI reportId
     if (!reportId) {
-      console.error("Report ID is undefined or null");
       showStatusModal("error", "Error", "Report ID tidak valid. Silakan tutup dan buka kembali form.");
       return;
     }
@@ -65,14 +45,11 @@ export default function SolveForm({ isOpen, onClose, reportId }) {
     const formData = new FormData();
     formData.append("photo_after", solvePhoto);
 
-    // Gunakan route helper jika tersedia, atau hardcode URL
     const url = route ? route("reports.solve", reportId) : `/reports/${reportId}/solve`;
-
 
     router.post(url, formData, {
       onSuccess: () => {
-        console.log("Solve success");
-        showStatusModal("success", "Success", "Report has been solved");
+        showStatusModal("success", "Success", "Ticket has been closed");
         setSolvePhoto(null);
         setSolvePhotoPreview(null);
         onClose();
@@ -96,7 +73,7 @@ export default function SolveForm({ isOpen, onClose, reportId }) {
       <div className="bg-card rounded-2xl border border-border shadow-xl w-full max-w-[500px] mx-auto">
         <div className="sticky top-0 bg-card border-b border-border px-4 sm:px-6 py-4 flex items-center justify-between rounded-t-2xl">
           <h2 className="text-lg sm:text-xl font-bold text-foreground tracking-[-0.5px] m-0">
-            Solve Report {reportId ? `#${reportId}` : ''}
+            Close Ticket {reportId ? `#${reportId}` : ''}
           </h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md shrink-0" aria-label="Close">
             <HiOutlineX className="w-5 h-5" />
@@ -107,7 +84,7 @@ export default function SolveForm({ isOpen, onClose, reportId }) {
             <div className="flex flex-col gap-4 sm:gap-5">
               <div>
                 <label className="text-[13px] font-semibold text-foreground mb-1.5 block">
-                  Photo After <span className="text-destructive">*</span>
+                  Closing Photo <span className="text-destructive">*</span>
                 </label>
 
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
@@ -125,7 +102,6 @@ export default function SolveForm({ isOpen, onClose, reportId }) {
                     onChange={(e) => {
                       const file = e.target.files[0];
                       if (file) {
-                        console.log("File selected:", file.name);
                         setSolvePhoto(file);
                         setSolvePhotoPreview(URL.createObjectURL(file));
                       }
@@ -156,7 +132,7 @@ export default function SolveForm({ isOpen, onClose, reportId }) {
                   Cancel
                 </BtnDefault>
                 <BtnDefault onClick={handleSolveSubmit} loading={processing} className="w-full sm:flex-[2] order-1 sm:order-2">
-                  {processing ? "Submitting..." : "Submit"}
+                  {processing ? "Closing..." : "Close Ticket"}
                 </BtnDefault>
               </div>
             </div>

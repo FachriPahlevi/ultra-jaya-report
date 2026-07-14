@@ -8,17 +8,25 @@ return new class extends Migration
 {
     public function up(): void
     {
-         Schema::create('areas', function (Blueprint $table) {
+        Schema::create('areas', function (Blueprint $table) {
             $table->id();
             $table->string('area');
-            $table->foreignId('pic_user_id')->constrained('users')->cascadeOnDelete();
             $table->timestamps();
             $table->softDeletes();
+        });
+
+        Schema::create('area_user', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('area_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->timestamps();
+            $table->unique(['area_id', 'user_id']);
         });
     }
 
     public function down(): void
     {
+        Schema::dropIfExists('area_user');
         Schema::dropIfExists('areas');
     }
 };

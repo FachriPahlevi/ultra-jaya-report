@@ -3,8 +3,8 @@ import AppLayout from "@/Layouts/AppLayout";
 import { HiOutlineDocumentReport, HiOutlineClock, HiOutlineCheckCircle, HiOutlineUser, HiOutlineExternalLink, HiArrowRight } from "react-icons/hi";
 
 const statusConfig = {
-  solved: { label: "Solved", color: "#16a34a", bg: "#f0fdf4" },
-  pending: { label: "Pending", color: "#d97706", bg: "#fffbeb" },
+  closed: { label: "Closed", color: "#16a34a", bg: "#f0fdf4" },
+  open: { label: "Open", color: "#d97706", bg: "#fffbeb" },
   in_progress: { label: "In Progress", color: "#2563eb", bg: "#eff6ff" },
   submitted: { label: "Submitted", color: "#6366f1", bg: "#eef2ff" },
 };
@@ -55,13 +55,13 @@ const GaugeChart = ({ pct }) => {
 };
 
 export default function Dashboard({
-  stats = { total: 0, pending: 0, solved: 0, myReports: 0 },
+  stats = { total: 0, open: 0, closed: 0, myReports: 0 },
   recentReports = [],
   topArea = null,
 }) {
   const { auth } = usePage().props;
   const currentUser = auth?.user;
-  const solvedPct = stats.total > 0 ? Math.round((stats.solved / stats.total) * 100) : 0;
+  const closePct = stats.total > 0 ? Math.round((stats.closed / stats.total) * 100) : 0;
   const firstName = currentUser?.name?.split(" ")[0] || "User";
 
   return (
@@ -100,48 +100,48 @@ export default function Dashboard({
             </Link>
           </div>
 
-          {/* Pending */}
+          {/* Open */}
           <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[12px] font-medium text-[var(--muted-foreground)]">Pending Issues</p>
+              <p className="text-[12px] font-medium text-[var(--muted-foreground)]">Open Tickets</p>
               <div className="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center shrink-0">
                 <HiOutlineClock className="w-4 h-4 text-amber-500" />
               </div>
             </div>
-            <p className="text-[32px] font-bold text-[var(--foreground)] tracking-tight leading-none">{stats.pending}</p>
-            <p className="text-[11px] text-[var(--muted-foreground)] mt-1 mb-2">Awaiting action</p>
-            <Link href="/reports?status=pending" className="inline-flex items-center gap-1 text-[11.5px] font-medium text-[var(--primary)] hover:gap-2 transition-all">
-              View pending <HiOutlineExternalLink className="w-3 h-3" />
+            <p className="text-[32px] font-bold text-[var(--foreground)] tracking-tight leading-none">{stats.open}</p>
+            <p className="text-[11px] text-[var(--muted-foreground)] mt-1 mb-2">Need follow-up</p>
+            <Link href="/reports?status=open" className="inline-flex items-center gap-1 text-[11.5px] font-medium text-[var(--primary)] hover:gap-2 transition-all">
+              View open <HiOutlineExternalLink className="w-3 h-3" />
             </Link>
           </div>
 
-          {/* Solved */}
+          {/* Closed */}
           <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-2">
-              <p className="text-[12px] font-medium text-[var(--muted-foreground)]">Solved</p>
+              <p className="text-[12px] font-medium text-[var(--muted-foreground)]">Closed Tickets</p>
               <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
                 <HiOutlineCheckCircle className="w-4 h-4 text-green-600" />
               </div>
             </div>
-            <p className="text-[32px] font-bold text-[var(--foreground)] tracking-tight leading-none">{stats.solved}</p>
-            <p className="text-[11px] text-[var(--muted-foreground)] mt-1 mb-2">Resolved so far</p>
-            <Link href="/reports?status=solved" className="inline-flex items-center gap-1 text-[11.5px] font-medium text-[var(--primary)] hover:gap-2 transition-all">
-              View solved <HiOutlineExternalLink className="w-3 h-3" />
+            <p className="text-[32px] font-bold text-[var(--foreground)] tracking-tight leading-none">{stats.closed}</p>
+            <p className="text-[11px] text-[var(--muted-foreground)] mt-1 mb-2">Completed tickets</p>
+            <Link href="/reports?status=closed" className="inline-flex items-center gap-1 text-[11.5px] font-medium text-[var(--primary)] hover:gap-2 transition-all">
+              View closed <HiOutlineExternalLink className="w-3 h-3" />
             </Link>
           </div>
 
-          {/* Solved Rate / Gauge */}
+          {/* Close Rate / Gauge */}
           <div className="bg-[var(--card)] rounded-2xl border border-[var(--border)] p-4 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between mb-1">
-              <p className="text-[12px] font-medium text-[var(--muted-foreground)]">Solved Rate</p>
+              <p className="text-[12px] font-medium text-[var(--muted-foreground)]">Close Rate</p>
               <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center shrink-0">
                 <HiOutlineCheckCircle className="w-4 h-4 text-green-600" />
               </div>
             </div>
             <div className="flex flex-col items-center justify-center py-1">
-              <GaugeChart pct={solvedPct} />
+              <GaugeChart pct={closePct} />
             </div>
-            <p className="text-[11px] text-[var(--muted-foreground)] text-center -mt-1">Issues resolved</p>
+            <p className="text-[11px] text-[var(--muted-foreground)] text-center -mt-1">Tickets closed</p>
           </div>
         </div>
 
@@ -199,8 +199,8 @@ export default function Dashboard({
               <div className="grid grid-cols-2 gap-3">
                 {[
                   { label: "Total", value: stats.total, sub: "Issues reported", icon: HiOutlineDocumentReport, color: "blue" },
-                  { label: "Solved", value: stats.solved, sub: "Resolved so far", icon: HiOutlineCheckCircle, color: "green" },
-                  { label: "Pending", value: stats.pending, sub: "Awaiting action", icon: HiOutlineClock, color: "amber" },
+                  { label: "Closed", value: stats.closed, sub: "Completed tickets", icon: HiOutlineCheckCircle, color: "green" },
+                  { label: "Open", value: stats.open, sub: "Need follow-up", icon: HiOutlineClock, color: "amber" },
                   { label: "My Reports", value: stats.myReports, sub: "Submitted by me", icon: HiOutlineUser, color: "purple" },
                 ].map(({ label, value, sub, icon: Icon, color }) => {
                   const configs = {
@@ -225,8 +225,8 @@ export default function Dashboard({
 
               <div className="grid grid-cols-3 gap-0 pt-4 border-t border-[var(--border)]">
                 <div className="text-center">
-                  <p className="text-[11px] text-[var(--muted-foreground)] mb-1">Solve rate</p>
-                  <p className="text-[16px] font-bold text-[var(--primary)]">{solvedPct}%</p>
+                  <p className="text-[11px] text-[var(--muted-foreground)] mb-1">Close rate</p>
+                  <p className="text-[16px] font-bold text-[var(--primary)]">{closePct}%</p>
                   <p className="text-[10px] text-[var(--muted-foreground)]">overall</p>
                 </div>
                 <div className="text-center border-x border-[var(--border)]">
@@ -236,8 +236,8 @@ export default function Dashboard({
                 </div>
                 <div className="text-center">
                   <p className="text-[11px] text-[var(--muted-foreground)] mb-1">Status</p>
-                  <p className={`text-[13px] font-bold ${solvedPct > 70 ? "text-green-600" : solvedPct > 40 ? "text-amber-600" : "text-red-600"}`}>
-                    {solvedPct > 70 ? "On Track" : solvedPct > 40 ? "Average" : "At Risk"}
+                  <p className={`text-[13px] font-bold ${closePct > 70 ? "text-green-600" : closePct > 40 ? "text-amber-600" : "text-red-600"}`}>
+                    {closePct > 70 ? "On Track" : closePct > 40 ? "Average" : "At Risk"}
                   </p>
                   <p className="text-[10px] text-[var(--muted-foreground)]">performance</p>
                 </div>
