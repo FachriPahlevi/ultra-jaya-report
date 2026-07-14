@@ -3,12 +3,13 @@ import { Head, router, usePage } from "@inertiajs/react";
 import axios from "axios";
 import AppLayout from "@/Layouts/AppLayout";
 import InputText from "@/Components/Input/InputText";
+import InputDropdown from "@/Components/Input/InputDropdown";
 import BtnDefault from "@/Components/Button/BtnDefault";
 import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
 import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineX } from "react-icons/hi";
 
-export default function Index({ activities = { data: [], links: [], meta: {} } }) {
+export default function Index({ activities = { data: [], links: [], meta: {} }, parentActivities = [] }) {
   const { setStatusModalProps } = useStatusModal();
   const { props } = usePage();
   const permissions = props.auth?.user?.permissions || [];
@@ -20,7 +21,7 @@ export default function Index({ activities = { data: [], links: [], meta: {} } }
   const [showModal, setShowModal] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [processing, setProcessing] = useState(false);
-  const [form, setForm] = useState({ name: "", description: "" });
+  const [form, setForm] = useState({ name: "", description: "", parent_id: "" });
   const [errors, setErrors] = useState({});
 
   const showStatusModal = (type, title, message) => {
@@ -35,7 +36,7 @@ export default function Index({ activities = { data: [], links: [], meta: {} } }
 
   const openAdd = () => {
     setEditTarget(null);
-    setForm({ name: "", description: "" });
+    setForm({ name: "", description: "", parent_id: "" });
     setErrors({});
     setShowModal(true);
   };
@@ -45,6 +46,7 @@ export default function Index({ activities = { data: [], links: [], meta: {} } }
     setForm({
       name: activity.name,
       description: activity.description ?? "",
+      parent_id: activity.parent_id ? String(activity.parent_id) : "",
     });
     setErrors({});
     setShowModal(true);
@@ -53,7 +55,7 @@ export default function Index({ activities = { data: [], links: [], meta: {} } }
   const closeModal = () => {
     setShowModal(false);
     setEditTarget(null);
-    setForm({ name: "", description: "" });
+    setForm({ name: "", description: "", parent_id: "" });
     setErrors({});
   };
 
@@ -72,6 +74,7 @@ export default function Index({ activities = { data: [], links: [], meta: {} } }
     const submitData = {
       name: form.name,
       description: form.description,
+      parent_id: form.parent_id || null,
     };
 
     try {
@@ -150,13 +153,14 @@ export default function Index({ activities = { data: [], links: [], meta: {} } }
                   <th className="p-3 w-12">No</th>
                   <th className="p-3">Name</th>
                   <th className="p-3">Description</th>
+                  <th className="p-3">Structure</th>
                   {hasActions && <th className="p-3 w-24">Actions</th>}
                 </tr>
               </thead>
               <tbody>
                 {activities.data.length === 0 ? (
                   <tr>
-                    <td colSpan={hasActions ? 4 : 3} className="py-12 text-center text-muted-foreground">
+                    <td colSpan={hasActions ? 5 : 4} className="py-12 text-center text-muted-foreground">
                       No activities found
                     </td>
                   </tr>
@@ -166,6 +170,17 @@ export default function Index({ activities = { data: [], links: [], meta: {} } }
                       <td className="p-3 text-xs text-muted-foreground font-mono">{(activities.meta?.from ?? 1) + i}</td>
                       <td className="p-3 font-medium text-foreground">{activity.name}</td>
                       <td className="p-3 text-muted-foreground text-xs">{activity.description ?? "-"}</td>
+                      <td className="p-3 text-muted-foreground text-xs">
+                        {activity.parent ? (
+                          <span className="rounded-full bg-muted px-2.5 py-1 text-foreground">
+                            Sub of {activity.parent.name}
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
+                            Main Activity
+                          </span>
+                        )}
+                      </td>
                       {hasActions && (
                         <td className="p-3">
                           <div className="flex items-center gap-2">
@@ -221,6 +236,19 @@ export default function Index({ activities = { data: [], links: [], meta: {} } }
             <InputText label="Name" placeholder="Enter activity name" value={form.name} onChange={(e) => handleFormChange("name", e.target.value)} error={errors.name} required />
 
             <InputText label="Description" placeholder="Enter description (optional)" value={form.description} onChange={(e) => handleFormChange("description", e.target.value)} error={errors.description} />
+            <InputDropdown
+              label="Parent Activity"
+              placeholder="Select parent for sub-activity"
+              defaultValue={form.parent_id}
+              setObject={(item) => handleFormChange("parent_id", item.value)}
+              itemList={[
+                { label: "No parent (main activity)", value: "" },
+                ...parentActivities
+                  .filter((item) => !editTarget || item.id !== editTarget.id)
+                  .map((item) => ({ label: item.name, value: String(item.id) })),
+              ]}
+              error={errors.parent_id}
+            />
 
             <div className="flex items-center gap-3 pt-4">
               <BtnDefault outline onClick={closeModal} className="flex-1">

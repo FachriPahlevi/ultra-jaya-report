@@ -7,8 +7,6 @@ use App\Models\User;
 use App\Models\Area;
 use App\Models\Activity;
 use App\Models\Report;
-use Illuminate\Support\Facades\Hash;
-
 class ReportSeeder extends Seeder
 {
     public function run(): void
@@ -29,8 +27,8 @@ class ReportSeeder extends Seeder
                 $area = $areas->random();
                 $activity = $activities->random();
                 
-                $status = rand(0, 1);
-                $finishedDate = $status ? now()->subDays(rand(1, 30)) : null;
+                $isClosed = (bool) rand(0, 1);
+                $closedAt = $isClosed ? now()->subDays(rand(1, 30)) : null;
                 
                 $reportsData[] = [
                     'author_id' => $user->id,
@@ -38,10 +36,11 @@ class ReportSeeder extends Seeder
                     'activity_id' => $activity->id,
                     'activity' => $this->getRandomActivity(),
                     'issue' => $this->getRandomIssue(),
+                    'status' => $isClosed ? 'closed' : 'open',
                     'photo_before' => null,
                     'photo_after' => null,
-                    'is_content_edited' => $status ? rand(0, 1) : 0,
-                    'finished_date' => $finishedDate,
+                    'is_content_edited' => $isClosed ? rand(0, 1) : 0,
+                    'closed_at' => $closedAt,
                     'created_at' => now()->subDays(rand(1, 60)),
                     'updated_at' => now()->subDays(rand(0, 30)),
                 ];

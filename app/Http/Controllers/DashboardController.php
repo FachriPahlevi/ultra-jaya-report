@@ -2,10 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Activity;
-use App\Models\Area;
 use App\Models\Report;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -21,8 +18,8 @@ class DashboardController extends Controller
         if ($user->can('reports.view.all')) {
             // SUPER_ADMIN, ADMIN, MANAGER bisa lihat semua report
             $totalReports = Report::count();
-            $pendingReports = Report::whereNull('finished_date')->count();
-            $solvedReports = Report::whereNotNull('finished_date')->count();
+            $openReports = Report::where('status', 'open')->count();
+            $closedReports = Report::where('status', 'closed')->count();
             $myReports = Report::where('author_id', $userId)->count();
             
             $topArea = Report::select('area_id', DB::raw('count(*) as total'))
@@ -31,7 +28,7 @@ class DashboardController extends Controller
                 ->orderBy('total', 'desc')
                 ->first();
                 
-            $recentReports = Report::with(['author', 'area', 'activityType'])
+            $recentReports = Report::with(['author', 'area', 'activityType', 'subActivity'])
                 ->latest()
                 ->take(5)
                 ->get();
@@ -40,24 +37,24 @@ class DashboardController extends Controller
             // SUPERVISOR: lihat report sendiri + report di area yang dia jadi PIC
             $totalReports = Report::where(function($q) use ($userId) {
                     $q->where('author_id', $userId)
-                      ->orWhereHas('area', function($q2) use ($userId) {
-                          $q2->where('pic_user_id', $userId);
+                      ->orWhereHas('area.pics', function($q2) use ($userId) {
+                          $q2->where('users.id', $userId);
                       });
                 })->count();
                 
-            $pendingReports = Report::whereNull('finished_date')
+            $openReports = Report::where('status', 'open')
                 ->where(function($q) use ($userId) {
                     $q->where('author_id', $userId)
-                      ->orWhereHas('area', function($q2) use ($userId) {
-                          $q2->where('pic_user_id', $userId);
+                      ->orWhereHas('area.pics', function($q2) use ($userId) {
+                          $q2->where('users.id', $userId);
                       });
                 })->count();
                 
-            $solvedReports = Report::whereNotNull('finished_date')
+            $closedReports = Report::where('status', 'closed')
                 ->where(function($q) use ($userId) {
                     $q->where('author_id', $userId)
-                      ->orWhereHas('area', function($q2) use ($userId) {
-                          $q2->where('pic_user_id', $userId);
+                      ->orWhereHas('area.pics', function($q2) use ($userId) {
+                          $q2->where('users.id', $userId);
                       });
                 })->count();
                 
@@ -67,19 +64,19 @@ class DashboardController extends Controller
                 ->with('area')
                 ->where(function($q) use ($userId) {
                     $q->where('author_id', $userId)
-                      ->orWhereHas('area', function($q2) use ($userId) {
-                          $q2->where('pic_user_id', $userId);
+                      ->orWhereHas('area.pics', function($q2) use ($userId) {
+                          $q2->where('users.id', $userId);
                       });
                 })
                 ->groupBy('area_id')
                 ->orderBy('total', 'desc')
                 ->first();
                 
-            $recentReports = Report::with(['author', 'area', 'activityType'])
+            $recentReports = Report::with(['author', 'area', 'activityType', 'subActivity'])
                 ->where(function($q) use ($userId) {
                     $q->where('author_id', $userId)
-                      ->orWhereHas('area', function($q2) use ($userId) {
-                          $q2->where('pic_user_id', $userId);
+                      ->orWhereHas('area.pics', function($q2) use ($userId) {
+                          $q2->where('users.id', $userId);
                       });
                 })
                 ->latest()
@@ -89,8 +86,8 @@ class DashboardController extends Controller
         } else {
             // USER biasa: hanya lihat report sendiri
             $totalReports = Report::where('author_id', $userId)->count();
-            $pendingReports = Report::where('author_id', $userId)->whereNull('finished_date')->count();
-            $solvedReports = Report::where('author_id', $userId)->whereNotNull('finished_date')->count();
+            $openReports = Report::where('author_id', $userId)->where('status', 'open')->count();
+            $closedReports = Report::where('author_id', $userId)->where('status', 'closed')->count();
             $myReports = $totalReports;
             
             $topArea = Report::select('area_id', DB::raw('count(*) as total'))
@@ -100,7 +97,7 @@ class DashboardController extends Controller
                 ->orderBy('total', 'desc')
                 ->first();
                 
-            $recentReports = Report::with(['author', 'area', 'activityType'])
+            $recentReports = Report::with(['author', 'area', 'activityType', 'subActivity'])
                 ->where('author_id', $userId)
                 ->latest()
                 ->take(5)
@@ -111,7 +108,7 @@ class DashboardController extends Controller
             return [
                 'id' => $report->id,
                 'issue' => $report->issue,
-                'status' => $report->finished_date ? 'solved' : 'pending',
+                'status' => $report->status,
                 'area' => $report->area?->area ?? '-',
                 'submitted_by' => $report->author?->name ?? 'Unknown',
                 'created_at' => $report->created_at,
@@ -120,8 +117,8 @@ class DashboardController extends Controller
 
         $stats = [
             'total' => $totalReports,
-            'pending' => $pendingReports,
-            'solved' => $solvedReports,
+            'open' => $openReports,
+            'closed' => $closedReports,
             'myReports' => $myReports,
         ];
 

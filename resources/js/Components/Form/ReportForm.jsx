@@ -18,10 +18,12 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
   const [selectedAuthor, setSelectedAuthor] = useState(null);
   const [selectedArea, setSelectedArea] = useState(null);
   const [selectedActivity, setSelectedActivity] = useState(null);
+  const [selectedSubActivity, setSelectedSubActivity] = useState(null);
 
   const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
     author_id: currentUser?.id || "",
     type_activity: "",
+    sub_activity_id: "",
     area_activity: "",
     activity: "",
     issue: "",
@@ -35,6 +37,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
       setData({
         author_id: report.author_id || currentUser?.id || "",
         type_activity: report.activity_id || "",
+        sub_activity_id: report.sub_activity_id || "",
         area_activity: report.area_id || "",
         activity: report.activity || "",
         issue: report.issue || "",
@@ -44,10 +47,12 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
       const authorOption = users.find((user) => user.id === report.author_id);
       const areaOption = areas.find((area) => area.id === report.area_id);
       const activityOption = activities.find((act) => act.id === report.activity_id);
+      const subActivityOption = activityOption?.sub_activities?.find((act) => act.id === report.sub_activity_id);
 
       setSelectedAuthor(authorOption ? { value: authorOption.id, label: authorOption.name } : null);
       setSelectedArea(areaOption ? { value: areaOption.id, label: areaOption.area } : null);
-      setSelectedActivity(activityOption ? { value: activityOption.id, label: activityOption.description } : null);
+      setSelectedActivity(activityOption ? { value: activityOption.id, label: activityOption.name } : null);
+      setSelectedSubActivity(subActivityOption ? { value: subActivityOption.id, label: subActivityOption.name } : null);
       setPhotoPreview(null);
     } else {
       reset();
@@ -56,6 +61,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
       setSelectedAuthor(null);
       setSelectedArea(null);
       setSelectedActivity(null);
+      setSelectedSubActivity(null);
       setPhotoPreview(null);
     }
   }, [isOpen, report]);
@@ -84,7 +90,14 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
 
   const handleTypeActivityChange = (item) => {
     setData("type_activity", item.value);
+    setData("sub_activity_id", "");
     setSelectedActivity(item);
+    setSelectedSubActivity(null);
+  };
+
+  const handleSubActivityChange = (item) => {
+    setData("sub_activity_id", item.value);
+    setSelectedSubActivity(item);
   };
 
   const handleAreaActivityChange = (item) => {
@@ -107,6 +120,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
     setSelectedAuthor(null);
     setSelectedArea(null);
     setSelectedActivity(null);
+    setSelectedSubActivity(null);
     setPhotoPreview(null);
   };
 
@@ -148,6 +162,11 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
     label: user.name,
     value: user.id,
   }));
+  const selectedParentActivity = activities.find((activity) => String(activity.id) === String(data.type_activity));
+  const subActivityOptions = selectedParentActivity?.sub_activities?.map((activity) => ({
+    label: activity.name,
+    value: activity.id,
+  })) ?? [];
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={handleCancel}>
@@ -188,7 +207,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
               id="type_activity"
               label="Type Activity"
               itemList={activities.map((act) => ({
-                label: act.description,
+                label: act.name,
                 value: act.id,
               }))}
               placeholder="Select type..."
@@ -196,6 +215,17 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
               setObject={handleTypeActivityChange}
               object={selectedActivity}
               error={errors.type_activity}
+            />
+
+            <InputDropdown
+              id="sub_activity_id"
+              label="Sub Activity"
+              itemList={subActivityOptions}
+              placeholder={selectedParentActivity ? "Select sub activity..." : "Select parent activity first"}
+              setObject={handleSubActivityChange}
+              object={selectedSubActivity}
+              disabled={!selectedParentActivity || subActivityOptions.length === 0}
+              error={errors.sub_activity_id}
             />
 
             <InputText id="activity" label="Activity" value={data.activity} onChange={handleActivityChange} placeholder="Describe the activity..." error={errors.activity} />

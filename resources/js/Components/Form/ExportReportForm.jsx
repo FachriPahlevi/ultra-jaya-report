@@ -44,8 +44,8 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
 
   const statusOptions = [
     { label: "All", value: "" },
-    { label: "Pending", value: "pending" },
-    { label: "Solved", value: "solved" },
+    { label: "Open", value: "open" },
+    { label: "Closed", value: "closed" },
   ];
 
   const handleCheckboxChange = (id, type, checked) => {
@@ -228,7 +228,7 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
                     onChange={(e) => handleCheckboxChange(activity.id, "activity", e.target.checked)}
                     className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                   />
-                  <label className="text-[13px] text-foreground cursor-pointer">{activity.description}</label>
+                  <label className="text-[13px] text-foreground cursor-pointer">{activity.name}</label>
                 </div>
               ))}
             </div>
