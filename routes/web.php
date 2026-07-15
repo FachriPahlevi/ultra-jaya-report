@@ -4,8 +4,11 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AreaController;
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PublicDashboardController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingController;
+
+Route::get('/public-dashboard', [PublicDashboardController::class, 'index'])->name('dashboard.public');
 
 Route::middleware(['auth', 'verified'])->group(function () {
 
@@ -16,27 +19,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [ReportController::class, 'index'])
             ->name('reports.index')
             ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area');
-        
+
         Route::post('/', [ReportController::class, 'store'])
             ->name('reports.store')
             ->middleware('can:reports.create');
-        
+
         Route::post('/{report}/solve', [ReportController::class, 'solve'])
             ->name('reports.solve')
             ->middleware('role_or_permission:reports.solve.own.area|reports.solve.all');
-        
+
         Route::get('/{report}', [ReportController::class, 'show'])
             ->name('reports.show')
             ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area');
-        
+
         Route::put('/{report}', [ReportController::class, 'update'])
             ->name('reports.update')
             ->middleware('role_or_permission:reports.edit.own|reports.edit.all');
-        
+
         Route::delete('/{report}', [ReportController::class, 'destroy'])
             ->name('reports.destroy')
             ->middleware('role_or_permission:reports.delete.own|reports.delete.all');
-        
+
         Route::get('/export/{type}', [ReportController::class, 'export'])
             ->name('reports.export')
             ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area');
@@ -47,15 +50,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [AreaController::class, 'index'])
             ->name('areas.index')
             ->middleware('can:areas.view');
-        
+
         Route::post('/', [AreaController::class, 'store'])
             ->name('areas.store')
             ->middleware('can:areas.create');
-        
+
         Route::put('/{area}', [AreaController::class, 'update'])
             ->name('areas.update')
             ->middleware('can:areas.edit');
-        
+
         Route::delete('/{area}', [AreaController::class, 'destroy'])
             ->name('areas.destroy')
             ->middleware('can:areas.delete');
@@ -66,15 +69,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [ActivityController::class, 'index'])
             ->name('activities.index')
             ->middleware('can:activities.view');
-        
+
         Route::post('/', [ActivityController::class, 'store'])
             ->name('activities.store')
             ->middleware('can:activities.create');
-        
+
         Route::put('/{activity}', [ActivityController::class, 'update'])
             ->name('activities.update')
             ->middleware('can:activities.edit');
-        
+
         Route::delete('/{activity}', [ActivityController::class, 'destroy'])
             ->name('activities.destroy')
             ->middleware('can:activities.delete');
