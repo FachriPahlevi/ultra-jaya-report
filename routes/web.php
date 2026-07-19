@@ -24,8 +24,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('reports.store')
             ->middleware('can:reports.create');
 
-        Route::post('/{report}/solve', [ReportController::class, 'solve'])
-            ->name('reports.solve')
+        Route::post('/{report}/close', [ReportController::class, 'close'])
+            ->name('reports.close')
             ->middleware('role_or_permission:reports.solve.own.area|reports.solve.all');
 
         Route::get('/{report}', [ReportController::class, 'show'])

@@ -7,7 +7,7 @@ import InputText from "@/Components/Input/InputText";
 import InputDropdown from "@/Components/Input/InputDropdown";
 import BtnDefault from "@/Components/Button/BtnDefault";
 
-export default function Solve({ report = {}, areas = [], activities = [] }) {
+export default function CloseTicket({ report = {}, areas = [], activities = [] }) {
     const { auth } = usePage().props;
     const currentUser = auth?.user;
     

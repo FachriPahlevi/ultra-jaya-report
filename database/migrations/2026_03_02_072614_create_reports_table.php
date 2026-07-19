@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('status', 20)->default('open');
             $table->string('photo_before', 500)->nullable();
             $table->string('photo_after', 500)->nullable();
+            $table->text('close_comment')->nullable();
             $table->boolean('is_content_edited')->default(false);
             $table->dateTime('closed_at')->nullable();
             $table->foreignId('closed_by')->nullable()->constrained('users')->nullOnDelete();
