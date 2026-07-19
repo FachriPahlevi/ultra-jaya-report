@@ -40,7 +40,6 @@ class ReportController extends Controller
                 'photo_before'  => $report->photo_before,
                 'photo_after'   => $report->photo_after,
                 'closed_at'     => $report->closed_at,
-                'finished_date' => $report->closed_at,
                 'created_at'    => $report->created_at,
                 'updated_at'    => $report->updated_at,
                 'author' => $report->author ? [
@@ -115,7 +114,7 @@ class ReportController extends Controller
             'area_activity' => 'required|exists:areas,id',
             'activity'      => 'nullable|string|max:255',
             'issue'         => 'required|string',
-            'photo'         => 'required|image|mimes:jpeg,png,jpg|max:2048',
+            'photo'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
         Report::create([
@@ -126,7 +125,9 @@ class ReportController extends Controller
             'activity'    => $validated['activity'],
             'issue'       => $validated['issue'],
             'status'      => 'open',
-            'photo_before' => $request->file('photo')->store('reports/photos', 'public'),
+            'photo_before' => $request->hasFile('photo')
+                ? $request->file('photo')->store('reports/photos', 'public')
+                : null,
         ]);
 
         return back()->with('success', 'Laporan berhasil dibuat');
@@ -237,7 +238,7 @@ class ReportController extends Controller
     public function export(Request $request, string $type)
     {
         $user = Auth::user();
-        $query = Report::with(['author', 'area', 'activityType']);
+        $query = Report::with(['author', 'area', 'activityType', 'subActivity']);
 
         if ($user->can('reports.view.all')) {
         } elseif ($user->can('reports.solve.own.area')) {
@@ -276,7 +277,7 @@ class ReportController extends Controller
                 $report->id,
                 $report->author?->name ?? '-',
                 $report->area?->area ?? '-',
-                $report->activityType?->description ?? '-',
+                $report->subActivity?->name ?? $report->activityType?->name ?? '-',
                 $report->activity ?? '-',
                 $report->issue,
                 $report->photo_before ? 'Yes' : 'No',
@@ -300,6 +301,6 @@ class ReportController extends Controller
             'isHtml5ParserEnabled' => true,
             'isPhpEnabled'       => false,
         ]);
-        return $pdf->download('Laporan_Issue_Report_' . date('Y-m-d') . '.pdf');
+        return $pdf->download('Laporan_Ticket_Report_' . date('Y-m-d') . '.pdf');
     }
 }
