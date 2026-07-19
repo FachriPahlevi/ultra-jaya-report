@@ -634,7 +634,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
             )}
 
             <ReportForm isOpen={r.isReportModalOpen} onClose={r.closeReportModal} report={r.editReport} areas={areas} activities={activities} users={users} />
-            <CloseTicketForm isOpen={r.isCloseTicketModalOpen} onClose={r.closeCloseTicketModal} reportId={r.ticketToClose?.id} />
+            <CloseTicketForm isOpen={r.isCloseTicketModalOpen} onClose={r.closeCloseTicketModal} report={r.ticketToClose} />
             <ExportForm
                 isOpen={r.isExportModalOpen}
                 onClose={() => r.setIsExportModalOpen(false)}
