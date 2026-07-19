@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Report extends Model
 {
     use SoftDeletes;
-    
+
     protected $fillable = [
         'author_id',
         'area_id',
@@ -19,11 +19,12 @@ class Report extends Model
         'status',
         'photo_before',
         'photo_after',
+        'close_comment',
         'is_content_edited',
         'closed_at',
         'closed_by',
     ];
-    
+
     protected $casts = [
         'author_id' => 'integer',
         'area_id' => 'integer',
@@ -32,17 +33,17 @@ class Report extends Model
         'closed_at' => 'datetime',
         'is_content_edited' => 'boolean'
     ];
-    
+
     public function author()
     {
         return $this->belongsTo(User::class, 'author_id');
     }
-    
+
     public function area()
     {
         return $this->belongsTo(Area::class);
     }
-    
+
     public function activityType()
     {
         return $this->belongsTo(Activity::class, 'activity_id');

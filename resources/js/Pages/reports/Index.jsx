@@ -5,10 +5,11 @@ import BtnDefault from "@/Components/Button/BtnDefault";
 import InputDropdown from "@/Components/Input/InputDropdown";
 import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import ReportForm from "@/Components/Form/ReportForm";
-import SolveForm from "@/Components/Form/SolveForm";
+import CloseTicketForm from "@/Components/Form/CloseTicketForm";
 import ExportForm from "@/Components/Form/ExportReportForm";
 import ReportCard from "@/Components/Card/ReportCard";
 import Pagination from "@/Components/Navigation/Pagination";
+import ExpandableImage from "@/Components/UI/ExpandableImage";
 import { useReports } from "@/hooks/useReports";
 import { HiOutlineX, HiOutlinePlus } from "react-icons/hi";
 import { SlidersHorizontal, File, FileDown, ChevronDown, ChevronUp, Search, FileText } from "lucide-react";
@@ -153,7 +154,28 @@ function DesktopStatusPill({ status }) {
     );
 }
 
-function ReportDetailModal({ report, isOpen, onClose, onSolve, onEdit, onDelete, perms, isReportEditable, isReportDeletable, formatDate }) {
+function TablePhotoPreview({ src, label }) {
+    if (!src) {
+        return (
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-[10px] font-medium text-muted-foreground">
+                -
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col items-center gap-1">
+            <ExpandableImage
+                src={`/storage/${src}`}
+                alt={label}
+                className="h-12 w-12 rounded-xl border border-border object-cover"
+            />
+            <span className="text-[10px] font-medium uppercase tracking-[0.04em] text-muted-foreground">{label}</span>
+        </div>
+    );
+}
+
+function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onDelete, perms, isReportEditable, isReportDeletable, formatDate }) {
     if (!report) return null;
     const activityLabel = report.sub_activity?.name ?? report.activity_type?.name ?? report.activity ?? "-";
 
@@ -200,6 +222,13 @@ function ReportDetailModal({ report, isOpen, onClose, onSolve, onEdit, onDelete,
                         </div>
                     )}
 
+                    {report.close_comment && (
+                        <div>
+                            <div className="text-sm text-muted-foreground">Closing Comment</div>
+                            <div className="text-foreground mt-1 text-sm whitespace-pre-wrap">{report.close_comment}</div>
+                        </div>
+                    )}
+
                     <div>
                         <div className="text-sm text-muted-foreground">Status</div>
                         <div className="mt-1">
@@ -221,12 +250,12 @@ function ReportDetailModal({ report, isOpen, onClose, onSolve, onEdit, onDelete,
                     {perms.canSolve && report.status !== "closed" && (
                         <button
                             onClick={() => {
-                                onSolve(report);
+                                onCloseTicket(report);
                                 onClose();
                             }}
                             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors"
                         >
-                            Solve
+                            Close Ticket
                         </button>
                     )}
                     {isReportEditable(report) && (
@@ -293,8 +322,8 @@ export default function Index({ reports = [], areas = [], activities = [], users
             <div className="hidden sm:flex flex-col gap-5">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                     <div>
-                        <h2 className="text-[42px] font-bold tracking-[-0.055em] text-foreground leading-none">Report Lists</h2>
-                        <p className="text-[17px] text-muted-foreground mt-2.5">Manage and track all reports</p>
+                        <h1 className="text-2xl font-bold tracking-tight text-foreground">Report Lists</h1>
+                        <p className="mt-1 text-[13px] text-muted-foreground">Manage and track all reports</p>
                     </div>
                     {r.perms.canCreate && (
                         <BtnDefault onClick={r.openCreateModal} size="md" className="gap-2 px-6 h-12 rounded-2xl shadow-sm min-w-[152px]">
@@ -357,7 +386,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
                         <table className="w-full border-collapse">
                             <thead>
                                 <tr className="bg-background text-left border-b border-border">
-                                    {["No", "Date", "Submitted By", "Area", "Issue", "Type Activity", "Status", "Closed"].map((col) => (
+                                    {["No", "Date", "Submitted By", "Area", "Issue", "Photo", "Type Activity", "Status", "Closed"].map((col) => (
                                         <th key={col} className="px-5 py-4 text-[11px] font-semibold text-muted-foreground tracking-[0.04em] uppercase whitespace-nowrap">
                                             {col}
                                         </th>
@@ -367,13 +396,13 @@ export default function Index({ reports = [], areas = [], activities = [], users
                             <tbody className="divide-y divide-border/60">
                                 {r.paginated.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="py-16 text-center text-muted-foreground text-[13px]">
+                                        <td colSpan={9} className="py-16 text-center text-muted-foreground text-[13px]">
                                             No data found
                                         </td>
                                     </tr>
                                 ) : (
                                     r.paginated.map((report, index) => {
-                                        const isSolved = report.status === "closed";
+                                        const isClosed = report.status === "closed";
                                         const isSelected = r.selectedReport?.id === report.id;
                                         return (
                                             <tr
@@ -396,6 +425,12 @@ export default function Index({ reports = [], areas = [], activities = [], users
                                                     </span>
                                                 </td>
                                                 <td className="px-5 py-4 min-w-[250px]">{report.issue && <RichText text={report.issue} maxLines={3} />}</td>
+                                                <td className="px-5 py-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <TablePhotoPreview src={report.photo_before} label="Before" />
+                                                        {report.status === "closed" && <TablePhotoPreview src={report.photo_after} label="After" />}
+                                                    </div>
+                                                </td>
                                                 <td className="px-5 py-4 whitespace-nowrap">
                                                     <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[12px] font-medium text-slate-700">
                                                         {report.sub_activity?.name ?? report.activity_type?.name ?? "-"}
@@ -405,7 +440,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
                                                     <DesktopStatusPill status={report.status} />
                                                 </td>
                                                 <td className="px-5 py-4 whitespace-nowrap">
-                                                    {isSolved ? (
+                                                    {isClosed ? (
                                                         <span className="text-[13px] font-semibold text-foreground">{formatDate(report.closed_at)}</span>
                                                     ) : (
                                                         <span className="text-[13px] text-muted-foreground">-</span>
@@ -425,7 +460,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
                     report={r.selectedReport}
                     isOpen={!!r.selectedReport}
                     onClose={r.handleCloseSelected}
-                    onSolve={(report) => r.openSolveModal(report)}
+                    onCloseTicket={(report) => r.openCloseTicketModal(report)}
                     onEdit={(report) => r.openEditModal(report)}
                     onDelete={(report) => r.confirmDelete(report)}
                     perms={r.perms}
@@ -532,7 +567,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
                     report={r.selectedReport}
                     isOpen={!!r.selectedReport}
                     onClose={r.handleCloseSelected}
-                    onSolve={(report) => r.openSolveModal(report)}
+                    onCloseTicket={(report) => r.openCloseTicketModal(report)}
                     onEdit={(report) => r.openEditModal(report)}
                     onDelete={(report) => r.confirmDelete(report)}
                     perms={r.perms}
@@ -599,7 +634,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
             )}
 
             <ReportForm isOpen={r.isReportModalOpen} onClose={r.closeReportModal} report={r.editReport} areas={areas} activities={activities} users={users} />
-            <SolveForm isOpen={r.isSolveModalOpen} onClose={r.closeSolveModal} reportId={r.reportToSolve?.id} />
+            <CloseTicketForm isOpen={r.isCloseTicketModalOpen} onClose={r.closeCloseTicketModal} reportId={r.ticketToClose?.id} />
             <ExportForm
                 isOpen={r.isExportModalOpen}
                 onClose={() => r.setIsExportModalOpen(false)}
