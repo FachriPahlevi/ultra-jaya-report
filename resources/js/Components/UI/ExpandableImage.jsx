@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import { HiOutlineX } from "react-icons/hi";
 
-const ExpandableImage = ({ src, alt, className, style, ...props }) => {
+const ExpandableImage = ({ src, alt, className, style, onClick, ...props }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [scale, setScale] = useState(1);
   const [zoomDirection, setZoomDirection] = useState("in");
@@ -12,7 +12,12 @@ const ExpandableImage = ({ src, alt, className, style, ...props }) => {
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
 
-  const handleClick = () => setIsOpen(true);
+  const handleClick = (e) => {
+    e.stopPropagation();
+    onClick?.(e);
+    if (e.defaultPrevented) return;
+    setIsOpen(true);
+  };
   
   const handleClose = () => {
     setIsOpen(false);

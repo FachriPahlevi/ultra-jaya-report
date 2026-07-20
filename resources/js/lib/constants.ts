@@ -2,7 +2,7 @@ export const ROUTES = {
     dashboard:    '/dashboard',
     reportList:   '/reports',
     issueReport:  '/reports',
-    solveReport:  '/reports/solve',
+    closeTicketReport: '/reports/close',
     masterArea:   '/areas',
     masterActivity: '/activities',
     masterUser:   '/users',

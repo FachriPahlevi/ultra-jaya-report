@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { router, usePage } from "@inertiajs/react";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
 
-const PER_PAGE = 10;
+const DEFAULT_PER_PAGE = 10;
 
 export function useReports(reports = []) {
     const { props } = usePage();
@@ -48,16 +48,17 @@ export function useReports(reports = []) {
     const [dateFrom, setDateFrom]           = useState("");
     const [dateTo, setDateTo]               = useState("");
     const [myReportsOnly, setMyReportsOnly] = useState(false);
+    const [perPage, setPerPage]             = useState(DEFAULT_PER_PAGE);
     const [page, setPage]                   = useState(1);
 
     const [selectedReport, setSelectedReport] = useState(null);
     const [editReport, setEditReport]         = useState(null);
-    const [isReportModalOpen, setIsReportModalOpen]   = useState(false);
-    const [isSolveModalOpen, setIsSolveModalOpen]     = useState(false);
-    const [isExportModalOpen, setIsExportModalOpen]   = useState(false);
-    const [isFilterModalOpen, setIsFilterModalOpen]   = useState(false);
-    const [isFilterSheetOpen, setIsFilterSheetOpen]   = useState(false);
-    const [reportToSolve, setReportToSolve] = useState(null);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+    const [isCloseTicketModalOpen, setIsCloseTicketModalOpen] = useState(false);
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+    const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
+    const [ticketToClose, setTicketToClose] = useState(null);
     
     const [tempStatus, setTempStatus]             = useState("");
     const [tempType, setTempType]                 = useState("");
@@ -93,9 +94,9 @@ export function useReports(reports = []) {
         });
     }, [reports, search, statusFilter, typeFilter, areaFilter, roleFilter, dateFrom, dateTo, myReportsOnly, auth?.id]);
 
-    const totalPages = Math.ceil(filtered.length / PER_PAGE) || 1;
+    const totalPages = Math.ceil(filtered.length / perPage) || 1;
     const safePage   = Math.min(page, totalPages);
-    const paginated  = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+    const paginated  = filtered.slice((safePage - 1) * perPage, safePage * perPage);
 
     const hasActiveFilter = !!(statusFilter || typeFilter || areaFilter || roleFilter || dateFrom || dateTo || myReportsOnly);
 
@@ -144,19 +145,20 @@ export function useReports(reports = []) {
     const openEditModal   = (report) => { setEditReport(report); setIsReportModalOpen(true); };
     const closeReportModal = () => { setIsReportModalOpen(false); setEditReport(null); };
 
-    const openSolveModal = (report) => {
-    if (!report || !report.id) {
-        console.error("Cannot open solve modal: invalid report", report);
-        return;
-    }
+    const openCloseTicketModal = (report) => {
+        if (!report || !report.id) {
+            console.error("Cannot open close ticket modal: invalid report", report);
+            return;
+        }
 
-    setReportToSolve(report);
-    setIsSolveModalOpen(true);
-};
-   const closeSolveModal = () => {
-    setIsSolveModalOpen(false);
-    setReportToSolve(null);
-};
+        setTicketToClose(report);
+        setIsCloseTicketModalOpen(true);
+    };
+
+    const closeCloseTicketModal = () => {
+        setIsCloseTicketModalOpen(false);
+        setTicketToClose(null);
+    };
 
     const confirmDelete = (report) => {
         if (!report) return;
@@ -196,19 +198,20 @@ export function useReports(reports = []) {
         auth, perms,
         isReportEditable, isReportDeletable,
         search, setSearch,
+        perPage, setPerPage,
         statusFilter, typeFilter, areaFilter, roleFilter, dateFrom, dateTo, myReportsOnly,
         filtered, paginated, totalPages, page, setPage, hasActiveFilter,
         selectedReport, editReport,
-        isReportModalOpen, isSolveModalOpen, isExportModalOpen, isFilterModalOpen, isFilterSheetOpen,
+        isReportModalOpen, isCloseTicketModalOpen, isExportModalOpen, isFilterModalOpen, isFilterSheetOpen,
         setIsExportModalOpen, setIsFilterModalOpen, setIsFilterSheetOpen,
         openFilterModal, openFilterSheet,
         applyFilterModal, applyFilterSheet,
         resetTempFilter, resetAllFilters,
         handleSelectReport, handleCloseSelected,
         openCreateModal, openEditModal, closeReportModal,
-        openSolveModal, closeSolveModal,
+        openCloseTicketModal, closeCloseTicketModal,
         confirmDelete,
         temp,
-        reportToSolve,
+        ticketToClose,
     };
 }

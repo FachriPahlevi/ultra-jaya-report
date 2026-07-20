@@ -22,7 +22,7 @@ class ReportController extends Controller
 
         if ($user->can('reports.view.all')) {
         } elseif ($user->can('reports.solve.own.area')) {
-            $query->whereHas('area.pics', fn ($q) => $q->where('users.id', $user->id));
+            $query->whereHas('area.pics', fn($q) => $q->where('users.id', $user->id));
         } else {
             $query->where('author_id', $user->id);
         }
@@ -39,6 +39,7 @@ class ReportController extends Controller
                 'status'        => $report->status,
                 'photo_before'  => $report->photo_before,
                 'photo_after'   => $report->photo_after,
+                'close_comment' => $report->close_comment,
                 'closed_at'     => $report->closed_at,
                 'created_at'    => $report->created_at,
                 'updated_at'    => $report->updated_at,
@@ -50,7 +51,7 @@ class ReportController extends Controller
                 'area' => $report->area ? [
                     'id' => $report->area->id,
                     'area' => $report->area->area,
-                    'pics' => $report->area->pics->map(fn ($pic) => [
+                    'pics' => $report->area->pics->map(fn($pic) => [
                         'id' => $pic->id,
                         'name' => $pic->name,
                     ])->values(),
@@ -76,7 +77,7 @@ class ReportController extends Controller
                 return [
                     'id' => $area->id,
                     'area' => $area->area,
-                    'pics' => $area->pics->map(fn ($pic) => ['id' => $pic->id, 'name' => $pic->name])->values(),
+                    'pics' => $area->pics->map(fn($pic) => ['id' => $pic->id, 'name' => $pic->name])->values(),
                     'pic_user_ids' => $area->pics->pluck('id')->values(),
                 ];
             }),
@@ -89,7 +90,7 @@ class ReportController extends Controller
                         'id' => $activity->id,
                         'name' => $activity->name,
                         'description' => $activity->description,
-                        'sub_activities' => $activity->children->map(fn ($child) => [
+                        'sub_activities' => $activity->children->map(fn($child) => [
                             'id' => $child->id,
                             'name' => $child->name,
                             'description' => $child->description,
@@ -170,7 +171,7 @@ class ReportController extends Controller
         return back()->with('success', 'Laporan berhasil diupdate');
     }
 
-    public function solve(Request $request, Report $report)
+    public function close(Request $request, Report $report)
     {
         $user = Auth::user();
 
@@ -183,18 +184,25 @@ class ReportController extends Controller
             return back()->with('error', 'Anda tidak memiliki izin untuk menyelesaikan laporan');
         }
 
-        $request->validate([
-            'photo_after' => 'required|image|mimes:jpeg,png,jpg|max:2048',
+        $validated = $request->validate([
+            'close_comment' => 'required|string',
+            'photo_after' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        $report->update([
-            'photo_after'   => $request->file('photo_after')->store('reports/photos-after', 'public'),
+        $data = [
+            'close_comment' => $validated['close_comment'],
             'status'        => 'closed',
             'closed_at'     => now(),
             'closed_by'     => $user->id,
-        ]);
+        ];
 
-        return back()->with('success', 'Laporan berhasil diselesaikan');
+        if ($request->hasFile('photo_after')) {
+            $data['photo_after'] = $request->file('photo_after')->store('reports/photos-after', 'public');
+        }
+
+        $report->update($data);
+
+        return back()->with('success', 'Ticket berhasil ditutup');
     }
 
     public function destroy(Report $report)
@@ -242,7 +250,7 @@ class ReportController extends Controller
 
         if ($user->can('reports.view.all')) {
         } elseif ($user->can('reports.solve.own.area')) {
-            $query->whereHas('area.pics', fn ($q) => $q->where('users.id', $user->id));
+            $query->whereHas('area.pics', fn($q) => $q->where('users.id', $user->id));
         } else {
             $query->where('author_id', $user->id);
         }
