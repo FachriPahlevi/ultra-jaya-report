@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { router, usePage } from "@inertiajs/react";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
 
-const PER_PAGE = 10;
+const DEFAULT_PER_PAGE = 10;
 
 export function useReports(reports = []) {
     const { props } = usePage();
@@ -48,6 +48,7 @@ export function useReports(reports = []) {
     const [dateFrom, setDateFrom]           = useState("");
     const [dateTo, setDateTo]               = useState("");
     const [myReportsOnly, setMyReportsOnly] = useState(false);
+    const [perPage, setPerPage]             = useState(DEFAULT_PER_PAGE);
     const [page, setPage]                   = useState(1);
 
     const [selectedReport, setSelectedReport] = useState(null);
@@ -93,9 +94,9 @@ export function useReports(reports = []) {
         });
     }, [reports, search, statusFilter, typeFilter, areaFilter, roleFilter, dateFrom, dateTo, myReportsOnly, auth?.id]);
 
-    const totalPages = Math.ceil(filtered.length / PER_PAGE) || 1;
+    const totalPages = Math.ceil(filtered.length / perPage) || 1;
     const safePage   = Math.min(page, totalPages);
-    const paginated  = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+    const paginated  = filtered.slice((safePage - 1) * perPage, safePage * perPage);
 
     const hasActiveFilter = !!(statusFilter || typeFilter || areaFilter || roleFilter || dateFrom || dateTo || myReportsOnly);
 
@@ -197,6 +198,7 @@ export function useReports(reports = []) {
         auth, perms,
         isReportEditable, isReportDeletable,
         search, setSearch,
+        perPage, setPerPage,
         statusFilter, typeFilter, areaFilter, roleFilter, dateFrom, dateTo, myReportsOnly,
         filtered, paginated, totalPages, page, setPage, hasActiveFilter,
         selectedReport, editReport,

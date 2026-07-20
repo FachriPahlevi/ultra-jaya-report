@@ -3,6 +3,7 @@ import AppLayout from "@/Layouts/AppLayout";
 import { formatDate } from "@/lib/format.ts";
 import BtnDefault from "@/Components/Button/BtnDefault";
 import InputDropdown from "@/Components/Input/InputDropdown";
+import InputSelect from "@/Components/Input/InputSelect";
 import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import ReportForm from "@/Components/Form/ReportForm";
 import CloseTicketForm from "@/Components/Form/CloseTicketForm";
@@ -14,6 +15,8 @@ import { useReports } from "@/hooks/useReports";
 import { HiOutlineX, HiOutlinePlus } from "react-icons/hi";
 import { SlidersHorizontal, File, FileDown, ChevronDown, ChevronUp, Search, FileText } from "lucide-react";
 import { useState } from "react";
+
+const pageSizeOptions = [10, 25, 50, 100];
 
 const RichText = ({ text, maxLines = 3 }) => {
     const [expanded, setExpanded] = useState(false);
@@ -171,6 +174,30 @@ function TablePhotoPreview({ src, label }) {
                 className="h-12 w-12 rounded-xl border border-border object-cover"
             />
             <span className="text-[10px] font-medium uppercase tracking-[0.04em] text-muted-foreground">{label}</span>
+        </div>
+    );
+}
+
+function PageSizeSelect({ value, onChange, total, compact = false }) {
+    return (
+        <div className={`flex items-center gap-3 ${compact ? "justify-between" : "justify-end"}`}>
+            <span className="whitespace-nowrap text-[12px] text-muted-foreground">{total} records</span>
+            <div className="flex items-center gap-2">
+                <label htmlFor={`page-size-${compact ? "mobile" : "desktop"}`} className="whitespace-nowrap text-[12px] text-muted-foreground">
+                    Show
+                </label>
+                <InputSelect
+                    id={`page-size-${compact ? "mobile" : "desktop"}`}
+                    value={value}
+                    onChange={(e) => onChange(Number(e.target.value))}
+                    options={pageSizeOptions.map((option) => ({
+                        label: String(option),
+                        value: option,
+                    }))}
+                    className="min-w-[88px]"
+                    selectClassName="h-9 bg-background px-3 text-[12.5px] shadow-sm"
+                />
+            </div>
         </div>
     );
 }
@@ -371,7 +398,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
                 </div>
 
                 <div className="bg-card rounded-[28px] border border-border shadow-sm overflow-hidden">
-                    <div className="px-6 py-5 border-b border-border bg-background flex items-center justify-between">
+                    <div className="px-6 py-5 border-b border-border bg-background flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center gap-3">
                             <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500">
                                 <FileText className="h-4 w-4" />
@@ -380,7 +407,14 @@ export default function Index({ reports = [], areas = [], activities = [], users
                                 Report <span>{areaOfAuthUser?.area ?? "Area"}</span>
                             </h3>
                         </div>
-                        <span className="text-[13px] font-medium text-muted-foreground">{r.filtered.length} records</span>
+                        <PageSizeSelect
+                            value={r.perPage}
+                            onChange={(value) => {
+                                r.setPerPage(value);
+                                r.setPage(1);
+                            }}
+                            total={r.filtered.length}
+                        />
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse">
@@ -527,6 +561,17 @@ export default function Index({ reports = [], areas = [], activities = [], users
                 </div>
 
                 <div className="px-3 py-3 flex flex-col gap-2.5">
+                    <div className="rounded-2xl border border-border bg-card px-3.5 py-3 shadow-sm">
+                        <PageSizeSelect
+                            value={r.perPage}
+                            onChange={(value) => {
+                                r.setPerPage(value);
+                                r.setPage(1);
+                            }}
+                            total={r.filtered.length}
+                            compact
+                        />
+                    </div>
                     {r.paginated.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
                             <div className="w-20 h-20 mb-4 opacity-30">
@@ -634,7 +679,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
             )}
 
             <ReportForm isOpen={r.isReportModalOpen} onClose={r.closeReportModal} report={r.editReport} areas={areas} activities={activities} users={users} />
-            <CloseTicketForm isOpen={r.isCloseTicketModalOpen} onClose={r.closeCloseTicketModal} reportId={r.ticketToClose?.id} />
+            <CloseTicketForm isOpen={r.isCloseTicketModalOpen} onClose={r.closeCloseTicketModal} report={r.ticketToClose} />
             <ExportForm
                 isOpen={r.isExportModalOpen}
                 onClose={() => r.setIsExportModalOpen(false)}

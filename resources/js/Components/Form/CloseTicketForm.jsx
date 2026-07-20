@@ -6,12 +6,16 @@ import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
 import { HiOutlineX, HiOutlinePhotograph } from "react-icons/hi";
 
-export default function CloseTicketForm({ isOpen, onClose, reportId }) {
+export default function CloseTicketForm({ isOpen, onClose, report }) {
     const { setStatusModalProps } = useStatusModal();
     const [closePhoto, setClosePhoto] = useState(null);
     const [closePhotoPreview, setClosePhotoPreview] = useState(null);
     const [closeComment, setCloseComment] = useState("");
     const [processing, setProcessing] = useState(false);
+    const reportId = report?.id;
+    const issueText = report?.issue?.trim() || "-";
+    const areaLabel = report?.area?.area ?? "-";
+    const activityLabel = report?.sub_activity?.name ?? report?.activity_type?.name ?? report?.activity ?? "-";
 
     useEffect(() => {
         if (!isOpen) {
@@ -75,14 +79,14 @@ export default function CloseTicketForm({ isOpen, onClose, reportId }) {
 
     return (
         <ModalOverlay isOpen={isOpen} onClose={onClose}>
-            <div className="mx-auto w-full max-w-[440px] rounded-2xl border border-border bg-card shadow-xl">
+            <div className="mx-auto w-full max-w-[560px] rounded-2xl border border-border bg-card shadow-xl">
                 <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
                     <div>
                         <h2 className="m-0 text-lg font-semibold tracking-[-0.02em] text-foreground">
                             Close Ticket {reportId ? `#${reportId}` : ""}
                         </h2>
                         <p className="mt-1 text-[12.5px] text-muted-foreground">
-                            Closing comment is required. Photo is optional.
+                            Review the issue, add a closing note, then optionally attach evidence.
                         </p>
                     </div>
                     <button onClick={onClose} className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground" aria-label="Close">
@@ -92,6 +96,24 @@ export default function CloseTicketForm({ isOpen, onClose, reportId }) {
 
                 <div className="px-5 py-4">
                     <div className="flex flex-col gap-4">
+                        <div className="grid gap-3 rounded-2xl border border-border bg-background px-4 py-3 sm:grid-cols-2">
+                            <div>
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Area</p>
+                                <p className="mt-1 text-sm font-medium text-foreground">{areaLabel}</p>
+                            </div>
+                            <div>
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Activity</p>
+                                <p className="mt-1 text-sm font-medium text-foreground">{activityLabel}</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="mb-1.5 block text-[12.5px] font-semibold text-foreground">Reported Issue</label>
+                            <div className="max-h-36 overflow-y-auto rounded-xl border border-border bg-background px-3.5 py-3 text-sm leading-6 text-foreground whitespace-pre-wrap">
+                                {issueText}
+                            </div>
+                        </div>
+
                         <div>
                             <label className="mb-1.5 block text-[12.5px] font-semibold text-foreground">
                                 Closing Comment <span className="text-destructive">*</span>
@@ -99,9 +121,9 @@ export default function CloseTicketForm({ isOpen, onClose, reportId }) {
                             <textarea
                                 value={closeComment}
                                 onChange={(e) => setCloseComment(e.target.value)}
-                                rows={4}
-                                placeholder="Write the resolution or action taken"
-                                className="w-full rounded-xl border border-border bg-background px-3.5 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
+                                rows={6}
+                                placeholder="Write the resolution, action taken, and any follow-up notes"
+                                className="w-full rounded-xl border border-border bg-background px-3.5 py-3 text-sm leading-6 text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
                             />
                         </div>
 
@@ -154,11 +176,11 @@ export default function CloseTicketForm({ isOpen, onClose, reportId }) {
                             {closePhoto && <p className="mt-2 truncate text-[11.5px] text-muted-foreground">{closePhoto.name}</p>}
                         </div>
 
-                        <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end">
-                            <BtnDefault outline onClick={onClose} className="w-full sm:w-auto sm:min-w-[110px]">
+                        <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
+                            <BtnDefault outline onClick={onClose} className="w-full sm:w-auto sm:min-w-[116px]">
                                 Cancel
                             </BtnDefault>
-                            <BtnDefault onClick={handleCloseSubmit} loading={processing} className="w-full sm:w-auto sm:min-w-[150px]">
+                            <BtnDefault onClick={handleCloseSubmit} loading={processing} className="w-full sm:w-auto sm:min-w-[168px]">
                                 {processing ? "Closing..." : "Close Ticket"}
                             </BtnDefault>
                         </div>
