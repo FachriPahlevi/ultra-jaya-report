@@ -20,7 +20,7 @@ export default function UserForm({ isOpen, onClose, user, roles, isSuperadmin })
     });
 
     const roleOptions = roles
-        .filter(role => isSuperadmin || role.name !== "SUPER_ADMIN")
+        .filter((role) => isSuperadmin || role.name !== "SUPER_ADMIN")
         .map((role) => ({
             label: role.name,
             value: role.name,
@@ -63,7 +63,7 @@ export default function UserForm({ isOpen, onClose, user, roles, isSuperadmin })
                 onClose();
             }
         } catch (error) {
-            console.error('Error:', error.response?.data);
+            console.error("Error:", error.response?.data);
             let errorMessage = "Failed to save user";
             if (error.response?.data?.message) {
                 errorMessage = error.response.data.message;
@@ -79,44 +79,21 @@ export default function UserForm({ isOpen, onClose, user, roles, isSuperadmin })
 
     return (
         <ModalOverlay isOpen={isOpen} onClose={onClose}>
-            <div className="bg-card rounded-2xl border border-border shadow-xl w-full max-w-[500px]">
-                <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl">
+            <div className="w-full max-w-[520px] rounded-[28px] border border-border bg-card shadow-xl">
+                <div className="sticky top-0 flex items-center justify-between border-b border-border bg-card px-6 py-5 rounded-t-[28px]">
                     <div>
-                        <h2 className="text-xl font-bold text-foreground">
-                            {user ? "Edit User" : "Add New User"}
-                        </h2>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                            {user ? `Editing ${user.name}` : "Fill in the details below"}
-                        </p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{user ? "Update User" : "Create User"}</p>
+                        <h2 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-foreground">{user ? "Edit User" : "Add New User"}</h2>
+                        <p className="mt-1 text-[12.5px] leading-5 text-muted-foreground">{user ? `Editing ${user.name}` : "Fill in the user details and assign the proper role."}</p>
                     </div>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
+                    <button onClick={onClose} className="rounded-xl border border-border p-2 text-muted-foreground transition-colors hover:text-foreground">
                         <HiOutlineX className="w-5 h-5" />
                     </button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
-                    <InputText
-                        label="Full Name"
-                        placeholder="Enter full name"
-                        value={form.name}
-                        onChange={(e) => setForm({ ...form, name: e.target.value })}
-                        required
-                    />
-                    <InputText
-                        label="Email Address"
-                        type="email"
-                        placeholder="Enter email address"
-                        value={form.email}
-                        onChange={(e) => setForm({ ...form, email: e.target.value })}
-                        required
-                    />
-                    <InputDropdown
-                        label="Role"
-                        placeholder="Select a role"
-                        value={form.role}
-                        setObject={(item) => setForm({ ...form, role: item.value })}
-                        itemList={roleOptions}
-                        required
-                    />
+                    <InputText label="Full Name" placeholder="Enter full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+                    <InputText label="Email Address" type="email" placeholder="Enter email address" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+                    <InputDropdown label="Role" placeholder="Select a role" value={form.role} setObject={(item) => setForm({ ...form, role: item.value })} itemList={roleOptions} required />
                     <InputText
                         label={user ? "New Password (optional)" : "Password"}
                         type="password"
@@ -124,9 +101,11 @@ export default function UserForm({ isOpen, onClose, user, roles, isSuperadmin })
                         value={form.password}
                         onChange={(e) => setForm({ ...form, password: e.target.value })}
                     />
-                    <div className="flex gap-3 pt-4">
-                        <BtnDefault outline onClick={onClose} className="flex-1">Cancel</BtnDefault>
-                        <BtnDefault type="submit" loading={processing} className="flex-[2]">
+                    <div className="flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:justify-end">
+                        <BtnDefault variant="outline" onClick={onClose} className="w-full rounded-xl sm:w-auto sm:min-w-[116px]">
+                            Cancel
+                        </BtnDefault>
+                        <BtnDefault type="submit" loading={processing} className="w-full rounded-xl sm:w-auto sm:min-w-[156px]">
                             {user ? "Update User" : "Create User"}
                         </BtnDefault>
                     </div>

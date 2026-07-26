@@ -12,9 +12,23 @@ use Illuminate\Support\Facades\Auth;
 
 class SettingController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $users = User::with('roles')->latest()->paginate(10);
+        $usersPerPage = (int) $request->integer('users_per_page', 10);
+        if (! in_array($usersPerPage, [10, 25, 50, 100], true)) {
+            $usersPerPage = 10;
+        }
+
+        $activeTab = $request->string('active_tab')->toString();
+        if (! in_array($activeTab, ['roles', 'users'], true)) {
+            $activeTab = 'roles';
+        }
+
+        $users = User::with(['roles', 'assignedAreas:id,area'])
+            ->latest()
+            ->paginate($usersPerPage)
+            ->withQueryString();
+
         $roles = Role::with('permissions')->get();
         $permissions = Permission::all();
 
@@ -22,6 +36,10 @@ class SettingController extends Controller
             'users' => $users,
             'roles' => $roles,
             'permissions' => $permissions,
+            'filters' => [
+                'users_per_page' => $usersPerPage,
+                'active_tab' => $activeTab,
+            ],
         ]);
     }
 
@@ -110,20 +128,20 @@ class SettingController extends Controller
         return redirect()->route('settings.index')->with('success', 'Role berhasil dibuat');
     }
 
-        public function updateRole(Request $request, Role $role)
-        {
-            if ($role->name === 'SUPER_ADMIN') {
-                return response()->json(['message' => 'Role SUPER_ADMIN tidak dapat diedit'], 422);
-            }
-            
-            $validated = $request->validate([
-                'name' => 'required|string|max:255|unique:roles,name,' . $role->id,
-            ]);
-            
-            $role->update(['name' => $validated['name']]);
-            
-            return response()->json(['message' => 'Role berhasil diupdate'], 200);
+    public function updateRole(Request $request, Role $role)
+    {
+        if ($role->name === 'SUPER_ADMIN') {
+            return response()->json(['message' => 'Role SUPER_ADMIN tidak dapat diedit'], 422);
         }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:roles,name,' . $role->id,
+        ]);
+
+        $role->update(['name' => $validated['name']]);
+
+        return response()->json(['message' => 'Role berhasil diupdate'], 200);
+    }
 
     // SettingController.php
     public function deleteRole(Role $role)
