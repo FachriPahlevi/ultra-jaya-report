@@ -17,32 +17,36 @@ class AreaSeeder extends Seeder
             [
                 'area' => 'Fresh Milk Reception',
                 'pics' => [
-                    ['name' => 'Supervisor Fresh Milk', 'email' => 'spv.freshmilk@example.com'],
-                    ['name' => 'Supervisor Assistant Fresh Milk', 'email' => 'spv.freshmilk.assistant@example.com'],
+                    ['name' => 'Yudi Setiawan', 'email' => 'yudi.setiawan@ultrajaya.local'],
+                    ['name' => 'Deni Kurniawan', 'email' => 'deni.kurniawan@ultrajaya.local'],
                 ],
             ],
             [
                 'area' => 'Processing',
                 'pics' => [
-                    ['name' => 'Supervisor Processing', 'email' => 'spv.processing@example.com'],
+                    ['name' => 'Fajar Nugraha', 'email' => 'fajar.nugraha@ultrajaya.local'],
+                    ['name' => 'Lukman Hakim', 'email' => 'lukman.hakim@ultrajaya.local'],
                 ],
             ],
             [
                 'area' => 'CIP Kitchen',
                 'pics' => [
-                    ['name' => 'Supervisor CIP Kitchen', 'email' => 'spv.cip@example.com'],
+                    ['name' => 'Hendra Saputra', 'email' => 'hendra.saputra@ultrajaya.local'],
+                    ['name' => 'Agus Salim', 'email' => 'agus.salim@ultrajaya.local'],
                 ],
             ],
             [
                 'area' => 'Filling',
                 'pics' => [
-                    ['name' => 'Supervisor Filling', 'email' => 'spv.filling@example.com'],
+                    ['name' => 'Rina Kartikasari', 'email' => 'rina.kartikasari@ultrajaya.local'],
+                    ['name' => 'Mira Puspita', 'email' => 'mira.puspita@ultrajaya.local'],
                 ],
             ],
             [
                 'area' => 'Packing',
                 'pics' => [
-                    ['name' => 'Supervisor Packing', 'email' => 'spv.packing@example.com'],
+                    ['name' => 'Bima Arya', 'email' => 'bima.arya@ultrajaya.local'],
+                    ['name' => 'Tomi Wijaya', 'email' => 'tomi.wijaya@ultrajaya.local'],
                 ],
             ],
         ];
@@ -78,7 +82,7 @@ class AreaSeeder extends Seeder
         }
 
         $this->command->info(count($areaAssignments) . ' areas seeded successfully.');
-        $this->command->info('Supervisors assigned with 1 PIC = 1 area rule.');
+        $this->command->info('Realistic multi-PIC area assignments prepared.');
     }
 
     private function ensureSupervisorsExist(array $areaAssignments): void
