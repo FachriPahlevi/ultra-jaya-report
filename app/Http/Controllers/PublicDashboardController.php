@@ -73,7 +73,7 @@ class PublicDashboardController extends Controller
                 'total' => $totalReports,
                 'open' => $openReports,
                 'closed' => $closedReports,
-                'activeAreas' => Area::has('reports')->count(),
+                'activeAreas' => Area::where('is_active', true)->has('reports')->count(),
             ],
             'oldestOpenTicket' => $oldestOpenTicket ? [
                 'id' => $oldestOpenTicket->id,

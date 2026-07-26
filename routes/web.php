@@ -59,8 +59,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('areas.update')
             ->middleware('can:areas.edit');
 
+        Route::patch('/{area}/status', [AreaController::class, 'updateStatus'])
+            ->name('areas.status')
+            ->middleware('can:areas.edit');
+
+        Route::patch('/{areaId}/restore', [AreaController::class, 'restore'])
+            ->name('areas.restore')
+            ->middleware('can:areas.delete');
+
         Route::delete('/{area}', [AreaController::class, 'destroy'])
             ->name('areas.destroy')
+            ->middleware('can:areas.delete');
+
+        Route::delete('/{areaId}/force', [AreaController::class, 'forceDestroy'])
+            ->name('areas.force-destroy')
             ->middleware('can:areas.delete');
     });
 

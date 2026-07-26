@@ -12,7 +12,7 @@ class ReportSeeder extends Seeder
     public function run(): void
     {
         $users = User::all();
-        $areas = Area::all();
+        $areas = Area::where('is_active', true)->get();
         $activities = Activity::all();
 
         if ($users->isEmpty() || $areas->isEmpty() || $activities->isEmpty()) {
