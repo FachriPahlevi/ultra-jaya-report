@@ -11,61 +11,84 @@ class AreaSeeder extends Seeder
 {
     public function run(): void
     {
-        // Pastikan role SUPERVISOR ada
-        $supervisorRole = Role::firstOrCreate(['name' => 'SUPERVISOR']);
-        
-        // Ambil user dengan role SUPERVISOR
-        $supervisors = User::role('SUPERVISOR')->get();
+        Role::firstOrCreate(['name' => 'SUPERVISOR']);
 
-        if ($supervisors->isEmpty()) {
-            $this->command->info('No supervisors found. Creating dummy supervisors...');
-            $this->createDummySupervisors();
-            $supervisors = User::role('SUPERVISOR')->get();
-        }
-
-        if ($supervisors->isEmpty()) {
-            $this->command->error('Failed to create supervisors. Please check UserSeeder.');
-            return;
-        }
-
-        $areas = [
-            ['area' => 'Fresh Milk Reception'],
-            ['area' => 'Processing'],
-            ['area' => 'CIP Kitchen'],
-            ['area' => 'Filling'],
-            ['area' => 'Packing'],
+        $areaAssignments = [
+            [
+                'area' => 'Fresh Milk Reception',
+                'pics' => [
+                    ['name' => 'Supervisor Fresh Milk', 'email' => 'spv.freshmilk@example.com'],
+                    ['name' => 'Supervisor Assistant Fresh Milk', 'email' => 'spv.freshmilk.assistant@example.com'],
+                ],
+            ],
+            [
+                'area' => 'Processing',
+                'pics' => [
+                    ['name' => 'Supervisor Processing', 'email' => 'spv.processing@example.com'],
+                ],
+            ],
+            [
+                'area' => 'CIP Kitchen',
+                'pics' => [
+                    ['name' => 'Supervisor CIP Kitchen', 'email' => 'spv.cip@example.com'],
+                ],
+            ],
+            [
+                'area' => 'Filling',
+                'pics' => [
+                    ['name' => 'Supervisor Filling', 'email' => 'spv.filling@example.com'],
+                ],
+            ],
+            [
+                'area' => 'Packing',
+                'pics' => [
+                    ['name' => 'Supervisor Packing', 'email' => 'spv.packing@example.com'],
+                ],
+            ],
         ];
 
-        foreach ($areas as $index => $areaData) {
+        $this->ensureSupervisorsExist($areaAssignments);
+
+        $supervisorsByEmail = User::role('SUPERVISOR')
+            ->whereIn(
+                'email',
+                collect($areaAssignments)->flatMap(fn($assignment) => collect($assignment['pics'])->pluck('email'))->all()
+            )
+            ->get()
+            ->keyBy('email');
+
+        $supervisorsByEmail->each(fn(User $supervisor) => $supervisor->assignedAreas()->detach());
+
+        foreach ($areaAssignments as $areaData) {
             $area = Area::updateOrCreate(
                 ['area' => $areaData['area']],
-                ['area' => $areaData['area']]
+                [
+                    'area' => $areaData['area'],
+                    'is_active' => true,
+                ]
             );
 
-            $assignedSupervisorIds = [];
-
-            if (isset($supervisors[$index])) {
-                $assignedSupervisorIds[] = $supervisors[$index]->id;
-            }
+            $assignedSupervisorIds = collect($areaData['pics'])
+                ->map(fn($pic) => $supervisorsByEmail[$pic['email']]?->id)
+                ->filter()
+                ->values()
+                ->all();
 
             $area->pics()->sync($assignedSupervisorIds);
         }
 
-        $this->command->info(count($areas) . ' areas seeded successfully.');
-        $this->command->info('Supervisors assigned through area_user pivot.');
+        $this->command->info(count($areaAssignments) . ' areas seeded successfully.');
+        $this->command->info('Supervisors assigned with 1 PIC = 1 area rule.');
     }
 
-    private function createDummySupervisors()
+    private function ensureSupervisorsExist(array $areaAssignments): void
     {
         $supervisorRole = Role::firstOrCreate(['name' => 'SUPERVISOR']);
 
-        $supervisors = [
-            ['name' => 'Supervisor Fresh Milk', 'email' => 'spv.freshmilk@example.com'],
-            ['name' => 'Supervisor Processing', 'email' => 'spv.processing@example.com'],
-            ['name' => 'Supervisor CIP Kitchen', 'email' => 'spv.cip@example.com'],
-            ['name' => 'Supervisor Filling', 'email' => 'spv.filling@example.com'],
-            ['name' => 'Supervisor Packing', 'email' => 'spv.packing@example.com'],
-        ];
+        $supervisors = collect($areaAssignments)
+            ->flatMap(fn($assignment) => $assignment['pics'])
+            ->unique('email')
+            ->values();
 
         foreach ($supervisors as $data) {
             $user = User::updateOrCreate(
@@ -80,7 +103,7 @@ class AreaSeeder extends Seeder
                 $user->assignRole($supervisorRole);
             }
         }
-        
-        $this->command->info('5 dummy supervisors created with specific areas.');
+
+        $this->command->info($supervisors->count() . ' supervisors prepared for area assignments.');
     }
 }
