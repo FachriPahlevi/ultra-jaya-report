@@ -46,7 +46,7 @@ export default function RoleForm({ isOpen, onClose, role }) {
                 onClose();
             }
         } catch (error) {
-            console.error('Error:', error);
+            console.error("Error:", error);
             const message = error.response?.data?.message || "Failed to save role";
             showStatusModal("error", "Error", message);
         } finally {
@@ -56,26 +56,25 @@ export default function RoleForm({ isOpen, onClose, role }) {
 
     return (
         <ModalOverlay isOpen={isOpen} onClose={onClose}>
-            <div className="bg-card rounded-2xl border border-border shadow-xl w-full max-w-[400px]">
-                <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-foreground">
-                        {role ? "Edit Role" : "Add New Role"}
-                    </h2>
-                    <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
+            <div className="w-full max-w-[420px] rounded-[28px] border border-border bg-card shadow-xl">
+                <div className="sticky top-0 flex items-center justify-between border-b border-border bg-card px-6 py-5 rounded-t-[28px]">
+                    <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{role ? "Update Role" : "Create Role"}</p>
+                        <h2 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-foreground">{role ? "Edit Role" : "Add New Role"}</h2>
+                    </div>
+                    <button onClick={onClose} className="rounded-xl border border-border p-2 text-muted-foreground transition-colors hover:text-foreground">
                         <HiOutlineX className="w-5 h-5" />
                     </button>
                 </div>
                 <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
-                    <InputText
-                        label="Role Name"
-                        placeholder="Enter role name"
-                        value={form.name}
-                        onChange={(e) => setForm({ name: e.target.value })}
-                        required
-                    />
-                    <div className="flex gap-3">
-                        <BtnDefault outline onClick={onClose} className="flex-1">Cancel</BtnDefault>
-                        <BtnDefault type="submit" loading={processing} className="flex-[2]">Save</BtnDefault>
+                    <InputText label="Role Name" placeholder="Enter role name" value={form.name} onChange={(e) => setForm({ name: e.target.value })} required />
+                    <div className="flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:justify-end">
+                        <BtnDefault variant="outline" onClick={onClose} className="w-full rounded-xl sm:w-auto sm:min-w-[116px]">
+                            Cancel
+                        </BtnDefault>
+                        <BtnDefault type="submit" loading={processing} className="w-full rounded-xl sm:w-auto sm:min-w-[132px]">
+                            {role ? "Update Role" : "Create Role"}
+                        </BtnDefault>
                     </div>
                 </form>
             </div>
