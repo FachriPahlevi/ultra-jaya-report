@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 
 class AreaController extends Controller
 {
@@ -22,12 +21,12 @@ class AreaController extends Controller
                 ->paginate(10);
         } elseif ($user->hasRole('SUPERVISOR')) {
             $areas = Area::with('pics:id,name')
-                ->whereHas('pics', fn($query) => $query->where('users.id', $user->id))
+                ->whereHas('pics', fn ($query) => $query->where('users.id', $user->id))
                 ->latest()
                 ->paginate(10);
         } else {
             $areas = Area::with('pics:id,name')
-                ->whereHas('pics', fn($query) => $query->where('users.id', $user->id))
+                ->whereHas('pics', fn ($query) => $query->where('users.id', $user->id))
                 ->latest()
                 ->paginate(10);
         }
@@ -36,7 +35,7 @@ class AreaController extends Controller
             return [
                 'id' => $area->id,
                 'area' => $area->area,
-                'pics' => $area->pics->map(fn($pic) => [
+                'pics' => $area->pics->map(fn ($pic) => [
                     'id' => $pic->id,
                     'name' => $pic->name,
                 ])->values(),
@@ -46,21 +45,7 @@ class AreaController extends Controller
 
         $users = [];
         if ($user->can('areas.assign.supervisor') || $user->hasRole('SUPER_ADMIN') || $user->hasRole('ADMIN')) {
-            $users = User::role('SUPERVISOR')
-                ->with(['assignedAreas:id,area'])
-                ->select('id', 'name')
-                ->get()
-                ->map(function (User $supervisor) {
-                    $assignedArea = $supervisor->assignedAreas->first();
-
-                    return [
-                        'id' => $supervisor->id,
-                        'name' => $supervisor->name,
-                        'assigned_area_id' => $assignedArea?->id,
-                        'assigned_area_name' => $assignedArea?->area,
-                    ];
-                })
-                ->values();
+            $users = User::role('SUPERVISOR')->select('id', 'name')->get();
         }
 
         return Inertia::render('areas/Index', [
@@ -78,10 +63,13 @@ class AreaController extends Controller
                 'pic_user_ids.*' => 'exists:users,id',
             ]);
 
-            $picUserIds = $validated['pic_user_ids'] ?? [];
-            $this->ensurePicsAvailable($picUserIds);
-
             $area = Area::create(['area' => $validated['name']]);
+            $picUserIds = $validated['pic_user_ids'] ?? [];
+
+            if (empty($picUserIds) && Auth::check()) {
+                $picUserIds = [Auth::id()];
+            }
+
             $area->pics()->sync($picUserIds);
 
             if ($request->wantsJson()) {
@@ -89,6 +77,7 @@ class AreaController extends Controller
             }
 
             return redirect()->route('areas.index');
+            
         } catch (ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 422);
         } catch (\Exception $e) {
@@ -105,17 +94,15 @@ class AreaController extends Controller
                 'pic_user_ids.*' => 'exists:users,id',
             ]);
 
-            $picUserIds = $validated['pic_user_ids'] ?? [];
-            $this->ensurePicsAvailable($picUserIds, $area->id);
-
             $area->update(['area' => $validated['name']]);
-            $area->pics()->sync($picUserIds);
+            $area->pics()->sync($validated['pic_user_ids'] ?? []);
 
             if ($request->wantsJson()) {
                 return response()->json(['success' => true], 200);
             }
 
             return redirect()->route('areas.index');
+            
         } catch (ValidationException $e) {
             return response()->json(['errors' => $e->errors()], 422);
         } catch (\Exception $e) {
@@ -127,41 +114,18 @@ class AreaController extends Controller
     {
         try {
             $area->delete();
-
+            
             if (request()->wantsJson()) {
                 return response()->json(['success' => true], 200);
             }
-
+            
             return redirect()->route('areas.index');
+            
         } catch (\Exception $e) {
             return response()->json([
                 'message' => $e->getMessage(),
                 'error' => 'Failed to delete area'
             ], 500);
-        }
-    }
-
-    private function ensurePicsAvailable(array $picUserIds, ?int $currentAreaId = null): void
-    {
-        if (empty($picUserIds)) {
-            return;
-        }
-
-        $conflicts = DB::table('area_user')
-            ->join('areas', 'areas.id', '=', 'area_user.area_id')
-            ->join('users', 'users.id', '=', 'area_user.user_id')
-            ->whereIn('area_user.user_id', $picUserIds)
-            ->when($currentAreaId, fn($query) => $query->where('area_user.area_id', '!=', $currentAreaId))
-            ->select('users.name', 'areas.area')
-            ->get()
-            ->map(fn($item) => "{$item->name} is already assigned to {$item->area}")
-            ->values()
-            ->all();
-
-        if (!empty($conflicts)) {
-            throw ValidationException::withMessages([
-                'pic_user_ids' => $conflicts,
-            ]);
         }
     }
 }
