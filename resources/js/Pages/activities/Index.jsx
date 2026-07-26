@@ -2,265 +2,282 @@ import { useState } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
 import axios from "axios";
 import AppLayout from "@/Layouts/AppLayout";
-import InputText from "@/Components/Input/InputText";
-import InputDropdown from "@/Components/Input/InputDropdown";
 import BtnDefault from "@/Components/Button/BtnDefault";
-import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
-import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineX } from "react-icons/hi";
+import { HiOutlinePlus } from "react-icons/hi";
+import ActivityListSection from "./components/ActivityListSection";
+import ActivityFormModal from "./components/ActivityFormModal";
 
-export default function Index({ activities = { data: [], links: [], meta: {} }, parentActivities = [] }) {
-  const { setStatusModalProps } = useStatusModal();
-  const { props } = usePage();
-  const permissions = props.auth?.user?.permissions || [];
-  const canAdd = permissions.includes("activities.create");
-  const canEdit = permissions.includes("activities.edit");
-  const canDelete = permissions.includes("activities.delete");
-  const hasActions = canEdit || canDelete;
+const INITIAL_FORM = {
+    name: "",
+    description: "",
+    is_active: true,
+    parent_id: "",
+    sub_activities: [{ name: "", description: "" }],
+};
 
-  const [showModal, setShowModal] = useState(false);
-  const [editTarget, setEditTarget] = useState(null);
-  const [processing, setProcessing] = useState(false);
-  const [form, setForm] = useState({ name: "", description: "", parent_id: "" });
-  const [errors, setErrors] = useState({});
+export default function Index({ activities = { data: [], links: [], meta: {} }, parentActivities = [], activityTotals = { all: 0 } }) {
+    const { props } = usePage();
+    const { setStatusModalProps } = useStatusModal();
+    const permissions = props.auth?.user?.permissions || [];
+    const canAdd = permissions.includes("activities.create");
+    const canEdit = permissions.includes("activities.edit");
+    const canDelete = permissions.includes("activities.delete");
 
-  const showStatusModal = (type, title, message) => {
-    setStatusModalProps({
-      isOpen: true,
-      type,
-      title,
-      message,
-      button1: { text: "OK" },
-    });
-  };
+    const [showModal, setShowModal] = useState(false);
+    const [editTarget, setEditTarget] = useState(null);
+    const [processing, setProcessing] = useState(false);
+    const [form, setForm] = useState(INITIAL_FORM);
+    const [errors, setErrors] = useState({});
+    const [isBulkSubMode, setIsBulkSubMode] = useState(false);
 
-  const openAdd = () => {
-    setEditTarget(null);
-    setForm({ name: "", description: "", parent_id: "" });
-    setErrors({});
-    setShowModal(true);
-  };
+    const totalActivities = activityTotals.all || activities.meta?.total || activities.data.length;
+    const parentOptions = parentActivities.filter((item) => !editTarget || item.id !== editTarget.id).map((item) => ({ label: item.name, value: String(item.id) }));
 
-  const openEdit = (activity) => {
-    setEditTarget(activity);
-    setForm({
-      name: activity.name,
-      description: activity.description ?? "",
-      parent_id: activity.parent_id ? String(activity.parent_id) : "",
-    });
-    setErrors({});
-    setShowModal(true);
-  };
-
-  const closeModal = () => {
-    setShowModal(false);
-    setEditTarget(null);
-    setForm({ name: "", description: "", parent_id: "" });
-    setErrors({});
-  };
-
-  const handleFormChange = (key, value) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-    if (errors[key]) {
-      setErrors((prev) => ({ ...prev, [key]: "" }));
-    }
-  };
-
-  const submit = async (e) => {
-    e.preventDefault();
-    setProcessing(true);
-    setErrors({});
-
-    const submitData = {
-      name: form.name,
-      description: form.description,
-      parent_id: form.parent_id || null,
+    const showStatusModal = (type, title, message) => {
+        setStatusModalProps({
+            isOpen: true,
+            type,
+            title,
+            message,
+            button1: { text: "OK" },
+        });
     };
 
-    try {
-      if (editTarget) {
-        await axios.put(`/activities/${editTarget.id}`, submitData);
-        showStatusModal("success", "Success", `Activity "${form.name}" has been updated`);
-      } else {
-        await axios.post("/activities", submitData);
-        showStatusModal("success", "Success", `Activity "${form.name}" has been created`);
-      }
-      router.reload({ only: ["activities"] });
-      closeModal();
-    } catch (error) {
-      if (error.response?.status === 422) {
-        setErrors(error.response.data.errors || {});
-        const firstError = Object.values(error.response.data.errors)[0];
-        showStatusModal("error", "Validation Error", Array.isArray(firstError) ? firstError[0] : firstError);
-      } else {
-        showStatusModal("error", "Error", "Something went wrong. Please try again.");
-      }
-    } finally {
-      setProcessing(false);
+    const reloadActivities = () => {
+        router.reload({ only: ["activities", "parentActivities"] });
+    };
+
+    const showRequestError = (error, fallbackMessage) => {
+        if (error.response?.status === 422) {
+            const payloadErrors = error.response.data.errors || {};
+            setErrors(payloadErrors);
+            const firstError = Object.values(payloadErrors)[0];
+            showStatusModal("error", "Validation Error", Array.isArray(firstError) ? firstError[0] : firstError);
+            return;
+        }
+
+        const errorMessage = error.response?.data?.message || error.message || fallbackMessage;
+        showStatusModal("error", "Error", errorMessage);
+    };
+
+    const openAdd = (parentActivity = null) => {
+        setEditTarget(null);
+        setForm({
+            ...INITIAL_FORM,
+            parent_id: parentActivity ? String(parentActivity.id) : "",
+            is_active: true,
+            sub_activities: [{ name: "", description: "" }],
+        });
+        setIsBulkSubMode(Boolean(parentActivity));
+        setErrors({});
+        setShowModal(true);
+    };
+
+    const openEdit = (activity) => {
+        setEditTarget(activity);
+        setForm({
+            name: activity.name,
+            description: activity.description ?? "",
+            is_active: activity.is_active ?? true,
+            parent_id: activity.parent_id ? String(activity.parent_id) : "",
+            sub_activities: [{ name: "", description: "" }],
+        });
+        setIsBulkSubMode(false);
+        setErrors({});
+        setShowModal(true);
+    };
+
+    const closeModal = () => {
+        setShowModal(false);
+        setEditTarget(null);
+        setForm(INITIAL_FORM);
+        setIsBulkSubMode(false);
+        setErrors({});
+    };
+
+    const handleFormChange = (key, value) => {
+        setForm((prev) => ({ ...prev, [key]: value }));
+        if (errors[key]) {
+            setErrors((prev) => ({ ...prev, [key]: "" }));
+        }
+    };
+
+    const handleSubActivityChange = (index, key, value) => {
+        setForm((prev) => ({
+            ...prev,
+            sub_activities: prev.sub_activities.map((item, itemIndex) => (itemIndex === index ? { ...item, [key]: value } : item)),
+        }));
+        const errorKey = `sub_activities.${index}.${key}`;
+        if (errors[errorKey]) {
+            setErrors((prev) => ({ ...prev, [errorKey]: "" }));
+        }
+    };
+
+    const addSubActivityField = () => {
+        setForm((prev) => ({
+            ...prev,
+            sub_activities: [...prev.sub_activities, { name: "", description: "" }],
+        }));
+    };
+
+    const removeSubActivityField = (index) => {
+        setForm((prev) => ({
+            ...prev,
+            sub_activities: prev.sub_activities.filter((_, itemIndex) => itemIndex !== index),
+        }));
+    };
+
+    const submit = async (e) => {
+        e.preventDefault();
+        if (processing) return;
+
+        setProcessing(true);
+        setErrors({});
+
+        const submitData = {
+            name: form.name,
+            description: form.description || null,
+            is_active: form.is_active,
+            parent_id: form.parent_id || null,
+            sub_activities: isBulkSubMode
+                ? form.sub_activities.map((item) => ({
+                      name: item.name,
+                      description: item.description || null,
+                  }))
+                : undefined,
+        };
+
+        try {
+            if (editTarget) {
+                await axios.put(`/activities/${editTarget.id}`, submitData);
+                showStatusModal("success", "Success", `Activity "${form.name}" has been updated`);
+            } else {
+                await axios.post("/activities", submitData);
+                showStatusModal("success", "Success", `Activity "${form.name}" has been created`);
+            }
+
+            reloadActivities();
+            closeModal();
+        } catch (error) {
+            showRequestError(error, "Something went wrong. Please try again.");
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const confirmToggleStatus = (activity) => {
+        const nextStatus = !activity.is_active;
+
+        setStatusModalProps({
+            isOpen: true,
+            type: "warning",
+            title: `${nextStatus ? "Activate" : "Deactivate"} Activity`,
+            message: nextStatus ? `Activity "${activity.name}" will be available again in report selection.` : `Activity "${activity.name}" will stay stored, but it will no longer appear in report selection.`,
+            button1: {
+                text: nextStatus ? "Activate" : "Deactivate",
+                onClick: async () => {
+                    try {
+                        await axios.patch(`/activities/${activity.id}/status`, { is_active: nextStatus });
+                        showStatusModal("success", "Success", `Activity "${activity.name}" has been ${nextStatus ? "activated" : "deactivated"}`);
+                        reloadActivities();
+                    } catch (error) {
+                        showRequestError(error, "Failed to update activity status");
+                    }
+                },
+            },
+            button2: { text: "Cancel" },
+        });
+    };
+
+    const confirmDelete = (activity) => {
+        setStatusModalProps({
+            isOpen: true,
+            type: "warning",
+            title: "Delete Activity",
+            message:
+                activity.children_count > 0
+                    ? `Activity "${activity.name}" still has ${activity.children_count} sub activities. Remove or move them first.`
+                    : `Activity "${activity.name}" will be removed from the directory.`,
+            button1: {
+                text: "Delete",
+                variant: "danger",
+                onClick: () => {
+                    router.delete(`/activities/${activity.id}`, {
+                        onSuccess: () => {
+                            showStatusModal("success", "Success", `Activity "${activity.name}" has been deleted`);
+                            reloadActivities();
+                        },
+                        onError: (error) => {
+                            showRequestError(error, "Failed to delete activity");
+                        },
+                    });
+                },
+            },
+            button2: { text: "Cancel" },
+        });
+    };
+
+    if (!activities || !activities.data) {
+        return (
+            <AppLayout title="Master Activity">
+                <Head>
+                    <title>Master Activity</title>
+                </Head>
+                <div className="flex h-64 items-center justify-center">
+                    <div className="text-center">
+                        <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-primary"></div>
+                        <p className="mt-4 text-muted-foreground">Loading...</p>
+                    </div>
+                </div>
+            </AppLayout>
+        );
     }
-  };
 
-  const confirmDelete = (activity) => {
-    setStatusModalProps({
-      isOpen: true,
-      type: "warning",
-      title: "Delete Activity",
-      message: `Are you sure you want to delete activity "${activity.name}"?`,
-      button1: {
-        text: "Delete",
-        onClick: () => {
-          router.delete(`/activities/${activity.id}`, {
-            onSuccess: () => {
-              showStatusModal("success", "Success", `Activity "${activity.name}" has been deleted`);
-            },
-            onError: (error) => {
-              console.error("Delete error:", error);
-              showStatusModal("error", "Error", "Failed to delete activity");
-            },
-          });
-        },
-      },
-      button2: { text: "Cancel" },
-    });
-  };
+    return (
+        <AppLayout title="Master Activity">
+            <Head>
+                <title>Master Activity</title>
+            </Head>
 
-  const deleteActivity = (activity) => {
-    confirmDelete(activity);
-  };
-  return (
-    <AppLayout title="Master Activity">
-      <Head>
-        <title>Master Activity</title>
-      </Head>
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground tracking-[-0.5px] m-0">Master Activity</h1>
-            <p className="text-sm text-muted-foreground mt-1">Manage activities</p>
-          </div>
-          {canAdd && (
-            <BtnDefault onClick={openAdd} size="md" className="gap-2 shadow-sm shrink-0">
-              <HiOutlinePlus className="w-4 h-4" />
-              Add Activity
-            </BtnDefault>
-          )}
-        </div>
-        <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-[11px] font-semibold text-muted-foreground tracking-wide uppercase border-b border-border bg-muted/20">
-                  <th className="p-3 w-12">No</th>
-                  <th className="p-3">Name</th>
-                  <th className="p-3">Description</th>
-                  <th className="p-3">Structure</th>
-                  {hasActions && <th className="p-3 w-24">Actions</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {activities.data.length === 0 ? (
-                  <tr>
-                    <td colSpan={hasActions ? 5 : 4} className="py-12 text-center text-muted-foreground">
-                      No activities found
-                    </td>
-                  </tr>
-                ) : (
-                  activities.data.map((activity, i) => (
-                    <tr key={activity.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                      <td className="p-3 text-xs text-muted-foreground font-mono">{(activities.meta?.from ?? 1) + i}</td>
-                      <td className="p-3 font-medium text-foreground">{activity.name}</td>
-                      <td className="p-3 text-muted-foreground text-xs">{activity.description ?? "-"}</td>
-                      <td className="p-3 text-muted-foreground text-xs">
-                        {activity.parent ? (
-                          <span className="rounded-full bg-muted px-2.5 py-1 text-foreground">
-                            Sub of {activity.parent.name}
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
-                            Main Activity
-                          </span>
-                        )}
-                      </td>
-                      {hasActions && (
-                        <td className="p-3">
-                          <div className="flex items-center gap-2">
-                            {canEdit && (
-                              <button onClick={() => openEdit(activity)} className="text-primary hover:text-primary/80 transition-colors p-1" title="Edit">
-                                <HiOutlinePencil className="w-4 h-4" />
-                              </button>
-                            )}
-                            {canDelete && (
-                              <button onClick={() => deleteActivity(activity)} className="text-destructive hover:text-destructive/80 transition-colors p-1" title="Delete">
-                                <HiOutlineTrash className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+            <div className="flex flex-col gap-5">
+                <div className="flex items-center justify-between gap-4">
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Master Activity</h1>
+                    {canAdd && (
+                        <BtnDefault onClick={() => openAdd()} size="md" className="h-11 min-w-[132px] gap-2 rounded-2xl px-4 shadow-none sm:min-w-[148px] sm:px-5">
+                            <HiOutlinePlus className="h-4 w-4" />
+                            Add Activity
+                        </BtnDefault>
+                    )}
+                </div>
 
-          {activities.links?.length > 3 && (
-            <div className="px-4 py-3 border-t border-border bg-muted/30 flex gap-1 flex-wrap">
-              {activities.links.map((link, idx) => (
-                <BtnDefault key={idx} size="sm" outline={!link.active} disabled={!link.url} onClick={() => link.url && router.visit(link.url)} className="min-w-[32px] px-2">
-                  <span
-                    dangerouslySetInnerHTML={{
-                      __html: link.label,
-                    }}
-                  />
-                </BtnDefault>
-              ))}
+                <ActivityListSection
+                    activities={activities}
+                    totalActivities={totalActivities}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                    onAddSub={openAdd}
+                    onEdit={openEdit}
+                    onDelete={confirmDelete}
+                    onToggleStatus={confirmToggleStatus}
+                />
             </div>
-          )}
-        </div>
-      </div>
 
-      <ModalOverlay isOpen={showModal} onClose={closeModal}>
-        <div className="bg-card rounded-2xl border border-border shadow-xl w-full max-w-[500px]">
-          <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl">
-            <div>
-              <h2 className="text-xl font-bold text-foreground tracking-[-0.5px] m-0">{editTarget ? "Edit Activity" : "Add New Activity"}</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">{editTarget ? `Editing ${editTarget.name}` : "Fill in the details below"}</p>
-            </div>
-            <button onClick={closeModal} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md" aria-label="Close">
-              <HiOutlineX className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="p-6 flex flex-col gap-4">
-            <InputText label="Name" placeholder="Enter activity name" value={form.name} onChange={(e) => handleFormChange("name", e.target.value)} error={errors.name} required />
-
-            <InputText label="Description" placeholder="Enter description (optional)" value={form.description} onChange={(e) => handleFormChange("description", e.target.value)} error={errors.description} />
-            <InputDropdown
-              label="Parent Activity"
-              placeholder="Select parent for sub-activity"
-              defaultValue={form.parent_id}
-              setObject={(item) => handleFormChange("parent_id", item.value)}
-              itemList={[
-                { label: "No parent (main activity)", value: "" },
-                ...parentActivities
-                  .filter((item) => !editTarget || item.id !== editTarget.id)
-                  .map((item) => ({ label: item.name, value: String(item.id) })),
-              ]}
-              error={errors.parent_id}
+            <ActivityFormModal
+                isOpen={showModal}
+                onClose={closeModal}
+                onSubmit={submit}
+                editTarget={editTarget}
+                form={form}
+                errors={errors}
+                processing={processing}
+                parentOptions={parentOptions}
+                onFieldChange={handleFormChange}
+                onSubActivityChange={handleSubActivityChange}
+                onAddSubActivityField={addSubActivityField}
+                onRemoveSubActivityField={removeSubActivityField}
+                isBulkSubMode={isBulkSubMode}
             />
-
-            <div className="flex items-center gap-3 pt-4">
-              <BtnDefault outline onClick={closeModal} className="flex-1">
-                Cancel
-              </BtnDefault>
-              <BtnDefault onClick={submit} loading={processing} className="flex-[2]">
-                {processing ? "Saving..." : editTarget ? "Update Activity" : "Create Activity"}
-              </BtnDefault>
-            </div>
-          </div>
-        </div>
-      </ModalOverlay>
-    </AppLayout>
-  );
+        </AppLayout>
+    );
 }

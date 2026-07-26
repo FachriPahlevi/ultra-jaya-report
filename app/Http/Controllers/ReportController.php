@@ -82,7 +82,12 @@ class ReportController extends Controller
                     'pic_user_ids' => $area->pics->pluck('id')->values(),
                 ];
             }),
-            'activities' => Activity::with('children:id,name,description,parent_id')
+            'activities' => Activity::with([
+                'children' => fn($query) => $query
+                    ->where('is_active', true)
+                    ->select('id', 'name', 'description', 'parent_id'),
+            ])
+                ->where('is_active', true)
                 ->whereNull('parent_id')
                 ->orderBy('name')
                 ->get()
@@ -91,11 +96,13 @@ class ReportController extends Controller
                         'id' => $activity->id,
                         'name' => $activity->name,
                         'description' => $activity->description,
+                        'is_active' => $activity->is_active,
                         'sub_activities' => $activity->children->map(fn($child) => [
                             'id' => $child->id,
                             'name' => $child->name,
                             'description' => $child->description,
                             'parent_id' => $child->parent_id,
+                            'is_active' => $child->is_active,
                         ])->values(),
                     ];
                 }),
@@ -111,16 +118,40 @@ class ReportController extends Controller
 
         $validated = $request->validate([
             'author_id'     => 'required|exists:users,id',
-            'type_activity' => 'required|exists:activities,id',
-            'sub_activity_id' => 'nullable|exists:activities,id',
+            'type_activity' => [
+                'required',
+                Rule::exists('activities', 'id')
+                    ->whereNull('deleted_at')
+                    ->whereNull('parent_id')
+                    ->where('is_active', true),
+            ],
+            'sub_activity_id' => [
+                'nullable',
+                Rule::exists('activities', 'id')
+                    ->whereNull('deleted_at')
+                    ->whereNotNull('parent_id')
+                    ->where('is_active', true),
+            ],
             'area_activity' => [
                 'required',
-                Rule::exists('areas', 'id')->where(fn ($query) => $query->where('is_active', true)->whereNull('deleted_at')),
+                Rule::exists('areas', 'id')->where(fn($query) => $query->where('is_active', true)->whereNull('deleted_at')),
             ],
             'activity'      => 'nullable|string|max:255',
             'issue'         => 'required|string',
             'photo'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
+
+        if (!empty($validated['sub_activity_id'])) {
+            $subActivityBelongsToParent = Activity::whereKey($validated['sub_activity_id'])
+                ->where('parent_id', $validated['type_activity'])
+                ->exists();
+
+            if (!$subActivityBelongsToParent) {
+                return back()->withErrors([
+                    'sub_activity_id' => 'Selected sub activity does not belong to the selected main activity.',
+                ]);
+            }
+        }
 
         Report::create([
             'author_id'   => $validated['author_id'],
@@ -149,16 +180,41 @@ class ReportController extends Controller
         }
 
         $validated = $request->validate([
-            'type_activity' => 'sometimes|exists:activities,id',
-            'sub_activity_id' => 'nullable|exists:activities,id',
+            'type_activity' => [
+                'sometimes',
+                Rule::exists('activities', 'id')
+                    ->whereNull('deleted_at')
+                    ->whereNull('parent_id')
+                    ->where('is_active', true),
+            ],
+            'sub_activity_id' => [
+                'nullable',
+                Rule::exists('activities', 'id')
+                    ->whereNull('deleted_at')
+                    ->whereNotNull('parent_id')
+                    ->where('is_active', true),
+            ],
             'area_activity' => [
                 'sometimes',
-                Rule::exists('areas', 'id')->where(fn ($query) => $query->where('is_active', true)->whereNull('deleted_at')),
+                Rule::exists('areas', 'id')->where(fn($query) => $query->where('is_active', true)->whereNull('deleted_at')),
             ],
             'activity'      => 'nullable|string|max:255',
             'issue'         => 'sometimes|string',
             'photo'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
+
+        $selectedParentId = $validated['type_activity'] ?? $report->activity_id;
+        if (!empty($validated['sub_activity_id'])) {
+            $subActivityBelongsToParent = Activity::whereKey($validated['sub_activity_id'])
+                ->where('parent_id', $selectedParentId)
+                ->exists();
+
+            if (!$subActivityBelongsToParent) {
+                return back()->withErrors([
+                    'sub_activity_id' => 'Selected sub activity does not belong to the selected main activity.',
+                ]);
+            }
+        }
 
         $data = ['is_content_edited' => true];
 

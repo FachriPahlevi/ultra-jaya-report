@@ -90,6 +90,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('activities.update')
             ->middleware('can:activities.edit');
 
+        Route::patch('/{activity}/status', [ActivityController::class, 'updateStatus'])
+            ->name('activities.status')
+            ->middleware('can:activities.edit');
+
         Route::delete('/{activity}', [ActivityController::class, 'destroy'])
             ->name('activities.destroy')
             ->middleware('can:activities.delete');
