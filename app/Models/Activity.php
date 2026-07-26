@@ -14,7 +14,13 @@ class Activity extends Model
     protected $fillable = [
         'name',
         'description',
+        'is_active',
         'parent_id',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'deleted_at' => 'datetime',
     ];
 
     public function parent(): BelongsTo
@@ -30,5 +36,15 @@ class Activity extends Model
     public function reports(): HasMany
     {
         return $this->hasMany(Report::class);
+    }
+
+    public function reportsAsType(): HasMany
+    {
+        return $this->hasMany(Report::class, 'activity_id');
+    }
+
+    public function reportsAsSubType(): HasMany
+    {
+        return $this->hasMany(Report::class, 'sub_activity_id');
     }
 }
