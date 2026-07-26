@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use Illuminate\Validation\Rule;
 
 class ReportController extends Controller
 {
@@ -73,7 +74,7 @@ class ReportController extends Controller
 
         return Inertia::render('reports/Index', [
             'reports'    => $reports,
-            'areas'      => Area::with('pics:id,name')->select('id', 'area')->get()->map(function (Area $area) {
+            'areas'      => Area::with('pics:id,name')->where('is_active', true)->select('id', 'area')->get()->map(function (Area $area) {
                 return [
                     'id' => $area->id,
                     'area' => $area->area,
@@ -112,7 +113,10 @@ class ReportController extends Controller
             'author_id'     => 'required|exists:users,id',
             'type_activity' => 'required|exists:activities,id',
             'sub_activity_id' => 'nullable|exists:activities,id',
-            'area_activity' => 'required|exists:areas,id',
+            'area_activity' => [
+                'required',
+                Rule::exists('areas', 'id')->where(fn ($query) => $query->where('is_active', true)->whereNull('deleted_at')),
+            ],
             'activity'      => 'nullable|string|max:255',
             'issue'         => 'required|string',
             'photo'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
@@ -147,7 +151,10 @@ class ReportController extends Controller
         $validated = $request->validate([
             'type_activity' => 'sometimes|exists:activities,id',
             'sub_activity_id' => 'nullable|exists:activities,id',
-            'area_activity' => 'sometimes|exists:areas,id',
+            'area_activity' => [
+                'sometimes',
+                Rule::exists('areas', 'id')->where(fn ($query) => $query->where('is_active', true)->whereNull('deleted_at')),
+            ],
             'activity'      => 'nullable|string|max:255',
             'issue'         => 'sometimes|string',
             'photo'         => 'nullable|image|mimes:jpeg,png,jpg|max:2048',

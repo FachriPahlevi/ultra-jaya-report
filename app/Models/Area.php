@@ -13,6 +13,12 @@ class Area extends Model
 
     protected $fillable = [
         'area',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'is_active' => 'boolean',
+        'deleted_at' => 'datetime',
     ];
 
     public function pics(): BelongsToMany
