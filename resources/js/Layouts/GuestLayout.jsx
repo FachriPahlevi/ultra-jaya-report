@@ -24,13 +24,6 @@ export default function GuestLayout({ children }) {
                         {children}
                     </div>
                 </div>
-
-                {/* Footer */}
-                <div className="mt-6 text-center">
-                    <p className="text-xs text-gray-400">
-                        Secure login • Protected by SSL
-                    </p>
-                </div>
             </div>
         </div>
     );

@@ -40,11 +40,12 @@ export function ActivityPagination({ links = [] }) {
 }
 
 export function ActivityActions({ activity, canEdit, canDelete, onAddSub, onEdit, onDelete, mobile = false }) {
-    const iconButtonClass = mobile ? "h-9 w-9 rounded-xl px-0" : "px-2";
+    const isCompactSubAction = !mobile && Boolean(activity.parent_id);
+    const iconButtonClass = mobile || isCompactSubAction ? "h-8 w-8 rounded-lg px-0" : "px-2";
     const canAddSub = canEdit && !activity.parent_id && activity.is_active;
 
     return (
-        <div className={`flex flex-wrap items-center gap-1.5 ${mobile ? "justify-end" : ""}`}>
+        <div className={`flex flex-wrap items-center gap-1 ${mobile ? "justify-end" : ""}`}>
             {canAddSub && (
                 <ActivityActionButton onClick={() => onAddSub(activity)} title="Add Sub Activity" className={iconButtonClass}>
                     {mobile ? (
@@ -60,7 +61,7 @@ export function ActivityActions({ activity, canEdit, canDelete, onAddSub, onEdit
 
             {canEdit && (
                 <ActivityActionButton onClick={() => onEdit(activity)} title="Edit Activity" className={iconButtonClass}>
-                    {mobile ? (
+                    {mobile || isCompactSubAction ? (
                         <HiOutlinePencil className="h-4 w-4" />
                     ) : (
                         <>
@@ -73,7 +74,7 @@ export function ActivityActions({ activity, canEdit, canDelete, onAddSub, onEdit
 
             {canDelete && (
                 <ActivityActionButton onClick={() => onDelete(activity)} tone="danger" title="Delete Activity" className={iconButtonClass}>
-                    {mobile ? (
+                    {mobile || isCompactSubAction ? (
                         <HiOutlineTrash className="h-4 w-4" />
                     ) : (
                         <>
@@ -109,13 +110,15 @@ export function SubActivityList({ items = [], canEdit, canDelete, onEdit, onDele
         <div className="flex flex-col divide-y divide-border/60 rounded-2xl border border-border bg-background">
             {items.map((item) => (
                 <div key={item.id} className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-semibold text-foreground">{item.name}</p>
                         <p className="mt-1 text-[12px] leading-5 text-muted-foreground">{item.description || "-"}</p>
                         <p className="mt-2 text-[11px] text-muted-foreground">{item.usage_count > 0 ? `Used in ${item.usage_count} reports` : "Not used in reports"}</p>
                     </div>
 
-                    <ActivityActions activity={item} canEdit={canEdit} canDelete={canDelete} onEdit={onEdit} onDelete={onDelete} mobile={mobile} />
+                    <div className="sm:pl-4">
+                        <ActivityActions activity={item} canEdit={canEdit} canDelete={canDelete} onEdit={onEdit} onDelete={onDelete} mobile={mobile} />
+                    </div>
                 </div>
             ))}
         </div>
