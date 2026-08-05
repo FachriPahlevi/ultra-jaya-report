@@ -8,7 +8,7 @@ use App\Http\Controllers\PublicDashboardController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingController;
 
-Route::get('/public-dashboard', [PublicDashboardController::class, 'index'])->name('dashboard.public');
+Route::get('/dashboard', [PublicDashboardController::class, 'index'])->name('dashboard.public');
 
 Route::middleware(['auth', 'verified'])->group(function () {
 
