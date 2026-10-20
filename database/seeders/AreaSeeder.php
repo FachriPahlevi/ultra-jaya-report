@@ -15,43 +15,83 @@ class AreaSeeder extends Seeder
 
         $areaAssignments = [
             [
-                'area' => 'Fresh Milk Reception',
+                'area' => 'ENG',
                 'pics' => [
-                    ['name' => 'Yudi Setiawan', 'email' => 'yudi.setiawan@ultrajaya.local'],
-                    ['name' => 'Deni Kurniawan', 'email' => 'deni.kurniawan@ultrajaya.local'],
+                    ['name' => 'Adityadika Miftakhul Khakim', 'email' => 'adityadikamiftah@gmail.com'],
+                    ['name' => 'Meicky Ari Wibowo', 'email' => 'meickyariwibowo@gmail.com'],
+                    ['name' => 'Muhammad Hafiz Aziz', 'email' => 'muhammad.h.aziz@gmail.com'],
+                    ['name' => 'Vikterio Yuwanda', 'email' => 'vikterioyuwanda@gmail.com'],
+                    ['name' => 'Yani Musdalifah', 'email' => 'yanimusdalifah2@gmail.com'],
                 ],
             ],
             [
-                'area' => 'Processing',
+                'area' => 'Factory Management',
                 'pics' => [
-                    ['name' => 'Fajar Nugraha', 'email' => 'fajar.nugraha@ultrajaya.local'],
-                    ['name' => 'Lukman Hakim', 'email' => 'lukman.hakim@ultrajaya.local'],
+                    ['name' => 'Iwan Awalludin', 'email' => 'iwanawaludin1970@gmail.com'],
+                    ['name' => 'Septy Lestari', 'email' => 'septilestari008@gmail.com'],
                 ],
             ],
             [
-                'area' => 'CIP Kitchen',
+                'area' => 'Finance & Supply Chain',
                 'pics' => [
-                    ['name' => 'Hendra Saputra', 'email' => 'hendra.saputra@ultrajaya.local'],
-                    ['name' => 'Agus Salim', 'email' => 'agus.salim@ultrajaya.local'],
+                    ['name' => 'Muhamad Iqbal Maulana', 'email' => 'iqbalmaulana.im270@gmail.com'],
+                    ['name' => 'Tania Fakhira', 'email' => 'tnfkhr@gmail.com'],
                 ],
             ],
             [
-                'area' => 'Filling',
+                'area' => 'HRGA',
                 'pics' => [
-                    ['name' => 'Rina Kartikasari', 'email' => 'rina.kartikasari@ultrajaya.local'],
-                    ['name' => 'Mira Puspita', 'email' => 'mira.puspita@ultrajaya.local'],
+                    ['name' => 'Ahmad Aqib Nurrachman', 'email' => 'aqibnurrachman@gmail.com'],
+                    ['name' => 'Faizal Suryaman', 'email' => 'faizal.suryaman@gmail.com'],
+                    ['name' => 'Tito Irmandi Wicaksono', 'email' => 'titoirmandiwicaksono@gmail.com'],
                 ],
             ],
             [
-                'area' => 'Packing',
+                'area' => 'HSE',
                 'pics' => [
-                    ['name' => 'Bima Arya', 'email' => 'bima.arya@ultrajaya.local'],
-                    ['name' => 'Tomi Wijaya', 'email' => 'tomi.wijaya@ultrajaya.local'],
+                    ['name' => 'Aura Amca Diputra', 'email' => 'aura.amca@ultrajaya.co.id'],
+                ],
+            ],
+            [
+                'area' => 'Manufacturing Management',
+                'pics' => [
+                    ['name' => 'Ina Iriani Roseri', 'email' => 'ina.iriani@ultrajaya.co.id'],
+                ],
+            ],
+            [
+                'area' => 'PPIC & Production Storage',
+                'pics' => [
+                    ['name' => 'Widiya Tri Astuti', 'email' => 'widiya.triastt@gmail.com'],
+                ],
+            ],
+            [
+                'area' => 'PRD',
+                'pics' => [
+                    ['name' => 'Ina Nur Hidayati', 'email' => 'inahidayatinr@gmail.com'],
+                    ['name' => 'Mahendra Sadewa', 'email' => 'mahendrasadewa13@gmail.com'],
+                    ['name' => 'Martelius Samuel', 'email' => 'martelius2016@gmail.com'],
+                    ['name' => 'Muhammad Yoga Brillianto', 'email' => 'myogabrillianto@gmail.com'],
+                    ['name' => 'Putri Repsol Aprilia', 'email' => 'putrirepsolaprilia12@gmail.com'],
+                    ['name' => 'Marfiando Ardy Saputra', 'email' => 'marfiando02@gmail.com'],
+                    ['name' => 'Mahardhika Narastyawan', 'email' => 'mahardhikanarastyawan@gmail.com'],
+                    ['name' => 'Jordy Lambang Aditya', 'email' => 'jordylambangaditya@gmail.com'],
+                    ['name' => 'Jan Pernando Saragih', 'email' => 'janpernandosaragih@gmail.com'],
+                ],
+            ],
+            [
+                'area' => 'QA',
+                'pics' => [
+                    ['name' => 'Kamiluddin', 'email' => 'kamil.malik43@gmail.com'],
+                    ['name' => 'Muhammad Ismail', 'email' => 'ismail50049217@gmail.com'],
+                    ['name' => 'Rahma Fadilla', 'email' => 'rahmafadilladj1@gmail.com'],
+                    ['name' => 'Roozadila Puttria', 'email' => 'roozadila@gmail.com'],
+                    ['name' => 'Bima Ariyanto', 'email' => 'ariyantobima0902@gmail.com'],
                 ],
             ],
         ];
 
-        $this->ensureSupervisorsExist($areaAssignments);
+        $realAreaNames = collect($areaAssignments)->pluck('area')->all();
+        Area::whereNotIn('area', $realAreaNames)->forceDelete();
 
         $supervisorsByEmail = User::role('SUPERVISOR')
             ->whereIn(
@@ -64,11 +104,12 @@ class AreaSeeder extends Seeder
         $supervisorsByEmail->each(fn(User $supervisor) => $supervisor->assignedAreas()->detach());
 
         foreach ($areaAssignments as $areaData) {
-            $area = Area::updateOrCreate(
+            $area = Area::withTrashed()->updateOrCreate(
                 ['area' => $areaData['area']],
                 [
                     'area' => $areaData['area'],
                     'is_active' => true,
+                    'deleted_at' => null,
                 ]
             );
 
@@ -82,32 +123,5 @@ class AreaSeeder extends Seeder
         }
 
         $this->command->info(count($areaAssignments) . ' areas seeded successfully.');
-        $this->command->info('Realistic multi-PIC area assignments prepared.');
-    }
-
-    private function ensureSupervisorsExist(array $areaAssignments): void
-    {
-        $supervisorRole = Role::firstOrCreate(['name' => 'SUPERVISOR']);
-
-        $supervisors = collect($areaAssignments)
-            ->flatMap(fn($assignment) => $assignment['pics'])
-            ->unique('email')
-            ->values();
-
-        foreach ($supervisors as $data) {
-            $user = User::updateOrCreate(
-                ['email' => $data['email']],
-                [
-                    'name' => $data['name'],
-                    'password' => bcrypt('password'),
-                    'is_active' => true,
-                ]
-            );
-            if (!$user->hasRole('SUPERVISOR')) {
-                $user->assignRole($supervisorRole);
-            }
-        }
-
-        $this->command->info($supervisors->count() . ' supervisors prepared for area assignments.');
     }
 }
