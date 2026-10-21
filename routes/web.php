@@ -1,140 +1,137 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AreaController;
 use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\AreaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PublicDashboardController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/dashboard', [PublicDashboardController::class, 'index'])->name('dashboard.public');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function (): void {
 
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Reports routes
-    Route::prefix('reports')->group(function () {
+    Route::prefix('reports')->as('reports.')->group(function (): void {
         Route::get('/', [ReportController::class, 'index'])
-            ->name('reports.index')
+            ->name('index')
             ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area');
 
         Route::post('/', [ReportController::class, 'store'])
-            ->name('reports.store')
+            ->name('store')
             ->middleware('can:reports.create');
 
+        Route::get('/export/{type}', [ReportController::class, 'export'])
+            ->name('export')
+            ->whereIn('type', ['pdf', 'excel'])
+            ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area');
+
         Route::post('/{report}/close', [ReportController::class, 'close'])
-            ->name('reports.close')
+            ->name('close')
             ->middleware('role_or_permission:reports.solve.own.area|reports.solve.all');
 
         Route::get('/{report}', [ReportController::class, 'show'])
-            ->name('reports.show')
+            ->name('show')
             ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area');
 
         Route::put('/{report}', [ReportController::class, 'update'])
-            ->name('reports.update')
+            ->name('update')
             ->middleware('role_or_permission:reports.edit.own|reports.edit.all');
 
         Route::delete('/{report}', [ReportController::class, 'destroy'])
-            ->name('reports.destroy')
+            ->name('destroy')
             ->middleware('role_or_permission:reports.delete.own|reports.delete.all');
-
-        Route::get('/export/{type}', [ReportController::class, 'export'])
-            ->name('reports.export')
-            ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area');
     });
 
-    // Areas routes
-    Route::prefix('areas')->group(function () {
+    Route::prefix('areas')->as('areas.')->group(function (): void {
         Route::get('/', [AreaController::class, 'index'])
-            ->name('areas.index')
+            ->name('index')
             ->middleware('can:areas.view');
 
         Route::post('/', [AreaController::class, 'store'])
-            ->name('areas.store')
+            ->name('store')
             ->middleware('can:areas.create');
 
         Route::put('/{area}', [AreaController::class, 'update'])
-            ->name('areas.update')
+            ->name('update')
             ->middleware('can:areas.edit');
 
         Route::patch('/{area}/status', [AreaController::class, 'updateStatus'])
-            ->name('areas.status')
+            ->name('status')
             ->middleware('can:areas.edit');
 
         Route::patch('/{areaId}/restore', [AreaController::class, 'restore'])
-            ->name('areas.restore')
+            ->name('restore')
             ->middleware('can:areas.delete');
 
         Route::delete('/{area}', [AreaController::class, 'destroy'])
-            ->name('areas.destroy')
+            ->name('destroy')
             ->middleware('can:areas.delete');
 
         Route::delete('/{areaId}/force', [AreaController::class, 'forceDestroy'])
-            ->name('areas.force-destroy')
+            ->name('force-destroy')
             ->middleware('can:areas.delete');
     });
 
-    // Activities routes
-    Route::prefix('activities')->group(function () {
+    Route::prefix('activities')->as('activities.')->group(function (): void {
         Route::get('/', [ActivityController::class, 'index'])
-            ->name('activities.index')
+            ->name('index')
             ->middleware('can:activities.view');
 
         Route::post('/', [ActivityController::class, 'store'])
-            ->name('activities.store')
+            ->name('store')
             ->middleware('can:activities.create');
 
         Route::put('/{activity}', [ActivityController::class, 'update'])
-            ->name('activities.update')
+            ->name('update')
             ->middleware('can:activities.edit');
 
         Route::patch('/{activity}/status', [ActivityController::class, 'updateStatus'])
-            ->name('activities.status')
+            ->name('status')
             ->middleware('can:activities.edit');
 
         Route::delete('/{activity}', [ActivityController::class, 'destroy'])
-            ->name('activities.destroy')
+            ->name('destroy')
             ->middleware('can:activities.delete');
     });
 
-    // Settings routes - hanya SUPER_ADMIN dan ADMIN
-    Route::middleware(['can:settings.view'])->group(function () {
-        Route::get('/settings', [SettingController::class, 'index'])->name('settings.index');
+    Route::prefix('settings')->as('settings.')->middleware('can:settings.view')->group(function (): void {
+        Route::get('/', [SettingController::class, 'index'])->name('index');
 
-        Route::post('/settings/users', [SettingController::class, 'storeUser'])
-            ->name('settings.users.store')
+        Route::post('/users', [SettingController::class, 'storeUser'])
+            ->name('users.store')
             ->middleware('can:users.create');
 
-        Route::put('/settings/users/{user}', [SettingController::class, 'updateUser'])
-            ->name('settings.users.update')
+        Route::put('/users/{user}', [SettingController::class, 'updateUser'])
+            ->name('users.update')
             ->middleware('can:users.edit');
 
-        Route::delete('/settings/users/{user}', [SettingController::class, 'destroyUser'])
-            ->name('settings.users.destroy')
+        Route::delete('/users/{user}', [SettingController::class, 'destroyUser'])
+            ->name('users.destroy')
             ->middleware('can:users.delete');
 
-        Route::post('/settings/users/assign-role', [SettingController::class, 'assignRoleToUser'])
-            ->name('settings.users.assign-role')
+        Route::post('/users/assign-role', [SettingController::class, 'assignRoleToUser'])
+            ->name('users.assign-role')
             ->middleware('can:users.promote');
 
-        Route::post('/settings/roles', [SettingController::class, 'storeRole'])
-            ->name('settings.roles.store')
+        Route::post('/roles', [SettingController::class, 'storeRole'])
+            ->name('roles.store')
             ->middleware('can:permissions.manage');
 
-        Route::put('/settings/roles/{role}', [SettingController::class, 'updateRole'])
-            ->name('settings.roles.update')
+        Route::put('/roles/{role}', [SettingController::class, 'updateRole'])
+            ->name('roles.update')
             ->middleware('can:permissions.manage');
 
-        Route::delete('/settings/roles/{role}', [SettingController::class, 'deleteRole'])
-            ->name('settings.roles.destroy')
+        Route::delete('/roles/{role}', [SettingController::class, 'deleteRole'])
+            ->name('roles.destroy')
             ->middleware('can:permissions.manage');
 
-        Route::post('/settings/roles/{role}/permissions', [SettingController::class, 'syncRolePermissions'])
-            ->name('settings.roles.permissions')
+        Route::post('/roles/{role}/permissions', [SettingController::class, 'syncRolePermissions'])
+            ->name('roles.permissions')
             ->middleware('can:permissions.manage');
     });
 });
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

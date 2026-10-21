@@ -1,18 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\Models\Permission;
+use App\Exceptions\BusinessException;
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
+use Inertia\Response;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class SettingController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request): Response
     {
         $usersPerPage = (int) $request->integer('users_per_page', 10);
         if (! in_array($usersPerPage, [10, 25, 50, 100], true)) {
@@ -43,20 +50,17 @@ class SettingController extends Controller
         ]);
     }
 
-    public function storeUser(Request $request)
+    public function storeUser(Request $request): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'role' => 'required|string|exists:roles,name',
-            'password' => 'required|string|min:6',
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'unique:users,email'],
+            'role' => ['required', 'string', 'exists:roles,name'],
+            'password' => ['required', 'string', 'min:6'],
         ]);
 
         if ($validated['role'] === 'SUPER_ADMIN' && ! Auth::user()->hasRole('SUPER_ADMIN')) {
-            if ($request->wantsJson()) {
-                return response()->json(['message' => 'Hanya SUPER_ADMIN yang dapat menetapkan role SUPER_ADMIN.'], 422);
-            }
-            return back()->with('error', 'Hanya SUPER_ADMIN yang dapat menetapkan role SUPER_ADMIN.');
+            throw new BusinessException('Hanya SUPER_ADMIN yang dapat menetapkan role SUPER_ADMIN.');
         }
 
         $user = User::create([
@@ -75,40 +79,35 @@ class SettingController extends Controller
         return redirect()->route('settings.index')->with('success', 'User berhasil dibuat');
     }
 
-    public function updateUser(Request $request, User $user)
+    public function updateUser(Request $request, User $user): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
-            'role' => 'required|string|exists:roles,name',
-            'password' => 'nullable|string|min:6',
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($user)],
+            'role' => ['required', 'string', 'exists:roles,name'],
+            'password' => ['nullable', 'string', 'min:6'],
         ]);
 
         if (! Auth::user()->hasRole('SUPER_ADMIN')) {
             if ($user->hasRole('SUPER_ADMIN')) {
-                if ($request->wantsJson()) {
-                    return response()->json(['message' => 'Hanya SUPER_ADMIN yang dapat mengubah data user SUPER_ADMIN.'], 422);
-                }
-                return back()->with('error', 'Hanya SUPER_ADMIN yang dapat mengubah data user SUPER_ADMIN.');
+                throw new BusinessException('Hanya SUPER_ADMIN yang dapat mengubah data user SUPER_ADMIN.');
             }
 
             if ($validated['role'] === 'SUPER_ADMIN') {
-                if ($request->wantsJson()) {
-                    return response()->json(['message' => 'Hanya SUPER_ADMIN yang dapat menetapkan role SUPER_ADMIN.'], 422);
-                }
-                return back()->with('error', 'Hanya SUPER_ADMIN yang dapat menetapkan role SUPER_ADMIN.');
+                throw new BusinessException('Hanya SUPER_ADMIN yang dapat menetapkan role SUPER_ADMIN.');
             }
         }
 
-        $user->update([
+        $data = [
             'name' => $validated['name'],
             'email' => $validated['email'],
-        ]);
+        ];
 
-        if (!empty($validated['password'])) {
-            $user->update(['password' => Hash::make($validated['password'])]);
+        if (! empty($validated['password'])) {
+            $data['password'] = Hash::make($validated['password']);
         }
 
+        $user->update($data);
         $user->syncRoles([$validated['role']]);
 
         if ($request->wantsJson()) {
@@ -118,20 +117,14 @@ class SettingController extends Controller
         return redirect()->route('settings.index')->with('success', 'User berhasil diupdate');
     }
 
-    public function destroyUser(Request $request, User $user)
+    public function destroyUser(Request $request, User $user): JsonResponse|RedirectResponse
     {
         if ($user->id === Auth::id()) {
-            if ($request->wantsJson()) {
-                return response()->json(['message' => 'Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif digunakan.'], 422);
-            }
-            return back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif digunakan.');
+            throw new BusinessException('Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif digunakan.');
         }
 
         if ($user->hasRole('SUPER_ADMIN')) {
-            if ($request->wantsJson()) {
-                return response()->json(['message' => 'User dengan role SUPER_ADMIN tidak dapat dihapus untuk menjaga keamanan sistem.'], 422);
-            }
-            return back()->with('error', 'User dengan role SUPER_ADMIN tidak dapat dihapus untuk menjaga keamanan sistem.');
+            throw new BusinessException('User dengan role SUPER_ADMIN tidak dapat dihapus untuk menjaga keamanan sistem.');
         }
 
         $userName = $user->name;
@@ -144,10 +137,10 @@ class SettingController extends Controller
         return redirect()->route('settings.index')->with('success', "User '{$userName}' berhasil dihapus dari sistem.");
     }
 
-    public function storeRole(Request $request)
+    public function storeRole(Request $request): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:roles,name',
+            'name' => ['required', 'string', 'max:255', 'unique:roles,name'],
         ]);
 
         Role::create(['name' => $validated['name']]);
@@ -155,14 +148,14 @@ class SettingController extends Controller
         return redirect()->route('settings.index')->with('success', 'Role berhasil dibuat');
     }
 
-    public function updateRole(Request $request, Role $role)
+    public function updateRole(Request $request, Role $role): JsonResponse
     {
         if ($role->name === 'SUPER_ADMIN') {
-            return response()->json(['message' => 'Role SUPER_ADMIN tidak dapat diedit'], 422);
+            throw new BusinessException('Role SUPER_ADMIN tidak dapat diedit');
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:roles,name,' . $role->id,
+            'name' => ['required', 'string', 'max:255', Rule::unique('roles', 'name')->ignore($role)],
         ]);
 
         $role->update(['name' => $validated['name']]);
@@ -170,16 +163,15 @@ class SettingController extends Controller
         return response()->json(['message' => 'Role berhasil diupdate'], 200);
     }
 
-    // SettingController.php
-    public function deleteRole(Role $role)
+    public function deleteRole(Role $role): JsonResponse
     {
         if ($role->name === 'SUPER_ADMIN') {
-            return response()->json(['message' => 'Role SUPER_ADMIN adalah role sistem yang tidak dapat dihapus.'], 422);
+            throw new BusinessException('Role SUPER_ADMIN adalah role sistem yang tidak dapat dihapus.');
         }
 
         $usersWithRole = User::role($role->name)->count();
         if ($usersWithRole > 0) {
-            return response()->json(['message' => "Role '{$role->name}' masih digunakan oleh {$usersWithRole} user. Harap pindahkan user ke role lain terlebih dahulu."], 422);
+            throw new BusinessException("Role '{$role->name}' masih digunakan oleh {$usersWithRole} user. Harap pindahkan user ke role lain terlebih dahulu.");
         }
 
         $roleName = $role->name;
@@ -188,36 +180,34 @@ class SettingController extends Controller
         return response()->json(['message' => "Role '{$roleName}' berhasil dihapus dari sistem."], 200);
     }
 
-    public function syncRolePermissions(Request $request, Role $role)
+    public function syncRolePermissions(Request $request, Role $role): JsonResponse|RedirectResponse
     {
         if ($role->name === 'SUPER_ADMIN' && ! Auth::user()->hasRole('SUPER_ADMIN')) {
-            return back()->with('error', 'Hanya SUPER_ADMIN yang dapat mengubah permission SUPER_ADMIN.');
+            throw new BusinessException('Hanya SUPER_ADMIN yang dapat mengubah permission SUPER_ADMIN.');
         }
 
-        $validated = $request->validate([
-            'permissions' => 'array',
-        ]);
+        $validated = $request->validate(['permissions' => ['array']]);
 
-        $role->syncPermissions($validated['permissions']);
+        $role->syncPermissions($validated['permissions'] ?? []);
 
         return redirect()->route('settings.index')->with('success', 'Permission berhasil disinkronkan');
     }
 
-    public function assignRoleToUser(Request $request)
+    public function assignRoleToUser(Request $request): JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'role' => 'required|string|exists:roles,name',
+            'user_id' => ['required', 'exists:users,id'],
+            'role' => ['required', 'string', 'exists:roles,name'],
         ]);
 
-        $user = User::find($validated['user_id']);
+        $user = User::findOrFail($validated['user_id']);
 
         if ($validated['role'] === 'SUPER_ADMIN' && ! Auth::user()->hasRole('SUPER_ADMIN')) {
-            return back()->with('error', 'Hanya SUPER_ADMIN yang dapat menetapkan role SUPER_ADMIN.');
+            throw new BusinessException('Hanya SUPER_ADMIN yang dapat menetapkan role SUPER_ADMIN.');
         }
 
         if ($user->hasRole('SUPER_ADMIN') && ! Auth::user()->hasRole('SUPER_ADMIN')) {
-            return back()->with('error', 'Hanya SUPER_ADMIN yang dapat mengubah role user SUPER_ADMIN.');
+            throw new BusinessException('Hanya SUPER_ADMIN yang dapat mengubah role user SUPER_ADMIN.');
         }
 
         $user->syncRoles([$validated['role']]);
