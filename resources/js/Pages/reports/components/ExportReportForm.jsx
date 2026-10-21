@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
-import BtnDefault from "@/Components/Button/BtnDefault";
-import InputText from "@/Components/Input/InputText";
-import InputDropdown from "@/Components/Input/InputDropdown";
-import ModalOverlay from "@/Components/Modal/ModalOverlay";
-import { useStatusModal } from "@/Components/Context/StatusModalContext";
-import { HiOutlineX } from "react-icons/hi";
+import { useState, useEffect } from "react"
+import BtnDefault from "@/Components/Button/BtnDefault"
+import InputText from "@/Components/Input/InputText"
+import InputDropdown from "@/Components/Input/InputDropdown"
+import ModalOverlay from "@/Components/Modal/ModalOverlay"
+import { useStatusModal } from "@/Components/Context/StatusModalContext"
+import { HiOutlineX } from "react-icons/hi"
 
 const createInitialForm = (canExportAll, canExportArea) => ({
   type: "excel",
@@ -15,19 +15,19 @@ const createInitialForm = (canExportAll, canExportArea) => ({
   status: "",
   author_ids: [],
   my_reports_only: !canExportAll && !canExportArea,
-});
+})
 
 export default function ExportForm({ isOpen, onClose, areas, activities, users, canExportAll = false, canExportArea = false, assignedAreas = [] }) {
-  const { setStatusModalProps } = useStatusModal();
-  const [processing, setProcessing] = useState(false);
-  const [form, setForm] = useState(() => createInitialForm(canExportAll, canExportArea));
+  const { setStatusModalProps } = useStatusModal()
+  const [processing, setProcessing] = useState(false)
+  const [form, setForm] = useState(() => createInitialForm(canExportAll, canExportArea))
 
   useEffect(() => {
     if (isOpen) {
-      setForm(createInitialForm(canExportAll, canExportArea));
-      setProcessing(false);
+      setForm(createInitialForm(canExportAll, canExportArea))
+      setProcessing(false)
     }
-  }, [isOpen, canExportAll, canExportArea]);
+  }, [isOpen, canExportAll, canExportArea])
 
   const showStatusModal = (type, title, message) => {
     setStatusModalProps({
@@ -36,100 +36,100 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
       title,
       message,
       button1: { text: "OK" },
-    });
-  };
+    })
+  }
 
   const typeOptions = [
     { label: "Excel (.xlsx)", value: "excel" },
     { label: "PDF (.pdf)", value: "pdf" },
-  ];
+  ]
 
   const statusOptions = [
     { label: "All", value: "" },
     { label: "Open", value: "open" },
     { label: "Closed", value: "closed" },
-  ];
+  ]
 
   const handleCheckboxChange = (id, type, checked) => {
     if (type === "area") {
       if (checked) {
-        setForm({ ...form, area_ids: [...form.area_ids, id] });
+        setForm({ ...form, area_ids: [...form.area_ids, id] })
       } else {
-        setForm({ ...form, area_ids: form.area_ids.filter((item) => item !== id) });
+        setForm({ ...form, area_ids: form.area_ids.filter((item) => item !== id) })
       }
     } else if (type === "activity") {
       if (checked) {
-        setForm({ ...form, activity_ids: [...form.activity_ids, id] });
+        setForm({ ...form, activity_ids: [...form.activity_ids, id] })
       } else {
-        setForm({ ...form, activity_ids: form.activity_ids.filter((item) => item !== id) });
+        setForm({ ...form, activity_ids: form.activity_ids.filter((item) => item !== id) })
       }
     } else if (type === "author") {
       if (checked) {
-        setForm({ ...form, author_ids: [...form.author_ids, id] });
+        setForm({ ...form, author_ids: [...form.author_ids, id] })
       } else {
-        setForm({ ...form, author_ids: form.author_ids.filter((item) => item !== id) });
+        setForm({ ...form, author_ids: form.author_ids.filter((item) => item !== id) })
       }
     }
-  };
+  }
 
   const handleSelectAll = (type, items) => {
     if (type === "area") {
       if (form.area_ids.length === items.length) {
-        setForm({ ...form, area_ids: [] });
+        setForm({ ...form, area_ids: [] })
       } else {
-        setForm({ ...form, area_ids: items.map((item) => item.id) });
+        setForm({ ...form, area_ids: items.map((item) => item.id) })
       }
     } else if (type === "activity") {
       if (form.activity_ids.length === items.length) {
-        setForm({ ...form, activity_ids: [] });
+        setForm({ ...form, activity_ids: [] })
       } else {
-        setForm({ ...form, activity_ids: items.map((item) => item.id) });
+        setForm({ ...form, activity_ids: items.map((item) => item.id) })
       }
     } else if (type === "author") {
       if (form.author_ids.length === items.length) {
-        setForm({ ...form, author_ids: [] });
+        setForm({ ...form, author_ids: [] })
       } else {
-        setForm({ ...form, author_ids: items.map((item) => item.id) });
+        setForm({ ...form, author_ids: items.map((item) => item.id) })
       }
     }
-  };
+  }
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setProcessing(true);
+    e.preventDefault()
+    setProcessing(true)
 
     const submitForm = {
       ...form,
       my_reports_only: !canExportAll && !canExportArea ? true : form.my_reports_only,
-    };
+    }
 
-    const params = new URLSearchParams();
-    if (submitForm.start_date) params.append("start_date", submitForm.start_date);
-    if (submitForm.end_date) params.append("end_date", submitForm.end_date);
+    const params = new URLSearchParams()
+    if (submitForm.start_date) params.append("start_date", submitForm.start_date)
+    if (submitForm.end_date) params.append("end_date", submitForm.end_date)
     if (submitForm.area_ids.length > 0) {
-      submitForm.area_ids.forEach((id) => params.append("area_ids[]", id));
+      submitForm.area_ids.forEach((id) => params.append("area_ids[]", id))
     }
     if (submitForm.activity_ids.length > 0) {
-      submitForm.activity_ids.forEach((id) => params.append("activity_ids[]", id));
+      submitForm.activity_ids.forEach((id) => params.append("activity_ids[]", id))
     }
-    if (submitForm.status) params.append("status", submitForm.status);
+    if (submitForm.status) params.append("status", submitForm.status)
     if (submitForm.author_ids.length > 0) {
-      submitForm.author_ids.forEach((id) => params.append("author_ids[]", id));
+      submitForm.author_ids.forEach((id) => params.append("author_ids[]", id))
     }
-    if (submitForm.my_reports_only) params.append("my_reports_only", "true");
+    if (submitForm.my_reports_only) params.append("my_reports_only", "true")
 
-    const url = `/reports/export/${submitForm.type}?${params.toString()}`;
+    const url = `/reports/export/${submitForm.type}?${params.toString()}`
 
     try {
-      window.open(url, "_blank");
-      showStatusModal("success", "Success", "Export started");
-      onClose();
+      window.open(url, "_blank")
+      showStatusModal("success", "Success", "Export started")
+      onClose()
     } catch {
-      showStatusModal("error", "Error", "Failed to export");
+      showStatusModal("error", "Error", "Failed to export")
     } finally {
-      setProcessing(false);
+      setProcessing(false)
     }
-  };
+  }
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
@@ -151,17 +151,17 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
 
           {canExportAll && (
             <div>
-              <label className="text-[13px] font-semibold text-foreground mb-2 block">Authors</label>
+              <p className="text-[13px] font-semibold text-foreground mb-2 block">Authors</p>
               <div className="border border-border rounded-lg p-3 max-h-[150px] overflow-y-auto">
-                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border">
+                <label className="flex items-center gap-2 mb-2 pb-2 border-b border-border text-[13px] font-semibold text-foreground cursor-pointer">
                   <input
                     type="checkbox"
                     checked={form.author_ids.length === users.length}
                     onChange={() => handleSelectAll("author", users)}
                     className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                   />
-                  <label className="text-[13px] font-semibold text-foreground cursor-pointer">Select All</label>
-                </div>
+                  Select All
+                </label>
                 {users.map((user) => (
                   <div key={user.id} className="flex items-center gap-2 py-1">
                     <input
@@ -179,9 +179,9 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
 
           {(canExportAll || canExportArea) && (
             <div>
-              <label className="text-[13px] font-semibold text-foreground mb-2 block">Areas</label>
+              <p className="text-[13px] font-semibold text-foreground mb-2 block">Areas</p>
               <div className="border border-border rounded-lg p-3 max-h-[150px] overflow-y-auto">
-                <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border">
+                <label className="flex items-center gap-2 mb-2 pb-2 border-b border-border text-[13px] font-semibold text-foreground cursor-pointer">
                   <input
                     type="checkbox"
                     checked={form.area_ids.length === areas.length}
@@ -189,8 +189,8 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
                     className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                     disabled={!canExportAll && !canExportArea}
                   />
-                  <label className="text-[13px] font-semibold text-foreground cursor-pointer">Select All</label>
-                </div>
+                  Select All
+                </label>
                 {areas.map((area) => (
                   <div key={area.id} className="flex items-center gap-2 py-1">
                     <input
@@ -211,17 +211,17 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
           )}
 
           <div>
-            <label className="text-[13px] font-semibold text-foreground mb-2 block">Activities</label>
+            <p className="text-[13px] font-semibold text-foreground mb-2 block">Activities</p>
             <div className="border border-border rounded-lg p-3 max-h-[150px] overflow-y-auto">
-              <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border">
+              <label className="flex items-center gap-2 mb-2 pb-2 border-b border-border text-[13px] font-semibold text-foreground cursor-pointer">
                 <input
                   type="checkbox"
                   checked={form.activity_ids.length === activities.length}
                   onChange={() => handleSelectAll("activity", activities)}
                   className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
                 />
-                <label className="text-[13px] font-semibold text-foreground cursor-pointer">Select All</label>
-              </div>
+                Select All
+              </label>
               {activities.map((activity) => (
                 <div key={activity.id} className="flex items-center gap-2 py-1">
                   <input
@@ -252,12 +252,8 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
                 Export only my reports
               </label>
             </div>
-            {!canExportAll && !canExportArea && (
-              <p className="text-[12px] text-muted-foreground">Sebagai user biasa, Anda hanya dapat mengekspor laporan yang Anda unggah sendiri.</p>
-            )}
-            {canExportArea && !canExportAll && (
-              <p className="text-[12px] text-muted-foreground">Sebagai supervisor, ekspor akan dibatasi ke area yang ditugaskan.</p>
-            )}
+            {!canExportAll && !canExportArea && <p className="text-[12px] text-muted-foreground">Sebagai user biasa, Anda hanya dapat mengekspor laporan yang Anda unggah sendiri.</p>}
+            {canExportArea && !canExportAll && <p className="text-[12px] text-muted-foreground">Sebagai supervisor, ekspor akan dibatasi ke area yang ditugaskan.</p>}
           </div>
 
           <div className="flex gap-3 pt-4">
@@ -271,5 +267,5 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
         </form>
       </div>
     </ModalOverlay>
-  );
+  )
 }
