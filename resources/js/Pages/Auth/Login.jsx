@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import { HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff } from 'react-icons/hi';
 import BtnDefault from '@/Components/Button/BtnDefault';
 import InputText from '@/Components/Input/InputText';
 import GuestLayout from '@/Layouts/GuestLayout';
 
-export default function Login({ status, canResetPassword }) {
+export default function Login({ status }) {
     const [showPassword, setShowPassword] = useState(false);
     const { data, setData, post, processing, errors, reset } = useForm({
         email: '',

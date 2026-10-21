@@ -2,7 +2,7 @@ import { getRequestErrorMessage } from "@/lib/errorMessages";
 // resources/js/Components/Settings/RoleForm.jsx
 import { useState, useEffect } from "react";
 import { router } from "@inertiajs/react";
-import axios from "axios";
+import { createRole, updateRole } from "@/Pages/settings/api/rbacApi";
 import InputText from "@/Components/Input/InputText";
 import BtnDefault from "@/Components/Button/BtnDefault";
 import ModalOverlay from "@/Components/Modal/ModalOverlay";
@@ -36,18 +36,17 @@ export default function RoleForm({ isOpen, onClose, role }) {
 
         try {
             if (role) {
-                await axios.put(`/settings/roles/${role.id}`, form);
+                await updateRole(role.id, form);
                 showStatusModal("success", "Success", "Role updated");
                 router.reload();
                 onClose();
             } else {
-                await axios.post("/settings/roles", form);
+                await createRole(form);
                 showStatusModal("success", "Success", "Role created");
                 router.reload();
                 onClose();
             }
         } catch (error) {
-            console.error("Error:", error);
             const message = getRequestErrorMessage(error);
             showStatusModal("error", "Error", message);
         } finally {

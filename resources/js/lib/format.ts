@@ -1,4 +1,4 @@
-export function formatDate(dateStr) {
+export function formatDate(dateStr: string | null | undefined): string {
     if (!dateStr) return '-'
     return new Date(dateStr).toLocaleDateString('id-ID', {
         day: '2-digit',
@@ -7,7 +7,7 @@ export function formatDate(dateStr) {
     })
 }
 
-export function formatDateTime(dateStr) {
+export function formatDateTime(dateStr: string | null | undefined): string {
     if (!dateStr) return '-'
     return new Date(dateStr).toLocaleString('id-ID', {
         day: '2-digit',

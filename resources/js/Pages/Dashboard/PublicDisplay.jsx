@@ -168,7 +168,7 @@ const KpiCard = ({ value, label }) => (
 
 const EmptyState = ({ label }) => <div className="py-4 text-[11.5px] text-[#9aa1ae]">{label}</div>;
 
-export default function PublicDisplay({ stats = { total: 0, open: 0, closed: 0, activeAreas: 0 }, oldestOpenTicket = null, recentReports = [], topAreas = [], topActivities = [], generatedAt }) {
+export default function PublicDisplay({ stats = { total: 0, open: 0, closed: 0, activeAreas: 0 }, oldestOpenTicket = null, recentReports = [], topAreas = [], topActivities = [] }) {
     const { now, completionPct, oldestTicketAge, topArea, avgTicketsPerArea, areaBars, activityBars } = usePublicDisplayMetrics({
         stats,
         oldestOpenTicket,

@@ -12,22 +12,25 @@ class HandleInertiaRequests extends Middleware
 
     public function share(Request $request): array
     {
-        $navItems = [
-            ['href' => '/', 'label' => 'Dashboard', 'icon' => 'HiOutlineViewGrid', 'permission' => null],
-            ['href' => '/reports', 'label' => 'Reports', 'icon' => 'HiOutlineDocumentReport', 'permission' => 'menu.reports'],
-            ['href' => '/areas', 'label' => 'Areas', 'icon' => 'HiOutlineMap', 'permission' => 'menu.areas'],
-            ['href' => '/activities', 'label' => 'Activities', 'icon' => 'HiOutlineLightningBolt', 'permission' => 'menu.activities'],
-            ['href' => '/settings', 'label' => 'Settings', 'icon' => 'HiOutlineCog', 'permission' => 'menu.settings'],
-        ];
+        $user = $request->user();
+        $navItems = $user ? collect(config('navigation'))
+            ->filter(fn (array $item) => $item['any_permission'] === [] || $user->hasAnyPermission($item['any_permission']))
+            ->map(fn (array $item) => [
+                'href' => route($item['route']),
+                'label' => $item['label'],
+                'icon' => $item['icon'],
+            ])
+            ->values()
+            ->all() : [];
 
         return array_merge(parent::share($request), [
             'auth' => [
-                'user' => $request->user() ? [
-                    'id' => $request->user()->id,
-                    'name' => $request->user()->name,
-                    'email' => $request->user()->email,
-                    'roles' => $request->user()->getRoleNames(),
-                    'permissions' => $request->user()->getAllPermissions()->pluck('name'),
+                'user' => $user ? [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'roles' => $user->getRoleNames(),
+                    'permissions' => $user->getAllPermissions()->pluck('name'),
                 ] : null,
             ],
             'navItems' => $navItems,

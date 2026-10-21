@@ -1,32 +1,36 @@
 import { getRequestErrorMessage } from "@/lib/errorMessages";
 import { useState } from "react";
 import { Head, router } from "@inertiajs/react";
-import axios from "axios";
+import http from "@/lib/http";
 import AppLayout from "@/Layouts/AppLayout";
-import UserForm from "@/Components/Form/UserForm";
-import RoleForm from "@/Components/Form/RoleForm";
-import PermissionsForm from "@/Components/Form/PermissionsForm";
-import RolesTable from "@/Components/Settings/RolesTable";
-import UsersTable from "@/Components/Settings/UsersTable";
+import UserForm from "@/Pages/settings/components/UserForm";
+import RoleForm from "@/Pages/settings/components/RoleForm";
+import PermissionEditorModal from "@/Pages/settings/components/PermissionEditorModal";
+import RolesTable from "@/Pages/settings/components/RolesTable";
+import UsersTable from "@/Pages/settings/components/UsersTable";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
+import { useAuthorization } from "@/hooks/useAuthorization";
 
 const SETTINGS_TABS = [
     { key: "roles", label: "Roles" },
     { key: "users", label: "Users" },
 ];
 
-export default function Settings({ users, auth, roles, permissions, filters = {} }) {
+export default function Settings({ users, auth, roles, permissions, systemRoles, filters = {} }) {
     const { setStatusModalProps } = useStatusModal();
+    const { can } = useAuthorization();
     const [showUserModal, setShowUserModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [showRoleModal, setShowRoleModal] = useState(false);
     const [selectedRole, setSelectedRole] = useState(null);
     const [showPermissionsModal, setShowPermissionsModal] = useState(false);
     const [roleForPermissions, setRoleForPermissions] = useState(null);
-    const [activeTab, setActiveTab] = useState(filters.active_tab ?? "roles");
+    const canViewRoles = can("roles.view");
+    const canViewUsers = can("users.view");
+    const [activeTab, setActiveTab] = useState(filters.active_tab === "users" && canViewUsers ? "users" : canViewRoles ? "roles" : "users");
     const [roleDisplayCount, setRoleDisplayCount] = useState(10);
 
-    const isSuperadmin = auth.user.roles[0] === "SUPER_ADMIN";
+    const isSuperadmin = auth.user.roles.includes("SUPER_ADMIN");
     const visibleUsersCount = users.data.filter((user) => user.roles[0]?.name !== "SUPER_ADMIN" || user.id === auth.user.id).length;
     const visibleRolesCount = roles.filter((role) => isSuperadmin || role.name !== "SUPER_ADMIN").length;
     const usersPerPage = String(filters.users_per_page ?? 10);
@@ -71,7 +75,7 @@ export default function Settings({ users, auth, roles, permissions, filters = {}
                 variant: "danger",
                 onClick: async () => {
                     try {
-                        const response = await axios.delete(`/settings/users/${user.id}`);
+                        const response = await http.delete(`/settings/users/${user.id}`);
                         showStatusModal("success", "Success", response.data?.message || `User "${user.name}" berhasil dihapus`);
                         router.reload();
                     } catch (error) {
@@ -100,7 +104,7 @@ export default function Settings({ users, auth, roles, permissions, filters = {}
                 variant: "danger",
                 onClick: async () => {
                     try {
-                        const response = await axios.delete(`/settings/roles/${role.id}`);
+                        const response = await http.delete(`/settings/roles/${role.id}`);
                         showStatusModal("success", "Success", response.data.message);
                         router.reload();
                     } catch (error) {
@@ -141,7 +145,7 @@ export default function Settings({ users, auth, roles, permissions, filters = {}
                         <p className="mt-1 text-sm text-muted-foreground">Manage users, roles, and permissions from one simple workspace.</p>
                     </div>
                     <div className="inline-flex w-full rounded-2xl border border-border bg-background sm:w-auto">
-                        {SETTINGS_TABS.map((tab) => {
+                        {SETTINGS_TABS.filter((tab) => tab.key === "roles" ? canViewRoles : canViewUsers).map((tab) => {
                             const count = tab.key === "roles" ? visibleRolesCount : visibleUsersCount;
 
                             return (
@@ -171,6 +175,7 @@ export default function Settings({ users, auth, roles, permissions, filters = {}
                                 onDelete={confirmDeleteRole}
                                 onManagePermissions={openPermissionsModal}
                                 isSuperadmin={isSuperadmin}
+                                systemRoles={systemRoles}
                                 displayCount={roleDisplayCount}
                                 onDisplayCountChange={(event) => setRoleDisplayCount(Number(event.target.value))}
                             />
@@ -192,7 +197,7 @@ export default function Settings({ users, auth, roles, permissions, filters = {}
 
             <UserForm isOpen={showUserModal} onClose={() => setShowUserModal(false)} user={selectedUser} roles={roles} isSuperadmin={isSuperadmin} />
             <RoleForm isOpen={showRoleModal} onClose={() => setShowRoleModal(false)} role={selectedRole} />
-            <PermissionsForm isOpen={showPermissionsModal} onClose={() => setShowPermissionsModal(false)} role={roleForPermissions} permissions={permissions} auth={auth} />
+            <PermissionEditorModal isOpen={showPermissionsModal} onClose={() => setShowPermissionsModal(false)} role={roleForPermissions} permissions={permissions} auth={auth} />
         </AppLayout>
     );
 }

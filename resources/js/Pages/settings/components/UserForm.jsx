@@ -1,8 +1,8 @@
 import { getRequestErrorMessage } from "@/lib/errorMessages";
 // resources/js/Components/Settings/UserForm.jsx
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { router } from "@inertiajs/react";
-import axios from "axios";
+import http from "@/lib/http";
 import InputText from "@/Components/Input/InputText";
 import InputDropdown from "@/Components/Input/InputDropdown";
 import BtnDefault from "@/Components/Button/BtnDefault";
@@ -10,22 +10,34 @@ import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
 import { HiOutlineX } from "react-icons/hi";
 
+const emptyUserForm = () => ({ name: "", email: "", role: "", password: "" });
+
+function userToForm(user) {
+    return {
+        name: user?.name ?? "",
+        email: user?.email ?? "",
+        role: user?.roles?.[0]?.name ?? "",
+        password: "",
+    };
+}
+
 export default function UserForm({ isOpen, onClose, user, roles, isSuperadmin }) {
     const { setStatusModalProps } = useStatusModal();
     const [processing, setProcessing] = useState(false);
-    const [form, setForm] = useState({
-        name: user?.name || "",
-        email: user?.email || "",
-        role: user?.roles?.[0]?.name || "",
-        password: "",
-    });
+    const [form, setForm] = useState(emptyUserForm);
 
-    const roleOptions = roles
+    const roleOptions = useMemo(() => roles
         .filter((role) => isSuperadmin || role.name !== "SUPER_ADMIN")
         .map((role) => ({
             label: role.name,
             value: role.name,
-        }));
+        })), [isSuperadmin, roles]);
+
+    useEffect(() => {
+        if (isOpen) {
+            setForm(userToForm(user));
+        }
+    }, [isOpen, user]);
 
     const showStatusModal = (type, title, message) => {
         setStatusModalProps({
@@ -53,12 +65,12 @@ export default function UserForm({ isOpen, onClose, user, roles, isSuperadmin })
 
         try {
             if (user) {
-                await axios.put(`/settings/users/${user.id}`, submitData);
+                await http.put(`/settings/users/${user.id}`, submitData);
                 showStatusModal("success", "Success", "User updated");
                 router.reload();
                 onClose();
             } else {
-                await axios.post("/settings/users", submitData);
+                await http.post("/settings/users", submitData);
                 showStatusModal("success", "Success", "User created");
                 router.reload();
                 onClose();
@@ -86,7 +98,15 @@ export default function UserForm({ isOpen, onClose, user, roles, isSuperadmin })
                 <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
                     <InputText label="Full Name" placeholder="Enter full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
                     <InputText label="Email Address" type="email" placeholder="Enter email address" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-                    <InputDropdown label="Role" placeholder="Select a role" value={form.role} setObject={(item) => setForm({ ...form, role: item.value })} itemList={roleOptions} required />
+                    <InputDropdown
+                        id="user_role"
+                        label="Role"
+                        placeholder="Select a role"
+                        object={roleOptions.find((role) => role.value === form.role) ?? null}
+                        setObject={(role) => setForm((currentForm) => ({ ...currentForm, role: role.value }))}
+                        itemList={roleOptions}
+                        required
+                    />
                     <InputText
                         label={user ? "New Password (optional)" : "Password"}
                         type="password"

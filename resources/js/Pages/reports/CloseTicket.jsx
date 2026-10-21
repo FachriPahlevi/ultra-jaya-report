@@ -2,7 +2,6 @@ import { getPhotoSizeMessage } from "@/lib/errorMessages";
 import { useForm, usePage, Link } from "@inertiajs/react";
 import { useState } from "react";
 import AppLayout from "@/Layouts/AppLayout";
-import { ROUTES } from "@/lib/constants.ts";
 import { formatDate } from "@/lib/format.ts";
 import InputText from "@/Components/Input/InputText";
 import InputDropdown from "@/Components/Input/InputDropdown";
@@ -229,7 +228,7 @@ export default function CloseTicket({ report = {}, areas = [], activities = [] }
 
                     <div className="flex gap-3 mt-1">
                         <Link
-                            href={ROUTES.reportList}
+                            href={route("reports.index")}
                             className="flex-1 py-2.5 rounded-lg border border-border text-center text-[13.5px] font-semibold text-muted-foreground no-underline bg-card transition-colors hover:bg-muted"
                         >
                             Cancel
