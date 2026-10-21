@@ -1,3 +1,4 @@
+import { getRequestErrorMessage } from "@/lib/errorMessages";
 import { useState } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
 import axios from "axios";
@@ -53,11 +54,11 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
             const payloadErrors = error.response.data.errors || {};
             setErrors(payloadErrors);
             const firstError = Object.values(payloadErrors)[0];
-            showStatusModal("error", "Validation Error", Array.isArray(firstError) ? firstError[0] : firstError);
+            showStatusModal("error", "Validation Error", getRequestErrorMessage(error));
             return;
         }
 
-        const errorMessage = error.response?.data?.message || error.message || fallbackMessage;
+        const errorMessage = getRequestErrorMessage(error);
         showStatusModal("error", "Error", errorMessage);
     };
 

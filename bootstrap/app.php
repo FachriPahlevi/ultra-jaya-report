@@ -1,24 +1,27 @@
 <?php
 
+use App\Http\Middleware\HandleInertiaRequests;
+use App\Support\ErrorResponse;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Spatie\Permission\Middleware\RoleMiddleware;
+use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Spatie\Permission\Middleware\PermissionMiddleware;
+use Spatie\Permission\Middleware\RoleMiddleware;
 use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 
-if (!getenv('ODBCSYSINI')) {
+if (! getenv('ODBCSYSINI')) {
     putenv('ODBCSYSINI=/etc');
 }
 
-if (!getenv('ODBCINSTINI')) {
+if (! getenv('ODBCINSTINI')) {
     putenv('ODBCINSTINI=odbcinst.ini');
 }
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__ . '/../routes/web.php',
-        commands: __DIR__ . '/../routes/console.php',
+        web: __DIR__.'/../routes/web.php',
+        commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -31,9 +34,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Web middleware group
         $middleware->web(append: [
-            \App\Http\Middleware\HandleInertiaRequests::class,
-            \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            HandleInertiaRequests::class,
+            AddLinkHeadersForPreloadedAssets::class,
         ]);
     })
-    ->withExceptions(function (Exceptions $exceptions): void {})
+    ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->respond(ErrorResponse::respond(...));
+    })
     ->create();

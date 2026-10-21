@@ -1,3 +1,4 @@
+import { getRequestErrorMessage } from "@/lib/errorMessages";
 import { useState, useEffect } from "react";
 import { router } from "@inertiajs/react";
 import axios from "axios";
@@ -116,7 +117,7 @@ export default function PermissionsForm({ isOpen, onClose, role, permissions, au
             onClose();
         } catch (error) {
             console.error("Error:", error);
-            showStatusModal("error", "Error", error.response?.data?.message || "Failed to update permissions");
+            showStatusModal("error", "Error", getRequestErrorMessage(error));
         } finally {
             setProcessing(false);
         }

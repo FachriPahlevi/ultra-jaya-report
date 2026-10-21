@@ -1,3 +1,4 @@
+import { getRequestErrorMessage } from "@/lib/errorMessages";
 import { useState, useEffect } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
 import axios from "axios";
@@ -71,7 +72,7 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
     };
 
     const showRequestError = (error, fallbackMessage) => {
-        const errorMessage = error.response?.data?.message || error.message || fallbackMessage;
+        const errorMessage = getRequestErrorMessage(error);
         showStatusModal("error", "Error", errorMessage);
     };
 
@@ -146,8 +147,8 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
         } catch (error) {
             if (error.response?.status === 422) {
                 setErrors(error.response.data.errors || {});
-                const firstError = Object.values(error.response.data.errors)[0];
-                showStatusModal("error", "Validation Error", Array.isArray(firstError) ? firstError[0] : firstError);
+                const firstError = Object.values(error.response.data.errors || {})[0];
+                showStatusModal("error", "Validation Error", getRequestErrorMessage(error));
             } else {
                 showRequestError(error, "Something went wrong. Please try again.");
             }

@@ -1,3 +1,4 @@
+import { getRequestErrorMessage } from "@/lib/errorMessages";
 // resources/js/Components/Settings/UserForm.jsx
 import { useState } from "react";
 import { router } from "@inertiajs/react";
@@ -63,15 +64,7 @@ export default function UserForm({ isOpen, onClose, user, roles, isSuperadmin })
                 onClose();
             }
         } catch (error) {
-            console.error("Error:", error.response?.data);
-            let errorMessage = "Failed to save user";
-            if (error.response?.data?.message) {
-                errorMessage = error.response.data.message;
-            } else if (error.response?.data?.errors) {
-                const errors = error.response.data.errors;
-                errorMessage = Object.values(errors).flat()[0];
-            }
-            showStatusModal("error", "Error", errorMessage);
+            showStatusModal("error", "Periksa Data Anda", getRequestErrorMessage(error));
         } finally {
             setProcessing(false);
         }

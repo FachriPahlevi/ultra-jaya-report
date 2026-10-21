@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\ErrorResponse;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -9,8 +10,6 @@ class HandleInertiaRequests extends Middleware
 {
     protected $rootView = 'app';
 
-    // app/Http/Middleware/HandleInertiaRequests.php
-    // app/Http/Middleware/HandleInertiaRequests.php
     public function share(Request $request): array
     {
         $navItems = [
@@ -32,7 +31,14 @@ class HandleInertiaRequests extends Middleware
                 ] : null,
             ],
             'navItems' => $navItems,
+            'messages' => ErrorResponse::messages(),
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
+                'warning' => fn () => $request->session()->get('warning'),
+                'info' => fn () => $request->session()->get('info'),
+                'status' => fn () => $request->session()->get('status'),
+            ],
         ]);
     }
 }
-

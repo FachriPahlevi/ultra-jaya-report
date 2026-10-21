@@ -1,3 +1,4 @@
+import { getPhotoSizeMessage } from "@/lib/errorMessages";
 import { useForm, usePage, Link } from "@inertiajs/react";
 import { useState } from "react";
 import AppLayout from "@/Layouts/AppLayout";
@@ -6,10 +7,12 @@ import { formatDate } from "@/lib/format.ts";
 import InputText from "@/Components/Input/InputText";
 import InputDropdown from "@/Components/Input/InputDropdown";
 import BtnDefault from "@/Components/Button/BtnDefault";
+import { useStatusModal } from "@/Components/Context/StatusModalContext";
 
 export default function CloseTicket({ report = {}, areas = [], activities = [] }) {
     const { auth } = usePage().props;
     const currentUser = auth?.user;
+    const { setStatusModalProps } = useStatusModal();
     
     const [photoBeforePreview, setPhotoBeforePreview] = useState(report.photo ?? null);
     const [photoAfterPreview, setPhotoAfterPreview] = useState(report.photo_after ?? null);
@@ -25,9 +28,31 @@ export default function CloseTicket({ report = {}, areas = [], activities = [] }
         _method: "put",
     });
 
+    const showStatusModal = (type, title, message) => {
+        setStatusModalProps({
+            isOpen: true,
+            type,
+            title,
+            message,
+            button1: { text: "OK" },
+        });
+    };
+
     const handlePhotoBefore = (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        const maxSizeBytes = 2 * 1024 * 1024;
+        if (file.size > maxSizeBytes) {
+            showStatusModal(
+                "error",
+                "File Terlalu Besar",
+                getPhotoSizeMessage()
+            );
+            e.target.value = "";
+            return;
+        }
+
         setData("photo", file);
         setPhotoBeforePreview(URL.createObjectURL(file));
     };
@@ -35,6 +60,18 @@ export default function CloseTicket({ report = {}, areas = [], activities = [] }
     const handlePhotoAfter = (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        const maxSizeBytes = 2 * 1024 * 1024;
+        if (file.size > maxSizeBytes) {
+            showStatusModal(
+                "error",
+                "File Terlalu Besar",
+                getPhotoSizeMessage()
+            );
+            e.target.value = "";
+            return;
+        }
+
         setData("photo_after", file);
         setPhotoAfterPreview(URL.createObjectURL(file));
     };
@@ -129,8 +166,11 @@ export default function CloseTicket({ report = {}, areas = [], activities = [] }
                     </div>
 
                     <div>
-                        <div className="flex items-center justify-between mb-2">
-                            <label className="text-[13px] font-semibold text-foreground mb-0">Photos</label>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
+                            <div>
+                                <label className="text-[13px] font-semibold text-foreground mb-0">Photos</label>
+                                <p className="text-[11px] text-muted-foreground">Maks. 2 MB per foto (format: JPG, JPEG, PNG)</p>
+                            </div>
                             <div className="flex gap-2">
                                 <label
                                     htmlFor="photo_before"
@@ -139,7 +179,7 @@ export default function CloseTicket({ report = {}, areas = [], activities = [] }
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-[13px] h-[13px]"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                                     Upload
                                 </label>
-                                <input id="photo_before" type="file" accept="image/*" onChange={handlePhotoBefore} className="hidden" />
+                                <input id="photo_before" type="file" accept="image/jpeg,image/png,image/jpg" onChange={handlePhotoBefore} className="hidden" />
                             </div>
                         </div>
 
@@ -152,7 +192,10 @@ export default function CloseTicket({ report = {}, areas = [], activities = [] }
                                     {photoBeforePreview ? (
                                         <img src={photoBeforePreview} alt="Before" className="w-full h-full object-cover" />
                                     ) : (
-                                        <div className="text-center text-muted-foreground p-4 text-xs">No photo</div>
+                                        <div className="text-center text-muted-foreground p-4 text-xs">
+                                            <span>No photo</span>
+                                            <span className="block text-[10.5px] text-muted-foreground/80 mt-0.5">Maks. 2 MB</span>
+                                        </div>
                                     )}
                                 </div>
                                 <div className="text-center text-[11.5px] text-muted-foreground mt-1.5 font-medium">Before</div>
@@ -167,11 +210,14 @@ export default function CloseTicket({ report = {}, areas = [], activities = [] }
                                         {photoAfterPreview ? (
                                             <img src={photoAfterPreview} alt="After" className="w-full h-full object-cover" />
                                         ) : (
-                                            <div className="text-center text-muted-foreground p-4 text-xs">Click to upload</div>
+                                            <div className="text-center text-muted-foreground p-4 text-xs">
+                                                <span>Click to upload</span>
+                                                <span className="block text-[10.5px] text-muted-foreground/80 mt-0.5">Maks. 2 MB</span>
+                                            </div>
                                         )}
                                     </div>
                                 </label>
-                                <input id="photo_after" type="file" accept="image/*" onChange={handlePhotoAfter} className="hidden" />
+                                <input id="photo_after" type="file" accept="image/jpeg,image/png,image/jpg" onChange={handlePhotoAfter} className="hidden" />
                                 <div className="text-center text-[11.5px] text-muted-foreground mt-1.5 font-medium">After</div>
                             </div>
                         </div>
