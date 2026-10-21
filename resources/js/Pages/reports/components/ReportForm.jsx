@@ -1,5 +1,5 @@
 import { getPhotoSizeMessage } from "@/lib/errorMessages";
-import { useForm, usePage, router } from "@inertiajs/react";
+import { useForm, usePage } from "@inertiajs/react";
 import { useState, useEffect } from "react";
 import InputText from "@/Components/Input/InputText";
 import InputDropdown from "@/Components/Input/InputDropdown";
@@ -8,6 +8,7 @@ import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import ExpandableImage from "@/Components/UI/ExpandableImage";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
 import { HiOutlinePhotograph, HiOutlineX } from "react-icons/hi";
+import { createEmptyReportForm, createReportForm, createReportSelections } from "@/Pages/reports/utils/reportForm";
 
 export default function ReportForm({ isOpen, onClose, areas = [], activities = [], users = [], report = null }) {
     const { setStatusModalProps } = useStatusModal();
@@ -21,51 +22,23 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
     const [selectedActivity, setSelectedActivity] = useState(null);
     const [selectedSubActivity, setSelectedSubActivity] = useState(null);
 
-    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm({
-        author_id: currentUser?.id || "",
-        type_activity: "",
-        sub_activity_id: "",
-        area_activity: "",
-        activity: "",
-        issue: "",
-        photo: null,
-    });
+    const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm(createEmptyReportForm(currentUser?.id));
 
     useEffect(() => {
         if (!isOpen) return;
 
-        if (report) {
-            setData({
-                author_id: report.author_id || currentUser?.id || "",
-                type_activity: report.activity_id || "",
-                sub_activity_id: report.sub_activity_id || "",
-                area_activity: report.area_id || "",
-                activity: report.activity || "",
-                issue: report.issue || "",
-                photo: null,
-            });
+        const form = createReportForm(report, currentUser?.id);
+        const selections = createReportSelections(report, users, areas, activities);
 
-            const authorOption = users.find((user) => user.id === report.author_id);
-            const areaOption = areas.find((area) => area.id === report.area_id);
-            const activityOption = activities.find((act) => act.id === report.activity_id);
-            const subActivityOption = activityOption?.sub_activities?.find((act) => act.id === report.sub_activity_id);
-
-            setSelectedAuthor(authorOption ? { value: authorOption.id, label: authorOption.name } : null);
-            setSelectedArea(areaOption ? { value: areaOption.id, label: areaOption.area } : null);
-            setSelectedActivity(activityOption ? { value: activityOption.id, label: activityOption.name } : null);
-            setSelectedSubActivity(subActivityOption ? { value: subActivityOption.id, label: subActivityOption.name } : null);
-            setPhotoPreview(null);
-        } else {
-            reset();
-            clearErrors();
-            setData("author_id", currentUser?.id || "");
-            setSelectedAuthor(null);
-            setSelectedArea(null);
-            setSelectedActivity(null);
-            setSelectedSubActivity(null);
-            setPhotoPreview(null);
-        }
-    }, [isOpen, report]);
+        reset();
+        clearErrors();
+        setData(form);
+        setSelectedAuthor(selections.author);
+        setSelectedArea(selections.area);
+        setSelectedActivity(selections.activity);
+        setSelectedSubActivity(selections.subActivity);
+        setPhotoPreview(null);
+    }, [isOpen, report, currentUser?.id, users, areas, activities, reset, clearErrors, setData]);
 
     const showStatusModal = (type, title, message) => {
         setStatusModalProps({
@@ -129,7 +102,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
     const resetForm = () => {
         reset();
         clearErrors();
-        setData("author_id", currentUser?.id || "");
+        setData(createEmptyReportForm(currentUser?.id));
         setSelectedAuthor(null);
         setSelectedArea(null);
         setSelectedActivity(null);
@@ -152,8 +125,6 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
 
         const action = report ? put : post;
         const url = report ? `/reports/${report.id}` : "/reports";
-        const successMessage = report ? "Report has been updated" : "Report has been created";
-
         action(url, {
             forceFormData: true,
             onSuccess: (page) => {
@@ -167,7 +138,6 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
                 onClose();
             },
             onError: (error) => {
-                console.error("Error:", error);
                 const firstErr = Object.values(error || {})[0];
                 showStatusModal("error", "Gagal Menyimpan", firstErr || (report ? "Gagal memperbarui laporan" : "Gagal membuat laporan"));
             },

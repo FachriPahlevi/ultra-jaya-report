@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Sidebar from "@/Components/Navigation/Sidebar";
+import { LAYERS } from "@/lib/layers";
 
 const SidebarOverlay = ({ isOpen, onClose }) => {
     if (!isOpen) return null;
@@ -8,7 +9,7 @@ const SidebarOverlay = ({ isOpen, onClose }) => {
         <div
             onClick={onClose}
             role="presentation"
-            className="fixed inset-0 z-[40] bg-black/30 backdrop-blur-[2px] lg:hidden"
+            className={`fixed inset-0 ${LAYERS.sidebarOverlay} bg-black/30 backdrop-blur-[2px] lg:hidden`}
         />
     );
 };
@@ -22,7 +23,7 @@ const MenuIcon = () => (
 );
 
 const MobileHeader = ({ onToggleMenu }) => (
-    <header className="hidden items-center gap-3 px-4 py-3 bg-[var(--card)] border-b border-[var(--border)] sticky top-0 z-[30] max-lg:flex">
+    <header className={`hidden items-center gap-3 px-4 py-3 bg-[var(--card)] border-b border-[var(--border)] sticky top-0 ${LAYERS.sticky} max-lg:flex`}>
         <button
             onClick={onToggleMenu}
             className="p-2 rounded-md hover:bg-[var(--muted)] transition-colors shrink-0"
@@ -38,7 +39,7 @@ const MobileHeader = ({ onToggleMenu }) => (
     </header>
 );
 
-export default function Layout({ title = "", children }) {
+export default function Layout({ children }) {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (

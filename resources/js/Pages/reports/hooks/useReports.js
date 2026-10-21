@@ -1,16 +1,16 @@
 import { useState, useMemo } from "react";
 import { router, usePage } from "@inertiajs/react";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
+import { useAuthorization } from "@/hooks/useAuthorization";
 
 const DEFAULT_PER_PAGE = 10;
 
 export function useReports(reports = []) {
     const { props } = usePage();
     const { setStatusModalProps } = useStatusModal();
+    const { can } = useAuthorization();
 
     const auth = props.auth?.user;
-    const permissions = auth?.permissions || [];
-    const can = (p) => permissions.includes(p);
 
     const perms = {
         canCreate:       can("reports.create"),
@@ -28,17 +28,8 @@ export function useReports(reports = []) {
     };
     perms.canExport = perms.canExportAll || perms.canExportArea || perms.canExportOwn;
 
-    const isReportEditable = (report) => {
-        if (!report || report.status === "closed") return false;
-        if (perms.canEditAll) return true;
-        return perms.canEditOwn && String(report.author_id) === String(auth?.id);
-    };
-
-    const isReportDeletable = (report) => {
-        if (!report || report.status === "closed") return false;
-        if (perms.canDeleteAll) return true;
-        return perms.canDeleteOwn && String(report.author_id) === String(auth?.id);
-    };
+    const isReportEditable = (report) => report?.can?.update === true;
+    const isReportDeletable = (report) => report?.can?.delete === true;
 
     const [search, setSearch]               = useState("");
     const [statusFilter, setStatusFilter]   = useState("");
@@ -147,7 +138,6 @@ export function useReports(reports = []) {
 
     const openCloseTicketModal = (report) => {
         if (!report || !report.id) {
-            console.error("Cannot open close ticket modal: invalid report", report);
             return;
         }
 

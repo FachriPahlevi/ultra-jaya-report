@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { router } from "@inertiajs/react";
 import BtnDefault from "@/Components/Button/BtnDefault";
 import InputText from "@/Components/Input/InputText";
 import InputDropdown from "@/Components/Input/InputDropdown";
@@ -7,25 +6,28 @@ import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
 import { HiOutlineX } from "react-icons/hi";
 
-export default function ExportForm({ isOpen, onClose, areas, activities, users, canExportAll = false, canExportArea = false, canExportOwn = false, assignedAreas = [] }) {
+const createInitialForm = (canExportAll, canExportArea) => ({
+  type: "excel",
+  start_date: "",
+  end_date: "",
+  area_ids: [],
+  activity_ids: [],
+  status: "",
+  author_ids: [],
+  my_reports_only: !canExportAll && !canExportArea,
+});
+
+export default function ExportForm({ isOpen, onClose, areas, activities, users, canExportAll = false, canExportArea = false, assignedAreas = [] }) {
   const { setStatusModalProps } = useStatusModal();
   const [processing, setProcessing] = useState(false);
-  const [form, setForm] = useState({
-    type: "excel",
-    start_date: "",
-    end_date: "",
-    area_ids: [],
-    activity_ids: [],
-    status: "",
-    author_ids: [],
-    my_reports_only: !canExportAll && !canExportArea,
-  });
+  const [form, setForm] = useState(() => createInitialForm(canExportAll, canExportArea));
 
   useEffect(() => {
-    if (!canExportAll && !canExportArea) {
-      setForm((prev) => ({ ...prev, my_reports_only: true }));
+    if (isOpen) {
+      setForm(createInitialForm(canExportAll, canExportArea));
+      setProcessing(false);
     }
-  }, [canExportAll, canExportArea]);
+  }, [isOpen, canExportAll, canExportArea]);
 
   const showStatusModal = (type, title, message) => {
     setStatusModalProps({
@@ -122,7 +124,7 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
       window.open(url, "_blank");
       showStatusModal("success", "Success", "Export started");
       onClose();
-    } catch (error) {
+    } catch {
       showStatusModal("error", "Error", "Failed to export");
     } finally {
       setProcessing(false);

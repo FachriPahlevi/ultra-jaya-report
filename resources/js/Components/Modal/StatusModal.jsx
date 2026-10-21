@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { HiOutlineCheckCircle, HiOutlineExclamationCircle, HiOutlineXCircle, HiOutlineInformationCircle } from "react-icons/hi";
 import ModalOverlay from "./ModalOverlay";
 import BtnDefault from "../Button/BtnDefault";
@@ -38,24 +37,6 @@ const statusConfig = {
 export default function StatusModal() {
     const { statusModalProps, setStatusModalProps } = useStatusModal();
 
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            if (e.key === "Escape" && statusModalProps?.isOpen) {
-                closeModal();
-            }
-        };
-
-        if (statusModalProps?.isOpen) {
-            document.body.style.overflow = "hidden";
-            window.addEventListener("keydown", handleKeyDown);
-        }
-
-        return () => {
-            document.body.style.overflow = "auto";
-            window.removeEventListener("keydown", handleKeyDown);
-        };
-    }, [statusModalProps?.isOpen]);
-
     const closeModal = () => {
         setStatusModalProps(prev => ({ ...prev, isOpen: false }));
     };
@@ -88,9 +69,8 @@ export default function StatusModal() {
     const button2Variant = statusModalProps.button2?.variant || "outline";
 
     return (
-        <ModalOverlay isOpen={statusModalProps.isOpen} onClose={closeModal}>
-            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
-                <div className="w-[calc(100%-2rem)] max-w-[420px] rounded-[28px] border border-border bg-white p-6 shadow-xl">
+        <ModalOverlay isOpen={statusModalProps.isOpen} onClose={closeModal} layer="statusModal">
+                <div className="w-full max-w-[420px] rounded-[28px] border border-border bg-white p-6 shadow-xl">
                     <div className="flex flex-col items-center gap-4 text-center">
                         <div className={`${config.bgColor} rounded-full p-4`}>
                         <Icon className={`w-12 h-12 ${config.iconColor}`} />
@@ -117,7 +97,6 @@ export default function StatusModal() {
                         </BtnDefault>
                     </div>
                 </div>
-            </div>
         </ModalOverlay>
     );
 }

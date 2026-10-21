@@ -19,13 +19,11 @@ export default function CloseTicketForm({ isOpen, onClose, report }) {
     const activityLabel = report?.sub_activity?.name ?? report?.activity_type?.name ?? report?.activity ?? "-";
 
     useEffect(() => {
-        if (!isOpen) {
-            setClosePhoto(null);
-            setClosePhotoPreview(null);
-            setCloseComment("");
-            setProcessing(false);
-        }
-    }, [isOpen]);
+        setClosePhoto(null);
+        setClosePhotoPreview(null);
+        setCloseComment("");
+        setProcessing(false);
+    }, [isOpen, reportId]);
 
     const showStatusModal = (type, title, message) => {
         setStatusModalProps({

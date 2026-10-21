@@ -5,16 +5,17 @@ import BtnDefault from "@/Components/Button/BtnDefault";
 import InputDropdown from "@/Components/Input/InputDropdown";
 import InputSelect from "@/Components/Input/InputSelect";
 import ModalOverlay from "@/Components/Modal/ModalOverlay";
-import ReportForm from "@/Components/Form/ReportForm";
-import CloseTicketForm from "@/Components/Form/CloseTicketForm";
-import ExportForm from "@/Components/Form/ExportReportForm";
-import ReportCard from "@/Components/Card/ReportCard";
+import ReportForm from "@/Pages/reports/components/ReportForm";
+import CloseTicketForm from "@/Pages/reports/components/CloseTicketForm";
+import ExportForm from "@/Pages/reports/components/ExportReportForm";
+import ReportCard from "@/Pages/reports/components/ReportCard";
 import Pagination from "@/Components/Navigation/Pagination";
 import ExpandableImage from "@/Components/UI/ExpandableImage";
-import { useReports } from "@/hooks/useReports";
+import { useReports } from "@/Pages/reports/hooks/useReports";
 import { HiOutlineX, HiOutlinePlus } from "react-icons/hi";
 import { SlidersHorizontal, File, FileDown, ChevronDown, ChevronUp, Search, FileText } from "lucide-react";
 import { useState } from "react";
+import { LAYERS } from "@/lib/layers";
 
 const pageSizeOptions = [10, 25, 50, 100];
 
@@ -274,7 +275,7 @@ function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onD
                 </div>
 
                 <div className="flex items-center justify-end gap-3 p-5 border-t border-border">
-                    {perms.canSolve && report.status !== "closed" && (
+                    {report.can?.close && (
                         <button
                             onClick={() => {
                                 onCloseTicket(report);
@@ -648,7 +649,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
             </ModalOverlay>
 
             {r.isFilterSheetOpen && (
-                <div className="sm:hidden fixed inset-0 z-[400]">
+                <div className={`fixed inset-0 ${LAYERS.modal} sm:hidden`}>
                     <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => r.setIsFilterSheetOpen(false)} />
                     <div
                         className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[88vh] flex flex-col"

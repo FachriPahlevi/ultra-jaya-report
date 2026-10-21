@@ -30,19 +30,19 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
 
         Route::post('/{report}/close', [ReportController::class, 'close'])
             ->name('close')
-            ->middleware('role_or_permission:reports.solve.own.area|reports.solve.all');
+            ->middleware('can:close,report');
 
         Route::get('/{report}', [ReportController::class, 'show'])
             ->name('show')
-            ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area');
+            ->middleware('can:view,report');
 
         Route::put('/{report}', [ReportController::class, 'update'])
             ->name('update')
-            ->middleware('role_or_permission:reports.edit.own|reports.edit.all');
+            ->middleware('can:update,report');
 
         Route::delete('/{report}', [ReportController::class, 'destroy'])
             ->name('destroy')
-            ->middleware('role_or_permission:reports.delete.own|reports.delete.all');
+            ->middleware('can:delete,report');
     });
 
     Route::prefix('areas')->as('areas.')->group(function (): void {
@@ -118,15 +118,15 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
 
         Route::post('/roles', [SettingController::class, 'storeRole'])
             ->name('roles.store')
-            ->middleware('can:permissions.manage');
+            ->middleware('can:roles.create');
 
         Route::put('/roles/{role}', [SettingController::class, 'updateRole'])
             ->name('roles.update')
-            ->middleware('can:permissions.manage');
+            ->middleware('can:roles.edit');
 
         Route::delete('/roles/{role}', [SettingController::class, 'deleteRole'])
             ->name('roles.destroy')
-            ->middleware('can:permissions.manage');
+            ->middleware('can:roles.delete');
 
         Route::post('/roles/{role}/permissions', [SettingController::class, 'syncRolePermissions'])
             ->name('roles.permissions')

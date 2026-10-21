@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { formatDate } from "@/lib/format.ts";
 import ExpandableImage from "@/Components/UI/ExpandableImage";
-import ModalOverlay from "@/Components/Modal/ModalOverlay";
-import { ChevronDown, ChevronUp, Trash2 } from "lucide-react";
-import { HiOutlineX } from "react-icons/hi";
+import { ChevronDown, ChevronUp } from "lucide-react";
 
 const avatarColors = ["bg-slate-500", "bg-slate-600", "bg-slate-500", "bg-slate-600", "bg-slate-500", "bg-slate-600", "bg-slate-500"];
 
@@ -118,60 +116,12 @@ function ContentSection({ label, children }) {
     );
 }
 
-// Delete confirmation modal component
-function DeleteConfirmModal({ isOpen, onClose, onConfirm, report }) {
-    if (!report) return null;
-
-    return (
-        <ModalOverlay id="delete-confirm-modal" isOpen={isOpen} onClose={onClose}>
-            <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl border border-gray-200">
-                <div className="flex items-center justify-between p-5 border-b border-gray-100">
-                    <h3 className="text-lg font-semibold text-gray-900">Delete Report</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
-                        <HiOutlineX className="w-5 h-5" />
-                    </button>
-                </div>
-
-                <div className="p-5">
-                    <p className="text-gray-600 text-sm">Are you sure you want to delete report #{report.id}?</p>
-                    <p className="text-gray-400 text-xs mt-2">This action cannot be undone.</p>
-                </div>
-
-                <div className="flex items-center justify-end gap-3 p-5 border-t border-gray-100">
-                    <button onClick={onClose} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-semibold transition-colors">
-                        Cancel
-                    </button>
-                    <button
-                        onClick={() => {
-                            onConfirm();
-                            onClose();
-                        }}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors"
-                    >
-                        Delete
-                    </button>
-                </div>
-            </div>
-        </ModalOverlay>
-    );
-}
-
-export default function ReportCard({ report, isSelected, onSelect, onDelete, showDelete }) {
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
+export default function ReportCard({ report, isSelected, onSelect }) {
     const isSolved = report.status === "closed";
     const activityLabel = report.sub_activity?.name ?? report.activity_type?.name ?? "-";
     const hasPhotos = report.photo_before || report.photo_after;
     const hasActivity = report.activity && report.activity !== "-";
     const hasIssue = report.issue && report.issue !== "-";
-
-    const handleDeleteClick = (e) => {
-        e.stopPropagation();
-        setShowDeleteModal(true);
-    };
-
-    const handleConfirmDelete = () => {
-        onDelete();
-    };
 
     return (
         <>
@@ -240,7 +190,6 @@ export default function ReportCard({ report, isSelected, onSelect, onDelete, sho
                 </div>
             </div>
 
-            <DeleteConfirmModal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} onConfirm={handleConfirmDelete} report={report} />
         </>
     );
 }

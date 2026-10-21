@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -46,6 +47,11 @@ class ReportController extends Controller
                 'closed_at' => $report->closed_at,
                 'created_at' => $report->created_at,
                 'updated_at' => $report->updated_at,
+                'can' => [
+                    'update' => Gate::allows('update', $report),
+                    'delete' => Gate::allows('delete', $report),
+                    'close' => Gate::allows('close', $report),
+                ],
                 'author' => $report->author ? [
                     'id' => $report->author->id,
                     'name' => $report->author->name,
@@ -152,13 +158,7 @@ class ReportController extends Controller
 
     public function update(Request $request, Report $report): RedirectResponse
     {
-        $user = Auth::user();
-
-        if (! $user->can('reports.edit.all')
-            && ! ($user->can('reports.edit.own') && $report->author_id === $user->id)) {
-            throw new BusinessException('Anda tidak memiliki izin untuk mengedit laporan ini', 403);
-        }
-
+        Gate::authorize('update', $report);
         $this->ensureReportIsOpen($report, 'diubah');
 
         $validated = $request->validate($this->updateRules());
@@ -210,14 +210,7 @@ class ReportController extends Controller
     {
         $user = Auth::user();
 
-        if (! $user->can('reports.solve.all') && $user->can('reports.solve.own.area')) {
-            if (! $report->area || ! $report->area->pics()->where('users.id', $user->id)->exists()) {
-                throw new BusinessException('Anda tidak memiliki izin untuk menyelesaikan laporan di area ini', 403);
-            }
-        } elseif (! $user->can('reports.solve.all')) {
-            throw new BusinessException('Anda tidak memiliki izin untuk menyelesaikan laporan', 403);
-        }
-
+        Gate::authorize('close', $report);
         $this->ensureReportIsOpen($report, 'ditutup');
 
         $validated = $request->validate([
@@ -243,14 +236,7 @@ class ReportController extends Controller
 
     public function destroy(Report $report): RedirectResponse
     {
-        $user = Auth::user();
-
-        $this->ensureReportIsOpen($report, 'dihapus');
-
-        if (! $user->can('reports.delete.all')
-            && ! ($user->can('reports.delete.own') && $report->author_id === $user->id)) {
-            throw new BusinessException('Anda tidak memiliki izin untuk menghapus laporan ini', 403);
-        }
+        Gate::authorize('delete', $report);
 
         if ($report->photo_before) {
             Storage::disk('public')->delete($report->photo_before);
@@ -266,13 +252,7 @@ class ReportController extends Controller
 
     public function show(Report $report): Response
     {
-        $user = Auth::user();
-
-        $canView = $user->can('reports.view.all')
-            || ($user->can('reports.view.own') && $report->author_id === $user->id)
-            || ($user->can('reports.solve.own.area') && $report->area?->pics()->where('users.id', $user->id)->exists());
-
-        abort_unless($canView, 403);
+        Gate::authorize('view', $report);
 
         return Inertia::render('reports/Show', [
             'report' => $report->load(['author', 'area.pics', 'activityType.parent', 'subActivity']),
@@ -407,11 +387,17 @@ class ReportController extends Controller
             return $query;
         }
 
-        if ($user->can('reports.solve.own.area')) {
-            return $query->whereHas('area.pics', fn (Builder $query) => $query->whereKey($user->id));
+        if ($user->can('reports.view.own') && $user->can('reports.solve.own.area')) {
+            return $query->where(fn (Builder $visible) => $visible
+                ->where('author_id', $user->id)
+                ->orWhereHas('area.pics', fn (Builder $pics) => $pics->whereKey($user->id)));
         }
 
-        return $query->whereBelongsTo($user, 'author');
+        if ($user->can('reports.solve.own.area')) {
+            return $query->whereHas('area.pics', fn (Builder $pics) => $pics->whereKey($user->id));
+        }
+
+        return $query->where('author_id', $user->id);
     }
 
     private function ensureReportIsOpen(Report $report, string $action): void
