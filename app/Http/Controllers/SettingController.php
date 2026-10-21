@@ -53,6 +53,9 @@ class SettingController extends Controller
         ]);
 
         if ($validated['role'] === 'SUPER_ADMIN' && ! Auth::user()->hasRole('SUPER_ADMIN')) {
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Hanya SUPER_ADMIN yang dapat menetapkan role SUPER_ADMIN.'], 422);
+            }
             return back()->with('error', 'Hanya SUPER_ADMIN yang dapat menetapkan role SUPER_ADMIN.');
         }
 
@@ -64,6 +67,10 @@ class SettingController extends Controller
         ]);
 
         $user->assignRole($validated['role']);
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'User berhasil dibuat', 'user' => $user], 201);
+        }
 
         return redirect()->route('settings.index')->with('success', 'User berhasil dibuat');
     }
@@ -79,10 +86,16 @@ class SettingController extends Controller
 
         if (! Auth::user()->hasRole('SUPER_ADMIN')) {
             if ($user->hasRole('SUPER_ADMIN')) {
+                if ($request->wantsJson()) {
+                    return response()->json(['message' => 'Hanya SUPER_ADMIN yang dapat mengubah data user SUPER_ADMIN.'], 422);
+                }
                 return back()->with('error', 'Hanya SUPER_ADMIN yang dapat mengubah data user SUPER_ADMIN.');
             }
 
             if ($validated['role'] === 'SUPER_ADMIN') {
+                if ($request->wantsJson()) {
+                    return response()->json(['message' => 'Hanya SUPER_ADMIN yang dapat menetapkan role SUPER_ADMIN.'], 422);
+                }
                 return back()->with('error', 'Hanya SUPER_ADMIN yang dapat menetapkan role SUPER_ADMIN.');
             }
         }
@@ -98,21 +111,35 @@ class SettingController extends Controller
 
         $user->syncRoles([$validated['role']]);
 
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'User berhasil diupdate', 'user' => $user], 200);
+        }
+
         return redirect()->route('settings.index')->with('success', 'User berhasil diupdate');
     }
 
-    public function destroyUser(User $user)
+    public function destroyUser(Request $request, User $user)
     {
         if ($user->id === Auth::id()) {
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif digunakan.'], 422);
+            }
             return back()->with('error', 'Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif digunakan.');
         }
 
         if ($user->hasRole('SUPER_ADMIN')) {
+            if ($request->wantsJson()) {
+                return response()->json(['message' => 'User dengan role SUPER_ADMIN tidak dapat dihapus untuk menjaga keamanan sistem.'], 422);
+            }
             return back()->with('error', 'User dengan role SUPER_ADMIN tidak dapat dihapus untuk menjaga keamanan sistem.');
         }
 
         $userName = $user->name;
         $user->delete();
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => "User '{$userName}' berhasil dihapus dari sistem."], 200);
+        }
 
         return redirect()->route('settings.index')->with('success', "User '{$userName}' berhasil dihapus dari sistem.");
     }
