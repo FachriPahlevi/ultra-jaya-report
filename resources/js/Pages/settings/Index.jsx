@@ -70,8 +70,8 @@ export default function Settings({ users, auth, roles, permissions, filters = {}
                 variant: "danger",
                 onClick: async () => {
                     try {
-                        await axios.delete(`/settings/users/${user.id}`);
-                        showStatusModal("success", "Success", `User "${user.name}" berhasil dihapus`);
+                        const response = await axios.delete(`/settings/users/${user.id}`);
+                        showStatusModal("success", "Success", response.data?.message || `User "${user.name}" berhasil dihapus`);
                         router.reload();
                     } catch (error) {
                         const message = error.response?.data?.message || "Terjadi kesalahan saat menghapus user";
