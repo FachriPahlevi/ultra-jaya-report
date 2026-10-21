@@ -1,19 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
+use App\Exceptions\BusinessException;
 use App\Models\Area;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class AreaController extends Controller
 {
-    public function index()
+    public function index(): Response
     {
         $user = Auth::user();
 
@@ -22,16 +28,10 @@ class AreaController extends Controller
                 ->with('pics:id,name')
                 ->latest()
                 ->paginate(10);
-        } elseif ($user->hasRole('SUPERVISOR')) {
-            $areas = Area::with('pics:id,name')
-                ->where('is_active', true)
-                ->whereHas('pics', fn($query) => $query->where('users.id', $user->id))
-                ->latest()
-                ->paginate(10);
         } else {
             $areas = Area::with('pics:id,name')
                 ->where('is_active', true)
-                ->whereHas('pics', fn($query) => $query->where('users.id', $user->id))
+                ->whereHas('pics', fn ($query) => $query->where('users.id', $user->id))
                 ->latest()
                 ->paginate(10);
         }
@@ -42,7 +42,7 @@ class AreaController extends Controller
                 'area' => $area->area,
                 'is_active' => $area->is_active,
                 'deleted_at' => $area->deleted_at,
-                'pics' => $area->pics->map(fn($pic) => [
+                'pics' => $area->pics->map(fn ($pic) => [
                     'id' => $pic->id,
                     'name' => $pic->name,
                 ])->values(),
@@ -75,158 +75,119 @@ class AreaController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse|RedirectResponse
     {
-        try {
-            $validated = $request->validate([
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('areas', 'area')->whereNull('deleted_at'),
-                ],
-                'is_active' => 'nullable|boolean',
-                'pic_user_ids' => 'nullable|array',
-                'pic_user_ids.*' => 'exists:users,id',
-            ]);
+        $validated = $request->validate($this->areaRules());
 
-            $picUserIds = $validated['pic_user_ids'] ?? [];
-            $this->ensurePicsAvailable($picUserIds);
+        $picUserIds = $validated['pic_user_ids'] ?? [];
+        $this->ensurePicsAvailable($picUserIds);
 
+        $area = DB::transaction(function () use ($validated, $picUserIds): Area {
             $area = Area::create([
                 'area' => $validated['name'],
                 'is_active' => $validated['is_active'] ?? true,
             ]);
+
             $area->pics()->sync($picUserIds);
 
-            if ($request->wantsJson()) {
-                return response()->json(['success' => true, 'data' => $area], 200);
-            }
+            return $area;
+        });
 
-            return redirect()->route('areas.index');
-        } catch (ValidationException $e) {
-            return response()->json(['errors' => $e->errors()], 422);
-        } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 500);
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'data' => $area], 201);
         }
+
+        return redirect()->route('areas.index');
     }
 
-    public function update(Request $request, Area $area)
+    public function update(Request $request, Area $area): JsonResponse|RedirectResponse
     {
-        try {
-            $validated = $request->validate([
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('areas', 'area')->ignore($area->id)->whereNull('deleted_at'),
-                ],
-                'is_active' => 'nullable|boolean',
-                'pic_user_ids' => 'nullable|array',
-                'pic_user_ids.*' => 'exists:users,id',
-            ]);
+        $validated = $request->validate($this->areaRules($area));
 
-            $picUserIds = $validated['pic_user_ids'] ?? [];
-            $this->ensurePicsAvailable($picUserIds, $area->id);
+        $picUserIds = $validated['pic_user_ids'] ?? [];
+        $this->ensurePicsAvailable($picUserIds, $area->id);
 
+        DB::transaction(function () use ($area, $validated, $picUserIds): void {
             $area->update([
                 'area' => $validated['name'],
                 'is_active' => $validated['is_active'] ?? $area->is_active,
             ]);
+
             $area->pics()->sync($picUserIds);
+        });
 
-            if ($request->wantsJson()) {
-                return response()->json(['success' => true], 200);
-            }
-
-            return redirect()->route('areas.index');
-        } catch (ValidationException $e) {
-            return response()->json(['errors' => $e->errors()], 422);
-        } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 500);
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true], 200);
         }
+
+        return redirect()->route('areas.index');
     }
 
-    public function destroy(Area $area)
+    public function destroy(Request $request, Area $area): JsonResponse|RedirectResponse
     {
-        try {
-            $area->delete();
+        $area->delete();
 
-            if (request()->wantsJson()) {
-                return response()->json(['success' => true], 200);
-            }
-
-            return redirect()->route('areas.index');
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => $e->getMessage(),
-                'error' => 'Failed to delete area'
-            ], 500);
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true], 200);
         }
+
+        return redirect()->route('areas.index');
     }
 
-    public function updateStatus(Request $request, Area $area)
+    public function updateStatus(Request $request, Area $area): JsonResponse
     {
-        try {
-            $validated = $request->validate([
-                'is_active' => 'required|boolean',
-            ]);
+        $validated = $request->validate(['is_active' => ['required', 'boolean']]);
 
-            $area->update([
-                'is_active' => $validated['is_active'],
-            ]);
+        $area->update([
+            'is_active' => $validated['is_active'],
+        ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => $validated['is_active'] ? 'Area activated successfully.' : 'Area deactivated successfully.',
-            ]);
-        } catch (ValidationException $e) {
-            return response()->json(['errors' => $e->errors()], 422);
-        } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => $validated['is_active'] ? 'Area berhasil diaktifkan.' : 'Area berhasil dinonaktifkan.',
+        ]);
     }
 
-    public function restore(int $areaId)
+    public function restore(int $areaId): JsonResponse
     {
-        try {
-            $area = Area::withTrashed()->findOrFail($areaId);
+        $area = Area::withTrashed()->findOrFail($areaId);
 
-            if (!$area->trashed()) {
-                return response()->json(['message' => 'Area is not deleted.'], 422);
-            }
-
-            $area->restore();
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Area restored successfully.',
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 500);
+        if (! $area->trashed()) {
+            throw new BusinessException('Area ini tidak berada di arsip.');
         }
+
+        $area->restore();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Area berhasil dipulihkan.',
+        ]);
+
     }
 
-    public function forceDestroy(int $areaId)
+    public function forceDestroy(int $areaId): JsonResponse
     {
-        try {
-            $area = Area::withTrashed()->findOrFail($areaId);
+        $area = Area::withTrashed()->findOrFail($areaId);
 
+        if ($area->hasHistoricalReports()) {
+            throw new BusinessException('Area yang sudah memiliki riwayat laporan tidak dapat dihapus permanen.');
+        }
+
+        DB::transaction(function () use ($area): void {
             $area->pics()->detach();
             $area->forceDelete();
+        });
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Area permanently deleted.',
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(['message' => $e->getMessage()], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'message' => 'Area berhasil dihapus permanen.',
+        ]);
+
     }
 
     private function ensurePicsAvailable(array $picUserIds, ?int $currentAreaId = null): void
     {
-        if (empty($picUserIds)) {
+        if ($picUserIds === []) {
             return;
         }
 
@@ -234,17 +195,33 @@ class AreaController extends Controller
             ->join('areas', 'areas.id', '=', 'area_user.area_id')
             ->join('users', 'users.id', '=', 'area_user.user_id')
             ->whereIn('area_user.user_id', $picUserIds)
-            ->when($currentAreaId, fn($query) => $query->where('area_user.area_id', '!=', $currentAreaId))
+            ->when($currentAreaId, fn ($query) => $query->where('area_user.area_id', '!=', $currentAreaId))
             ->select('users.name', 'areas.area')
             ->get()
-            ->map(fn($item) => "{$item->name} is already assigned to {$item->area}")
+            ->map(fn ($item) => "{$item->name} sudah ditetapkan sebagai PIC di area {$item->area}")
             ->values()
             ->all();
 
-        if (!empty($conflicts)) {
+        if (! empty($conflicts)) {
             throw ValidationException::withMessages([
                 'pic_user_ids' => $conflicts,
             ]);
         }
+    }
+
+    private function areaRules(?Area $area = null): array
+    {
+        $uniqueArea = Rule::unique('areas', 'area')->whereNull('deleted_at');
+
+        if ($area !== null) {
+            $uniqueArea->ignore($area);
+        }
+
+        return [
+            'name' => ['required', 'string', 'max:255', $uniqueArea],
+            'is_active' => ['nullable', 'boolean'],
+            'pic_user_ids' => ['nullable', 'array'],
+            'pic_user_ids.*' => ['exists:users,id'],
+        ];
     }
 }

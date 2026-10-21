@@ -1,18 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
+use App\Exceptions\BusinessException;
 use App\Models\Activity;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
+use Inertia\Response;
 
 class ActivityController extends Controller
 {
-    public function index()
+    public function index(): Response
     {
         $activities = Activity::with([
-            'children' => fn($query) => $query
+            'children' => fn ($query) => $query
                 ->withCount(['reportsAsType', 'reportsAsSubType'])
                 ->orderBy('name'),
         ])
@@ -32,7 +39,7 @@ class ActivityController extends Controller
                 'level' => 'parent',
                 'children_count' => $activity->children_count,
                 'usage_count' => $activity->reports_as_type_count + $activity->reports_as_sub_type_count,
-                'children' => $activity->children->map(fn(Activity $child) => [
+                'children' => $activity->children->map(fn (Activity $child) => [
                     'id' => $child->id,
                     'name' => $child->name,
                     'description' => $child->description,
@@ -64,31 +71,12 @@ class ActivityController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse|RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => 'nullable|string|max:255',
-            'description' => 'nullable|string|max:500',
-            'is_active' => 'nullable|boolean',
-            'parent_id' => [
-                'nullable',
-                Rule::exists('activities', 'id')
-                    ->whereNull('deleted_at')
-                    ->whereNull('parent_id')
-                    ->where('is_active', true),
-            ],
-            'sub_activities' => 'nullable|array|min:1',
-            'sub_activities.*.name' => 'required_with:sub_activities|string|max:255',
-            'sub_activities.*.description' => 'nullable|string|max:500',
-        ]);
+        $validated = $request->validate($this->storeRules($request));
 
         if ($request->filled('parent_id') && $request->filled('sub_activities')) {
             foreach ($validated['sub_activities'] as $subActivity) {
-                validator(
-                    ['name' => $subActivity['name']],
-                    ['name' => [Rule::unique('activities', 'name')->whereNull('deleted_at')]]
-                )->validate();
-
                 Activity::create([
                     'name' => $subActivity['name'],
                     'description' => $subActivity['description'] ?? null,
@@ -99,21 +87,12 @@ class ActivityController extends Controller
 
             if ($request->expectsJson()) {
                 return response()->json([
-                    'message' => 'Sub activities created successfully.',
+                    'message' => 'Subaktivitas berhasil dibuat.',
                 ]);
             }
 
             return redirect()->route('activities.index');
         }
-
-        $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('activities', 'name')->whereNull('deleted_at'),
-            ],
-        ]);
 
         Activity::create([
             'name' => $validated['name'],
@@ -124,39 +103,20 @@ class ActivityController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'message' => 'Activity created successfully.',
+                'message' => 'Aktivitas berhasil dibuat.',
             ]);
         }
 
         return redirect()->route('activities.index');
     }
 
-    public function update(Request $request, Activity $activity)
+    public function update(Request $request, Activity $activity): JsonResponse|RedirectResponse
     {
-        $validated = $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('activities', 'name')
-                    ->ignore($activity->id)
-                    ->whereNull('deleted_at'),
-            ],
-            'description' => 'nullable|string|max:500',
-            'is_active' => 'nullable|boolean',
-            'parent_id' => [
-                'nullable',
-                'not_in:' . $activity->id,
-                Rule::exists('activities', 'id')
-                    ->whereNull('deleted_at')
-                    ->whereNull('parent_id')
-                    ->where('is_active', true),
-            ],
-        ]);
+        $validated = $request->validate($this->updateRules($activity));
 
         if (($validated['parent_id'] ?? null) && $activity->children()->exists()) {
-            return back()->withErrors([
-                'parent_id' => 'Main activity with sub activities cannot be converted into a sub activity.',
+            throw ValidationException::withMessages([
+                'parent_id' => 'Aktivitas utama yang memiliki subaktivitas tidak dapat dijadikan subaktivitas.',
             ]);
         }
 
@@ -169,24 +129,20 @@ class ActivityController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'message' => 'Activity updated successfully.',
+                'message' => 'Aktivitas berhasil diperbarui.',
             ]);
         }
 
         return redirect()->route('activities.index');
     }
 
-    public function updateStatus(Request $request, Activity $activity)
+    public function updateStatus(Request $request, Activity $activity): JsonResponse
     {
         if ($activity->parent_id !== null) {
-            return response()->json([
-                'message' => 'Sub activity does not use active or inactive status. Delete it instead if it is no longer needed.',
-            ], 422);
+            throw new BusinessException('Subaktivitas tidak memiliki status aktif atau nonaktif. Hapus subaktivitas jika sudah tidak diperlukan.');
         }
 
-        $validated = $request->validate([
-            'is_active' => 'required|boolean',
-        ]);
+        $validated = $request->validate(['is_active' => ['required', 'boolean']]);
 
         $activity->update([
             'is_active' => $validated['is_active'],
@@ -199,28 +155,74 @@ class ActivityController extends Controller
         }
 
         return response()->json([
-            'message' => 'Activity status updated successfully.',
+            'message' => 'Status aktivitas berhasil diperbarui.',
         ]);
     }
 
-    public function destroy(Activity $activity)
+    public function destroy(Activity $activity): RedirectResponse
     {
         $usageCount = $activity->reportsAsType()->count() + $activity->reportsAsSubType()->count();
 
         if ($usageCount > 0) {
-            return back()->withErrors([
-                'activity' => 'This activity is already used in reports. Set it inactive instead of deleting it.',
+            throw ValidationException::withMessages([
+                'activity' => 'Aktivitas ini sudah digunakan pada laporan. Nonaktifkan aktivitas jika sudah tidak diperlukan.',
             ]);
         }
 
         if ($activity->children()->exists()) {
-            return back()->withErrors([
-                'activity' => 'Delete or move all sub activities before deleting this main activity.',
+            throw ValidationException::withMessages([
+                'activity' => 'Hapus atau pindahkan semua subaktivitas sebelum menghapus aktivitas utama ini.',
             ]);
         }
 
         $activity->delete();
 
         return redirect()->route('activities.index');
+    }
+
+    private function storeRules(Request $request): array
+    {
+        return [
+            'name' => [
+                $request->filled('parent_id') && $request->filled('sub_activities') ? 'nullable' : 'required',
+                'string',
+                'max:255',
+                Rule::unique('activities', 'name')->whereNull('deleted_at'),
+            ],
+            'description' => ['nullable', 'string', 'max:500'],
+            'is_active' => ['nullable', 'boolean'],
+            'parent_id' => [
+                'nullable',
+                Rule::exists('activities', 'id')->whereNull('deleted_at')->whereNull('parent_id')->where('is_active', true),
+            ],
+            'sub_activities' => ['nullable', 'array', 'min:1'],
+            'sub_activities.*.name' => [
+                'required_with:sub_activities',
+                'string',
+                'max:255',
+                'distinct',
+                Rule::unique('activities', 'name')->whereNull('deleted_at'),
+            ],
+            'sub_activities.*.description' => ['nullable', 'string', 'max:500'],
+        ];
+    }
+
+    private function updateRules(Activity $activity): array
+    {
+        return [
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('activities', 'name')->ignore($activity)->whereNull('deleted_at'),
+            ],
+            'description' => ['nullable', 'string', 'max:500'],
+            'is_active' => ['nullable', 'boolean'],
+            'parent_id' => [
+                'nullable',
+                'not_in:'.$activity->id,
+                Rule::exists('activities', 'id')->whereNull('deleted_at')->whereNull('parent_id')->where('is_active', true),
+            ],
+        ];
     }
 }

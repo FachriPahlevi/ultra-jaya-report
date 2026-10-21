@@ -1,3 +1,4 @@
+import { getRequestErrorMessage } from "@/lib/errorMessages";
 // resources/js/Components/Settings/RoleForm.jsx
 import { useState, useEffect } from "react";
 import { router } from "@inertiajs/react";
@@ -47,7 +48,7 @@ export default function RoleForm({ isOpen, onClose, role }) {
             }
         } catch (error) {
             console.error("Error:", error);
-            const message = error.response?.data?.message || "Failed to save role";
+            const message = getRequestErrorMessage(error);
             showStatusModal("error", "Error", message);
         } finally {
             setProcessing(false);

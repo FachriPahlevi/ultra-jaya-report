@@ -1,3 +1,4 @@
+import { getPhotoSizeMessage } from "@/lib/errorMessages";
 import { useForm, usePage, router } from "@inertiajs/react";
 import { useState, useEffect } from "react";
 import InputText from "@/Components/Input/InputText";
@@ -79,6 +80,18 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
     const handlePhotoChange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
+        const maxSizeBytes = 2 * 1024 * 1024; // 2 MB
+        if (file.size > maxSizeBytes) {
+            showStatusModal(
+                "error",
+                "File Terlalu Besar",
+                getPhotoSizeMessage()
+            );
+            e.target.value = "";
+            return;
+        }
+
         setData("photo", file);
         setPhotoPreview(URL.createObjectURL(file));
     };
@@ -143,15 +156,20 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
 
         action(url, {
             forceFormData: true,
-            onSuccess: () => {
-                showStatusModal("success", "Success", successMessage);
+            onSuccess: (page) => {
+                if (page?.props?.flash?.error) {
+                    return;
+                }
+                if (!page?.props?.flash?.success) {
+                    showStatusModal("success", "Berhasil", report ? "Laporan berhasil diperbarui" : "Laporan berhasil dibuat");
+                }
                 resetForm();
                 onClose();
-                router.reload();
             },
             onError: (error) => {
                 console.error("Error:", error);
-                showStatusModal("error", "Error", report ? "Failed to update report" : "Failed to create report");
+                const firstErr = Object.values(error || {})[0];
+                showStatusModal("error", "Gagal Menyimpan", firstErr || (report ? "Gagal memperbarui laporan" : "Gagal membuat laporan"));
             },
         });
     };
@@ -256,9 +274,12 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
 
                         <div>
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
-                                <label className="text-[13px] font-semibold text-foreground">
-                                    Photo <span className="text-[11px] text-muted-foreground font-normal">(optional)</span>
-                                </label>
+                                <div>
+                                    <label className="text-[13px] font-semibold text-foreground">
+                                        Photo <span className="text-[11px] text-muted-foreground font-normal">(optional)</span>
+                                    </label>
+                                    <p className="text-[11px] text-muted-foreground">Maks. 2 MB (format: JPG, JPEG, PNG)</p>
+                                </div>
                                 <label
                                     htmlFor="photo"
                                     className="inline-flex items-center justify-center gap-1.5 bg-accent text-primary px-3.5 py-1.5 rounded-md text-[12.5px] font-semibold cursor-pointer transition-colors hover:bg-primary/20 w-full sm:w-auto"
@@ -266,7 +287,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
                                     <HiOutlinePhotograph className="w-3.5 h-3.5" />
                                     Upload
                                 </label>
-                                <input id="photo" type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+                                <input id="photo" type="file" accept="image/jpeg,image/png,image/jpg" onChange={handlePhotoChange} className="hidden" />
                             </div>
 
                             <div
@@ -283,6 +304,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
                                     <div className="text-center text-muted-foreground py-6">
                                         <HiOutlinePhotograph className="w-9 h-9 mx-auto mb-2 opacity-40" />
                                         <span className="text-[12.5px]">Click Upload to add a photo</span>
+                                        <span className="block text-[11px] text-muted-foreground/80 mt-0.5">Maksimal 2 MB (JPG, JPEG, PNG)</span>
                                     </div>
                                 )}
                             </div>

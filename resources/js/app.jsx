@@ -4,6 +4,7 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { StatusModalProvider } from '@/Components/Context/StatusModalContext';
 import StatusModal from '@/Components/Modal/StatusModal';
+import { setupInertiaInterceptors } from '@/lib/setupInertiaInterceptors';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -15,6 +16,8 @@ createInertiaApp({
             import.meta.glob('./Pages/**/*.jsx'),
         ),
     setup({ el, App, props }) {
+        setupInertiaInterceptors(props);
+
         const root = createRoot(el);
 
         root.render(

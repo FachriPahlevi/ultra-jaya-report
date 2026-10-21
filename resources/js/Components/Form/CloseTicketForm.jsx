@@ -1,3 +1,4 @@
+import { getPhotoSizeMessage } from "@/lib/errorMessages";
 // resources/js/Components/Form/CloseTicketForm.jsx
 import { useState, useEffect } from "react";
 import { router } from "@inertiajs/react";
@@ -58,20 +59,23 @@ export default function CloseTicketForm({ isOpen, onClose, report }) {
         const url = route ? route("reports.close", reportId) : `/reports/${reportId}/close`;
 
         router.post(url, formData, {
-            onSuccess: () => {
-                showStatusModal("success", "Success", "Ticket has been closed");
+            onSuccess: (page) => {
+                setProcessing(false);
+                if (page?.props?.flash?.error) {
+                    return;
+                }
+                if (!page?.props?.flash?.success) {
+                    showStatusModal("success", "Berhasil", "Tiket berhasil diselesaikan dan ditutup");
+                }
                 setClosePhoto(null);
                 setClosePhotoPreview(null);
                 setCloseComment("");
                 onClose();
-                setTimeout(() => {
-                    router.reload();
-                }, 1500);
             },
             onError: (errors) => {
                 console.error("Close ticket error:", errors);
-                const errorMessage = errors.close_comment || errors.photo_after || errors.response?.data?.message || "Failed to close ticket";
-                showStatusModal("error", "Error", errorMessage);
+                const errorMessage = errors.close_comment || errors.photo_after || "Gagal menutup tiket laporan";
+                showStatusModal("error", "Gagal Menutup Tiket", errorMessage);
                 setProcessing(false);
             },
         });
@@ -129,9 +133,12 @@ export default function CloseTicketForm({ isOpen, onClose, report }) {
 
                         <div>
                             <div className="mb-1.5 flex items-center justify-between gap-3">
-                                <label className="block text-[12.5px] font-semibold text-foreground">
-                                    Closing Photo <span className="font-normal text-muted-foreground">(optional)</span>
-                                </label>
+                                <div>
+                                    <label className="block text-[12.5px] font-semibold text-foreground">
+                                        Closing Photo <span className="font-normal text-muted-foreground">(optional)</span>
+                                    </label>
+                                    <p className="text-[11px] text-muted-foreground">Maks. 2 MB (format: JPG, JPEG, PNG)</p>
+                                </div>
                                 <label
                                     htmlFor="photo_after"
                                     className="inline-flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-[12px] font-medium text-foreground transition-colors hover:bg-muted"
@@ -144,10 +151,20 @@ export default function CloseTicketForm({ isOpen, onClose, report }) {
                             <input
                                 id="photo_after"
                                 type="file"
-                                accept="image/*"
+                                accept="image/jpeg,image/png,image/jpg"
                                 onChange={(e) => {
                                     const file = e.target.files[0];
                                     if (file) {
+                                        const maxSizeBytes = 2 * 1024 * 1024;
+                                        if (file.size > maxSizeBytes) {
+                                            showStatusModal(
+                                                "error",
+                                                "File Terlalu Besar",
+                                                getPhotoSizeMessage()
+                                            );
+                                            e.target.value = "";
+                                            return;
+                                        }
                                         setClosePhoto(file);
                                         setClosePhotoPreview(URL.createObjectURL(file));
                                     }
@@ -168,6 +185,7 @@ export default function CloseTicketForm({ isOpen, onClose, report }) {
                                         <div>
                                             <HiOutlinePhotograph className="mx-auto mb-2 h-8 w-8 opacity-35" />
                                             <span className="text-[12px]">No photo uploaded</span>
+                                            <span className="block text-[11px] text-muted-foreground/80 mt-0.5">Maksimal 2 MB (JPG, JPEG, PNG)</span>
                                         </div>
                                     </div>
                                 )}
