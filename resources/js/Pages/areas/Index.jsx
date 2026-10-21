@@ -1,13 +1,14 @@
 import { getRequestErrorMessage } from "@/lib/errorMessages";
 import { useState, useEffect } from "react";
 import { Head, router, usePage } from "@inertiajs/react";
-import axios from "axios";
+import http from "@/lib/http";
 import AppLayout from "@/Layouts/AppLayout";
 import BtnDefault from "@/Components/Button/BtnDefault";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
 import { HiOutlinePlus } from "react-icons/hi";
 import AreaListSection from "./components/AreaListSection";
 import AreaFormModal from "./components/AreaFormModal";
+import { useAuthorization } from "@/hooks/useAuthorization";
 
 const INITIAL_FORM = {
     name: "",
@@ -25,6 +26,7 @@ function buildAreaForm(area) {
 
 export default function Index({ areas = { data: [], links: [], meta: {} } }) {
     const { props } = usePage();
+    const { can } = useAuthorization();
     const { setStatusModalProps } = useStatusModal();
     const [showModal, setShowModal] = useState(false);
     const [editTarget, setEditTarget] = useState(null);
@@ -32,13 +34,12 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
     const [form, setForm] = useState(INITIAL_FORM);
     const [errors, setErrors] = useState({});
 
-    const permissions = props.auth?.user?.permissions || [];
     const users = props.users || [];
-    const canAssignPic = permissions.includes("areas.assign.supervisor");
+    const canAssignPic = can("areas.assign.supervisor");
 
-    const canAdd = permissions.includes("areas.create");
-    const canEdit = permissions.includes("areas.edit");
-    const canDelete = permissions.includes("areas.delete");
+    const canAdd = can("areas.create");
+    const canEdit = can("areas.edit");
+    const canDelete = can("areas.delete");
     const totalAreas = areas.meta?.total ?? areas.data.length;
     const picOptions = users.map((user) => ({
         value: String(user.id),
@@ -71,7 +72,7 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
         }, 1500);
     };
 
-    const showRequestError = (error, fallbackMessage) => {
+    const showRequestError = (error) => {
         const errorMessage = getRequestErrorMessage(error);
         showStatusModal("error", "Error", errorMessage);
     };
@@ -133,10 +134,10 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
 
         try {
             if (editTarget) {
-                await axios.put(`/areas/${editTarget.id}`, submitData);
+                await http.put(`/areas/${editTarget.id}`, submitData);
                 showStatusModal("success", "Success", `Area "${form.name}" has been updated`);
             } else {
-                await axios.post("/areas", submitData);
+                await http.post("/areas", submitData);
                 showStatusModal("success", "Success", `Area "${form.name}" has been created`);
             }
 
@@ -147,10 +148,9 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
         } catch (error) {
             if (error.response?.status === 422) {
                 setErrors(error.response.data.errors || {});
-                const firstError = Object.values(error.response.data.errors || {})[0];
                 showStatusModal("error", "Validation Error", getRequestErrorMessage(error));
             } else {
-                showRequestError(error, "Something went wrong. Please try again.");
+                showRequestError(error);
             }
         } finally {
             setProcessing(false);
@@ -171,7 +171,7 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
                         reloadPage();
                     },
                     onError: (error) => {
-                        showRequestError(error, "Failed to delete area");
+                        showRequestError(error);
                     },
                 });
             },
@@ -190,11 +190,11 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
             confirmText: nextStatus ? "Activate" : "Deactivate",
             onConfirm: async () => {
                 try {
-                    await axios.patch(`/areas/${area.id}/status`, { is_active: nextStatus });
+                    await http.patch(`/areas/${area.id}/status`, { is_active: nextStatus });
                     showStatusModal("success", "Success", `Area "${area.area}" has been ${nextStatus ? "activated" : "deactivated"}`);
                     reloadPage();
                 } catch (error) {
-                    showRequestError(error, "Failed to update area status");
+                    showRequestError(error);
                 }
             },
         });
@@ -208,11 +208,11 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
             confirmText: "Restore",
             onConfirm: async () => {
                 try {
-                    await axios.patch(`/areas/${area.id}/restore`);
+                    await http.patch(`/areas/${area.id}/restore`);
                     showStatusModal("success", "Success", `Area "${area.area}" has been restored`);
                     reloadPage();
                 } catch (error) {
-                    showRequestError(error, "Failed to restore area");
+                    showRequestError(error);
                 }
             },
         });
@@ -227,7 +227,7 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
             confirmVariant: "danger",
             onConfirm: async () => {
                 try {
-                    await axios.delete(`/areas/${area.id}/force`);
+                    await http.delete(`/areas/${area.id}/force`);
                     showStatusModal("success", "Success", `Area "${area.area}" has been permanently deleted`);
                     reloadPage();
                 } catch (error) {

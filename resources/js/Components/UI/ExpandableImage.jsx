@@ -1,5 +1,4 @@
 import { useState, useRef } from "react";
-import { createPortal } from "react-dom";
 import ModalOverlay from "@/Components/Modal/ModalOverlay";
 import { HiOutlineX } from "react-icons/hi";
 
@@ -75,10 +74,10 @@ const ExpandableImage = ({ src, alt, className, style, onClick, ...props }) => {
         {...props}
       />
 
-      {isOpen && typeof window !== "undefined" && createPortal(
+      {isOpen && (
         <ModalOverlay isOpen={isOpen} onClose={handleClose}>
           <div
-            className="fixed inset-0 bg-black flex items-center justify-center overflow-hidden z-[9999]"
+            className="absolute inset-0 flex items-center justify-center overflow-hidden bg-black"
             onWheel={handleWheel}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -109,8 +108,7 @@ const ExpandableImage = ({ src, alt, className, style, onClick, ...props }) => {
               <HiOutlineX className="w-6 h-6 md:w-10 md:h-10" />
             </button>
           </div>
-        </ModalOverlay>,
-        document.body
+        </ModalOverlay>
       )}
     </>
   );

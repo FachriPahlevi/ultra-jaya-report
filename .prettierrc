@@ -1,6 +1,6 @@
 {
   "semi": true,
   "singleQuote": false,
-  "printWidth": 210,
-  "prettier.printWidth": 210
+    "printWidth": 120,
+    "prettier.printWidth": 120
 }

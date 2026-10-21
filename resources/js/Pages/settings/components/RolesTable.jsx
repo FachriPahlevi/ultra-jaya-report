@@ -2,6 +2,7 @@ import BtnDefault from "@/Components/Button/BtnDefault";
 import InputSelect from "@/Components/Input/InputSelect";
 import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineShieldCheck } from "react-icons/hi";
 import { FileText } from "lucide-react";
+import Can from "@/Components/Authorization/Can";
 
 function RoleActionButton({ children, tone = "subtle", className = "", ...props }) {
     const tones = {
@@ -42,16 +43,18 @@ function TableHeader({ totalRoles, onAdd }) {
             </div>
             <div className="flex items-center gap-3">
                 <span className="hidden text-[12px] font-medium text-muted-foreground sm:inline">{totalRoles} records</span>
-                <BtnDefault onClick={onAdd} size="md" className="h-10 gap-2 rounded-2xl px-4 shadow-none">
-                    <HiOutlinePlus className="h-4 w-4" />
-                    Add Role
-                </BtnDefault>
+                <Can permission="roles.create">
+                    <BtnDefault onClick={onAdd} size="md" className="h-10 gap-2 rounded-2xl px-4 shadow-none">
+                        <HiOutlinePlus className="h-4 w-4" />
+                        Add Role
+                    </BtnDefault>
+                </Can>
             </div>
         </div>
     );
 }
 
-function DesktopTable({ roles, onEdit, onDelete, onManagePermissions }) {
+function DesktopTable({ roles, onEdit, onDelete, onManagePermissions, systemRoles }) {
     return (
         <div className="hidden overflow-x-auto sm:block">
             <table className="w-full border-collapse">
@@ -83,20 +86,16 @@ function DesktopTable({ roles, onEdit, onDelete, onManagePermissions }) {
                                 </td>
                                 <td className="px-6 py-5">
                                     <div className="flex flex-wrap items-center gap-1.5">
-                                        <RoleActionButton onClick={() => onManagePermissions(role)} title="Manage Permissions">
-                                            <HiOutlineShieldCheck className="mr-1.5 h-4 w-4" />
-                                            Permissions
-                                        </RoleActionButton>
-                                        {role.name !== "SUPER_ADMIN" && (
+                                        <Can permission="permissions.manage">
+                                            <RoleActionButton onClick={() => onManagePermissions(role)} title="Manage Permissions">
+                                                <HiOutlineShieldCheck className="mr-1.5 h-4 w-4" />
+                                                Permissions
+                                            </RoleActionButton>
+                                        </Can>
+                                        {!systemRoles.includes(role.name) && (
                                             <>
-                                                <RoleActionButton onClick={() => onEdit(role)} title="Edit Role">
-                                                    <HiOutlinePencil className="mr-1.5 h-4 w-4" />
-                                                    Edit
-                                                </RoleActionButton>
-                                                <RoleActionButton onClick={() => onDelete(role)} tone="danger" title="Delete Role">
-                                                    <HiOutlineTrash className="mr-1.5 h-4 w-4" />
-                                                    Delete
-                                                </RoleActionButton>
+                                                <Can permission="roles.edit"><RoleActionButton onClick={() => onEdit(role)} title="Edit Role"><HiOutlinePencil className="mr-1.5 h-4 w-4" />Edit</RoleActionButton></Can>
+                                                <Can permission="roles.delete"><RoleActionButton onClick={() => onDelete(role)} tone="danger" title="Delete Role"><HiOutlineTrash className="mr-1.5 h-4 w-4" />Delete</RoleActionButton></Can>
                                             </>
                                         )}
                                     </div>
@@ -110,7 +109,7 @@ function DesktopTable({ roles, onEdit, onDelete, onManagePermissions }) {
     );
 }
 
-function MobileList({ roles, onEdit, onDelete, onManagePermissions }) {
+function MobileList({ roles, onEdit, onDelete, onManagePermissions, systemRoles }) {
     return (
         <div className="flex flex-col gap-3 p-4 sm:hidden">
             {roles.length === 0 ? (
@@ -130,20 +129,11 @@ function MobileList({ roles, onEdit, onDelete, onManagePermissions }) {
                         </div>
 
                         <div className="mt-4 flex flex-wrap justify-end gap-1.5 border-t border-border pt-4">
-                            <RoleActionButton onClick={() => onManagePermissions(role)} title="Manage Permissions">
-                                <HiOutlineShieldCheck className="mr-1.5 h-4 w-4" />
-                                Permissions
-                            </RoleActionButton>
-                            {role.name !== "SUPER_ADMIN" && (
+                            <Can permission="permissions.manage"><RoleActionButton onClick={() => onManagePermissions(role)} title="Manage Permissions"><HiOutlineShieldCheck className="mr-1.5 h-4 w-4" />Permissions</RoleActionButton></Can>
+                            {!systemRoles.includes(role.name) && (
                                 <>
-                                    <RoleActionButton onClick={() => onEdit(role)} title="Edit Role">
-                                        <HiOutlinePencil className="mr-1.5 h-4 w-4" />
-                                        Edit
-                                    </RoleActionButton>
-                                    <RoleActionButton onClick={() => onDelete(role)} tone="danger" title="Delete Role">
-                                        <HiOutlineTrash className="mr-1.5 h-4 w-4" />
-                                        Delete
-                                    </RoleActionButton>
+                                    <Can permission="roles.edit"><RoleActionButton onClick={() => onEdit(role)} title="Edit Role"><HiOutlinePencil className="mr-1.5 h-4 w-4" />Edit</RoleActionButton></Can>
+                                    <Can permission="roles.delete"><RoleActionButton onClick={() => onDelete(role)} tone="danger" title="Delete Role"><HiOutlineTrash className="mr-1.5 h-4 w-4" />Delete</RoleActionButton></Can>
                                 </>
                             )}
                         </div>
@@ -154,7 +144,7 @@ function MobileList({ roles, onEdit, onDelete, onManagePermissions }) {
     );
 }
 
-export default function RolesTable({ roles, onAdd, onEdit, onDelete, onManagePermissions, isSuperadmin, displayCount, onDisplayCountChange }) {
+export default function RolesTable({ roles, onAdd, onEdit, onDelete, onManagePermissions, isSuperadmin, systemRoles, displayCount, onDisplayCountChange }) {
     const visibleRoles = getVisibleRoles(roles, isSuperadmin);
     const displayedRoles = displayCount === -1 ? visibleRoles : visibleRoles.slice(0, displayCount);
 
@@ -181,8 +171,8 @@ export default function RolesTable({ roles, onAdd, onEdit, onDelete, onManagePer
                     />
                 </div>
             </div>
-            <DesktopTable roles={displayedRoles} onEdit={onEdit} onDelete={onDelete} onManagePermissions={onManagePermissions} />
-            <MobileList roles={displayedRoles} onEdit={onEdit} onDelete={onDelete} onManagePermissions={onManagePermissions} />
+            <DesktopTable roles={displayedRoles} onEdit={onEdit} onDelete={onDelete} onManagePermissions={onManagePermissions} systemRoles={systemRoles} />
+            <MobileList roles={displayedRoles} onEdit={onEdit} onDelete={onDelete} onManagePermissions={onManagePermissions} systemRoles={systemRoles} />
         </section>
     );
 }

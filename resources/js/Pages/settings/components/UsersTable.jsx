@@ -3,6 +3,7 @@ import BtnDefault from "@/Components/Button/BtnDefault";
 import InputSelect from "@/Components/Input/InputSelect";
 import { HiOutlinePencil, HiOutlineTrash } from "react-icons/hi";
 import { FileText, Plus } from "lucide-react";
+import Can from "@/Components/Authorization/Can";
 
 const USER_TABLE_COLUMNS = ["No", "User", "Email", "Role", "Actions"];
 
@@ -64,7 +65,7 @@ function visitWithActiveTab(url, activeTab) {
     });
 }
 
-function TableHeader({ totalUsers, onAdd }) {
+function TableHeader({ onAdd }) {
     return (
         <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-5">
             <div className="flex items-center gap-3">
@@ -74,10 +75,12 @@ function TableHeader({ totalUsers, onAdd }) {
                 <h2 className="text-[15px] font-bold text-foreground">System Users</h2>
             </div>
             <div className="flex items-center gap-3">
-                <BtnDefault onClick={onAdd} size="md" className="h-10 gap-2 rounded-2xl px-4 shadow-none">
-                    <Plus className="h-4 w-4" />
-                    Add User
-                </BtnDefault>
+                <Can permission="users.create">
+                    <BtnDefault onClick={onAdd} size="md" className="h-10 gap-2 rounded-2xl px-4 shadow-none">
+                        <Plus className="h-4 w-4" />
+                        Add User
+                    </BtnDefault>
+                </Can>
             </div>
         </div>
     );
@@ -127,15 +130,9 @@ function DesktopTable({ users, auth, onEdit, onDelete }) {
                                 </td>
                                 <td className="px-6 py-5">
                                     <div className="flex items-center gap-1.5">
-                                        <UserActionButton onClick={() => onEdit(user)} title="Edit User">
-                                            <HiOutlinePencil className="mr-1.5 h-4 w-4" />
-                                            Edit
-                                        </UserActionButton>
+                                        <Can permission="users.edit"><UserActionButton onClick={() => onEdit(user)} title="Edit User"><HiOutlinePencil className="mr-1.5 h-4 w-4" />Edit</UserActionButton></Can>
                                         {user.roles[0]?.name !== "SUPER_ADMIN" && (
-                                            <UserActionButton onClick={() => onDelete(user)} tone="danger" title="Delete User">
-                                                <HiOutlineTrash className="mr-1.5 h-4 w-4" />
-                                                Delete
-                                            </UserActionButton>
+                                            <Can permission="users.delete"><UserActionButton onClick={() => onDelete(user)} tone="danger" title="Delete User"><HiOutlineTrash className="mr-1.5 h-4 w-4" />Delete</UserActionButton></Can>
                                         )}
                                     </div>
                                 </td>
@@ -176,15 +173,9 @@ function MobileList({ users, auth, onEdit, onDelete }) {
                         <AreaAssignmentChips user={user} />
 
                         <div className="mt-4 flex justify-end gap-1.5 border-t border-border pt-4">
-                            <UserActionButton onClick={() => onEdit(user)} title="Edit User">
-                                <HiOutlinePencil className="mr-1.5 h-4 w-4" />
-                                Edit
-                            </UserActionButton>
+                            <Can permission="users.edit"><UserActionButton onClick={() => onEdit(user)} title="Edit User"><HiOutlinePencil className="mr-1.5 h-4 w-4" />Edit</UserActionButton></Can>
                             {user.roles[0]?.name !== "SUPER_ADMIN" && (
-                                <UserActionButton onClick={() => onDelete(user)} tone="danger" title="Delete User">
-                                    <HiOutlineTrash className="mr-1.5 h-4 w-4" />
-                                    Delete
-                                </UserActionButton>
+                                <Can permission="users.delete"><UserActionButton onClick={() => onDelete(user)} tone="danger" title="Delete User"><HiOutlineTrash className="mr-1.5 h-4 w-4" />Delete</UserActionButton></Can>
                             )}
                         </div>
                     </div>
@@ -195,11 +186,9 @@ function MobileList({ users, auth, onEdit, onDelete }) {
 }
 
 export default function UsersTable({ users, onEdit, onDelete, onAdd, auth, usersPerPage, onUsersPerPageChange, activeTab = "users" }) {
-    const totalUsers = getVisibleUsers(users, auth).length;
-
     return (
         <section className="overflow-hidden rounded-[24px] border border-border bg-card">
-            <TableHeader totalUsers={totalUsers} onAdd={onAdd} />
+            <TableHeader onAdd={onAdd} />
             <div className="border-b border-border px-4 py-3 sm:px-6">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[12px] text-muted-foreground">Showing {users.data.length} records</p>

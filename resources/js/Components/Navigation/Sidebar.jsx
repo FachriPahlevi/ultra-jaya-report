@@ -8,18 +8,21 @@ import {
     HiOutlineCog,
     HiOutlineLogout,
 } from "react-icons/hi";
+import { LAYERS } from "@/lib/layers";
 
-const NAV_ITEMS = [
-    { href: "/", label: "Dashboard", icon: HiOutlineViewGrid, permission: "menu.dashboard" },
-    { href: "/reports", label: "All reports", icon: HiOutlineDocumentReport, permission: "menu.reports" },
-    { href: "/areas", label: "Areas", icon: HiOutlineMap, permission: "menu.areas" },
-    { href: "/activities", label: "Activities", icon: HiOutlineLightningBolt, permission: "menu.activities" },
-    { href: "/settings", label: "Settings", icon: HiOutlineCog, permission: "menu.settings" },
-];
+const NAV_ICONS = {
+    dashboard: HiOutlineViewGrid,
+    reports: HiOutlineDocumentReport,
+    areas: HiOutlineMap,
+    activities: HiOutlineLightningBolt,
+    settings: HiOutlineCog,
+};
 
 const SidebarItem = ({ item, active, onClick }) => {
     if (!item?.icon) return null;
-    const Icon = item.icon;
+    const Icon = NAV_ICONS[item.icon];
+
+    if (!Icon) return null;
 
     return (
         <Link
@@ -42,7 +45,6 @@ const SidebarItem = ({ item, active, onClick }) => {
 const Sidebar = ({ sidebarOpen, closeSidebar }) => {
     const { props, url } = usePage();
     const currentUser = props.auth?.user;
-    const permissions = props.auth?.user?.permissions || [];
 
     const isActive = (href) => (href === "/" ? url === "/" : url.startsWith(href));
 
@@ -54,15 +56,13 @@ const Sidebar = ({ sidebarOpen, closeSidebar }) => {
         return roles[0] || "User";
     };
 
-    const filteredNav = NAV_ITEMS.filter((item) =>
-        !item.permission ? true : permissions.includes(item.permission)
-    );
+    const navItems = props.navItems ?? [];
 
     return (
         <aside
             className={`
                 w-[220px] bg-[var(--sidebar-background)] border-r border-[var(--sidebar-border)]
-                fixed top-0 left-0 h-screen z-50 flex flex-col
+                fixed top-0 left-0 h-screen ${LAYERS.sidebar} flex flex-col
                 transition-transform duration-300
                 ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
             `}
@@ -75,9 +75,9 @@ const Sidebar = ({ sidebarOpen, closeSidebar }) => {
             </div>
 
             <nav className="flex-1 py-4 space-y-0.5 overflow-y-auto">
-                {filteredNav.map((item) => (
+                {navItems.map((item) => (
                     <SidebarItem
-                        key={item.label}
+                        key={item.href}
                         item={item}
                         active={isActive(item.href)}
                         onClick={closeSidebar}

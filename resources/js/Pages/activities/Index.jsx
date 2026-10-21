@@ -1,13 +1,14 @@
 import { getRequestErrorMessage } from "@/lib/errorMessages";
 import { useState } from "react";
-import { Head, router, usePage } from "@inertiajs/react";
-import axios from "axios";
+import { Head, router } from "@inertiajs/react";
+import http from "@/lib/http";
 import AppLayout from "@/Layouts/AppLayout";
 import BtnDefault from "@/Components/Button/BtnDefault";
 import { useStatusModal } from "@/Components/Context/StatusModalContext";
 import { HiOutlinePlus } from "react-icons/hi";
 import ActivityListSection from "./components/ActivityListSection";
 import ActivityFormModal from "./components/ActivityFormModal";
+import { useAuthorization } from "@/hooks/useAuthorization";
 
 const INITIAL_FORM = {
     name: "",
@@ -18,12 +19,11 @@ const INITIAL_FORM = {
 };
 
 export default function Index({ activities = { data: [], links: [], meta: {} }, parentActivities = [], activityTotals = { all: 0 } }) {
-    const { props } = usePage();
+    const { can } = useAuthorization();
     const { setStatusModalProps } = useStatusModal();
-    const permissions = props.auth?.user?.permissions || [];
-    const canAdd = permissions.includes("activities.create");
-    const canEdit = permissions.includes("activities.edit");
-    const canDelete = permissions.includes("activities.delete");
+    const canAdd = can("activities.create");
+    const canEdit = can("activities.edit");
+    const canDelete = can("activities.delete");
 
     const [showModal, setShowModal] = useState(false);
     const [editTarget, setEditTarget] = useState(null);
@@ -49,11 +49,10 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
         router.reload({ only: ["activities", "parentActivities"] });
     };
 
-    const showRequestError = (error, fallbackMessage) => {
+    const showRequestError = (error) => {
         if (error.response?.status === 422) {
             const payloadErrors = error.response.data.errors || {};
             setErrors(payloadErrors);
-            const firstError = Object.values(payloadErrors)[0];
             showStatusModal("error", "Validation Error", getRequestErrorMessage(error));
             return;
         }
@@ -151,17 +150,17 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
 
         try {
             if (editTarget) {
-                await axios.put(`/activities/${editTarget.id}`, submitData);
+                await http.put(`/activities/${editTarget.id}`, submitData);
                 showStatusModal("success", "Success", `Activity "${form.name}" has been updated`);
             } else {
-                await axios.post("/activities", submitData);
+                await http.post("/activities", submitData);
                 showStatusModal("success", "Success", `Activity "${form.name}" has been created`);
             }
 
             reloadActivities();
             closeModal();
         } catch (error) {
-            showRequestError(error, "Something went wrong. Please try again.");
+            showRequestError(error);
         } finally {
             setProcessing(false);
         }
@@ -179,11 +178,11 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
                 text: nextStatus ? "Activate" : "Deactivate",
                 onClick: async () => {
                     try {
-                        await axios.patch(`/activities/${activity.id}/status`, { is_active: nextStatus });
+                        await http.patch(`/activities/${activity.id}/status`, { is_active: nextStatus });
                         showStatusModal("success", "Success", `Activity "${activity.name}" has been ${nextStatus ? "activated" : "deactivated"}`);
                         reloadActivities();
                     } catch (error) {
-                        showRequestError(error, "Failed to update activity status");
+                        showRequestError(error);
                     }
                 },
             },
@@ -210,7 +209,7 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
                             reloadActivities();
                         },
                         onError: (error) => {
-                            showRequestError(error, "Failed to delete activity");
+                            showRequestError(error);
                         },
                     });
                 },

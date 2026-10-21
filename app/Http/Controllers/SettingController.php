@@ -16,6 +16,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class SettingController extends Controller
 {
@@ -31,18 +32,26 @@ class SettingController extends Controller
             $activeTab = 'roles';
         }
 
+        $user = $request->user();
+        $canViewUsers = $user->can('users.view');
+        $canViewRoles = $user->can('roles.view');
+
         $users = User::with(['roles', 'assignedAreas:id,area'])
+            ->when(! $canViewUsers, fn ($query) => $query->whereRaw('1 = 0'))
             ->latest()
             ->paginate($usersPerPage)
             ->withQueryString();
 
-        $roles = Role::with('permissions')->get();
-        $permissions = Permission::all();
+        $roles = $canViewRoles || $user->can('users.create') || $user->can('users.edit')
+            ? Role::with('permissions')->orderBy('name')->get()
+            : collect();
+        $permissions = $user->can('permissions.manage') ? $this->permissionCatalog() : [];
 
         return Inertia::render('settings/Index', [
             'users' => $users,
             'roles' => $roles,
             'permissions' => $permissions,
+            'systemRoles' => array_keys(config('rbac.roles')),
             'filters' => [
                 'users_per_page' => $usersPerPage,
                 'active_tab' => $activeTab,
@@ -143,15 +152,19 @@ class SettingController extends Controller
             'name' => ['required', 'string', 'max:255', 'unique:roles,name'],
         ]);
 
-        Role::create(['name' => $validated['name']]);
+        $role = Role::create(['name' => $validated['name']]);
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Role berhasil dibuat', 'role' => $role], 201);
+        }
 
         return redirect()->route('settings.index')->with('success', 'Role berhasil dibuat');
     }
 
     public function updateRole(Request $request, Role $role): JsonResponse
     {
-        if ($role->name === 'SUPER_ADMIN') {
-            throw new BusinessException('Role SUPER_ADMIN tidak dapat diedit');
+        if ($this->isSystemRole($role)) {
+            throw new BusinessException('Nama role bawaan sistem tidak dapat diubah.');
         }
 
         $validated = $request->validate([
@@ -165,8 +178,8 @@ class SettingController extends Controller
 
     public function deleteRole(Role $role): JsonResponse
     {
-        if ($role->name === 'SUPER_ADMIN') {
-            throw new BusinessException('Role SUPER_ADMIN adalah role sistem yang tidak dapat dihapus.');
+        if ($this->isSystemRole($role)) {
+            throw new BusinessException('Role bawaan sistem tidak dapat dihapus.');
         }
 
         $usersWithRole = User::role($role->name)->count();
@@ -183,12 +196,21 @@ class SettingController extends Controller
     public function syncRolePermissions(Request $request, Role $role): JsonResponse|RedirectResponse
     {
         if ($role->name === 'SUPER_ADMIN' && ! Auth::user()->hasRole('SUPER_ADMIN')) {
-            throw new BusinessException('Hanya SUPER_ADMIN yang dapat mengubah permission SUPER_ADMIN.');
+            throw new BusinessException('Hanya SUPER_ADMIN yang dapat mengubah permission role SUPER_ADMIN.', 403);
         }
 
-        $validated = $request->validate(['permissions' => ['array']]);
+        $validated = $request->validate([
+            'permissions' => ['array'],
+            'permissions.*' => ['string', Rule::in(array_keys(config('rbac.permissions')))],
+        ]);
 
         $role->syncPermissions($validated['permissions'] ?? []);
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        if ($request->wantsJson()) {
+            return response()->json(['message' => 'Permission berhasil disinkronkan']);
+        }
 
         return redirect()->route('settings.index')->with('success', 'Permission berhasil disinkronkan');
     }
@@ -213,5 +235,27 @@ class SettingController extends Controller
         $user->syncRoles([$validated['role']]);
 
         return redirect()->route('settings.index')->with('success', 'Role berhasil diassign ke user');
+    }
+
+    private function permissionCatalog(): array
+    {
+        $metadata = config('rbac.permissions');
+
+        return Permission::query()
+            ->orderBy('name')
+            ->get()
+            ->map(fn (Permission $permission) => [
+                'id' => $permission->id,
+                'name' => $permission->name,
+                'group' => $metadata[$permission->name]['group'] ?? 'Lainnya',
+                'label' => $metadata[$permission->name]['label'] ?? $permission->name,
+                'description' => $metadata[$permission->name]['description'] ?? '',
+            ])
+            ->all();
+    }
+
+    private function isSystemRole(Role $role): bool
+    {
+        return array_key_exists($role->name, config('rbac.roles'));
     }
 }
