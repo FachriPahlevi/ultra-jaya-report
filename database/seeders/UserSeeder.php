@@ -11,6 +11,7 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         $users = [
+            ['name' => 'Super Admin', 'email' => 'superadmin@gmail.com', 'password' => '123456', 'role' => 'SUPER_ADMIN'],
             ['name' => 'Sonny Effendhi', 'email' => 'sonny.effendhi@ultrajaya.co.id', 'password' => '707323', 'role' => 'ADMIN'],
             ['name' => 'Anang Suprianto', 'email' => 'anang.suprianto@ultrajaya.co.id', 'password' => '707264', 'role' => 'ADMIN'],
             ['name' => 'Andreas Suryo Bawono Isnandar', 'email' => 'andreas.isnandar@ultrajaya.co.id', 'password' => '707277', 'role' => 'ADMIN'],

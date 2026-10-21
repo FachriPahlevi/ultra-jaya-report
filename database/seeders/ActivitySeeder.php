@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Activity;
+use Illuminate\Database\Seeder;
 
 class ActivitySeeder extends Seeder
 {
@@ -11,63 +11,98 @@ class ActivitySeeder extends Seeder
     {
         $activityMap = [
             [
-                'name' => 'Kontrol',
-                'description' => 'Kegiatan kontrol kondisi area, utility, dan peralatan produksi.',
+                'name' => 'Behavior Based Safety',
+                'description' => 'Area: All | User Role: User, SPV, Manager',
                 'children' => [
-                    ['name' => 'Inspeksi panel listrik', 'description' => 'Pemeriksaan visual panel, indikator, dan sambungan listrik.'],
-                    ['name' => 'Monitoring suhu proses', 'description' => 'Pengecekan kestabilan suhu proses dan ruangan.'],
-                    ['name' => 'Cek kebersihan line', 'description' => 'Kontrol kebersihan line sebelum dan sesudah proses.'],
+                    ['name' => 'Good Behaviour', 'description' => 'User Role: User, SPV, Manager'],
+                    ['name' => 'Bad Behaviour', 'description' => 'User Role: User, SPV, Manager'],
                 ],
             ],
             [
-                'name' => 'Tracking',
-                'description' => 'Kegiatan pelacakan temuan produksi dan progres penanganan.',
+                'name' => 'Environment Issue',
+                'description' => 'Area: All | User Role: User, SPV, Manager',
                 'children' => [
-                    ['name' => 'Follow up downtime', 'description' => 'Pelacakan penyebab dan progres perbaikan downtime mesin.'],
-                    ['name' => 'Tracking sparepart', 'description' => 'Pelacakan kebutuhan dan ketersediaan sparepart kritikal.'],
-                    ['name' => 'Monitoring tindakan korektif', 'description' => 'Pemantauan tindak lanjut terhadap temuan lapangan.'],
+                    ['name' => 'Emission Issue', 'description' => 'User Role: User, SPV, Manager'],
+                    ['name' => 'B3 Issue', 'description' => 'User Role: User, SPV, Manager'],
+                    ['name' => 'Effluent WWTP Issue', 'description' => 'User Role: User, SPV, Manager'],
+                    ['name' => 'Waste Mangement', 'description' => 'User Role: User, SPV, Manager'],
                 ],
             ],
             [
-                'name' => 'Verifikasi',
-                'description' => 'Kegiatan verifikasi parameter, hasil cleaning, dan mutu proses.',
+                'name' => 'GMP Issue',
+                'description' => 'Area: All | User Role: User, SPV, Manager',
                 'children' => [
-                    ['name' => 'Verifikasi hasil cleaning', 'description' => 'Pengecekan hasil cleaning area dan equipment.'],
-                    ['name' => 'Verifikasi kualitas sealing', 'description' => 'Pemeriksaan mutu sealing pada kemasan jadi.'],
-                    ['name' => 'Verifikasi parameter CCP', 'description' => 'Validasi parameter proses pada titik kendali kritis.'],
+                    ['name' => 'Personal Hygiene', 'description' => 'User Role: User, SPV, Manager'],
+                    ['name' => 'Cleanliness', 'description' => 'User Role: User, SPV, Manager'],
                 ],
             ],
             [
-                'name' => 'Pendampingan',
-                'description' => 'Kegiatan pendampingan operasional dan koordinasi penanganan.',
+                'name' => 'DAKONTRAVER',
+                'description' => 'Area: All | User Role: SPV, Manager',
                 'children' => [
-                    ['name' => 'Pendampingan startup line', 'description' => 'Pendampingan saat line produksi mulai dijalankan.'],
-                    ['name' => 'Koordinasi tindak lanjut', 'description' => 'Koordinasi lintas fungsi untuk tindak lanjut temuan.'],
-                    ['name' => 'Briefing operator', 'description' => 'Pendampingan briefing singkat kepada operator area.'],
+                    ['name' => 'Dampingi', 'description' => 'User Role: SPV, Manager'],
+                    ['name' => 'Kontrol', 'description' => 'User Role: SPV, Manager'],
+                    ['name' => 'Tracking', 'description' => 'User Role: SPV, Manager'],
+                    ['name' => 'Verification', 'description' => 'User Role: SPV, Manager'],
+                ],
+            ],
+            [
+                'name' => 'Machine Abnormality',
+                'description' => 'Area: QA, Production, Engineering, HRGA | User Role: User, SPV, Manager',
+                'children' => [
+                    ['name' => 'Small Failures', 'description' => 'User Role: User, SPV, Manager'],
+                    ['name' => 'Unfulfilled Basic Conditions', 'description' => 'User Role: User, SPV, Manager'],
+                    ['name' => 'Hard to Reach Area', 'description' => 'User Role: User, SPV, Manager'],
+                    ['name' => 'Source of Dirt', 'description' => 'User Role: User, SPV, Manager'],
+                    ['name' => 'Quality Defect Sources', 'description' => 'User Role: User, SPV, Manager'],
+                    ['name' => 'Unnecesary Parts', 'description' => 'User Role: User, SPV, Manager'],
+                ],
+            ],
+            [
+                'name' => 'General Facility Issue',
+                'description' => 'Area: HRGA | User Role: User, SPV, Manager',
+                'children' => [
+                    ['name' => 'Loker Issue', 'description' => 'User Role: User, SPV, Manager'],
+                    ['name' => 'Kantin Issue', 'description' => 'User Role: User, SPV, Manager'],
+                    ['name' => 'Toilet Issue', 'description' => 'User Role: User, SPV, Manager'],
+                    ['name' => 'Others Issue', 'description' => 'User Role: User, SPV, Manager'],
                 ],
             ],
         ];
 
+        $allValidNames = collect($activityMap)
+            ->flatMap(fn($act) => array_merge([$act['name']], array_column($act['children'], 'name')))
+            ->all();
+
+        // Delete children first, then parents that are not in the valid activities list
+        Activity::whereNotIn('name', $allValidNames)->whereNotNull('parent_id')->forceDelete();
+        Activity::whereNotIn('name', $allValidNames)->whereNull('parent_id')->forceDelete();
+
         foreach ($activityMap as $activityData) {
-            $parent = Activity::updateOrCreate(
+            $parent = Activity::withTrashed()->updateOrCreate(
                 ['name' => $activityData['name']],
                 [
                     'description' => $activityData['description'],
                     'is_active' => true,
                     'parent_id' => null,
+                    'deleted_at' => null,
                 ]
             );
 
             foreach ($activityData['children'] as $childData) {
-                Activity::updateOrCreate(
+                Activity::withTrashed()->updateOrCreate(
                     ['name' => $childData['name']],
                     [
                         'description' => $childData['description'],
                         'is_active' => true,
                         'parent_id' => $parent->id,
+                        'deleted_at' => null,
                     ]
                 );
             }
         }
+
+        $totalSub = count($allValidNames) - count($activityMap);
+        $this->command->info(count($activityMap) . " main activities and {$totalSub} sub-activities seeded successfully.");
     }
 }
