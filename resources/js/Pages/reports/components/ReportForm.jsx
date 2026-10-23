@@ -6,18 +6,17 @@ import InputDropdown from "@/Components/Input/InputDropdown"
 import BtnDefault from "@/Components/Button/BtnDefault"
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
 import ExpandableImage from "@/Components/UI/ExpandableImage"
+import PhotoEditorModal from "./PhotoEditorModal"
 import { useStatusModal } from "@/Components/Context/StatusModalContext"
 import { HiOutlinePhotograph, HiOutlineX } from "react-icons/hi"
 import { createEmptyReportForm, createReportForm, createReportSelections } from "@/Pages/reports/utils/reportForm"
 
-export default function ReportForm({ isOpen, onClose, areas = [], activities = [], users = [], report = null }) {
+export default function ReportForm({ isOpen, onClose, areas = [], activities = [], report = null }) {
   const { setStatusModalProps } = useStatusModal()
   const { auth } = usePage().props
   const currentUser = auth?.user
-  const firstRole = currentUser?.roles?.[0]
-  const userRole = firstRole?.name?.toLowerCase?.() || (typeof firstRole === "string" ? firstRole.toLowerCase() : "user")
   const [photoPreview, setPhotoPreview] = useState(null)
-  const [selectedAuthor, setSelectedAuthor] = useState(null)
+  const [photoToEdit, setPhotoToEdit] = useState(null)
   const [selectedArea, setSelectedArea] = useState(null)
   const [selectedSubArea, setSelectedSubArea] = useState(null)
   const [selectedActivity, setSelectedActivity] = useState(null)
@@ -29,18 +28,18 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
     if (!isOpen) return
 
     const form = createReportForm(report, currentUser?.id)
-    const selections = createReportSelections(report, users, areas, activities)
+    const selections = createReportSelections(report, areas, activities)
 
     reset()
     clearErrors()
     setData(form)
-    setSelectedAuthor(selections.author)
     setSelectedArea(selections.area)
     setSelectedSubArea(selections.subArea)
     setSelectedActivity(selections.activity)
     setSelectedSubActivity(selections.subActivity)
     setPhotoPreview(null)
-  }, [isOpen, report, currentUser?.id, users, areas, activities, reset, clearErrors, setData])
+    setPhotoToEdit(null)
+  }, [isOpen, report, currentUser?.id, areas, activities, reset, clearErrors, setData])
 
   const showStatusModal = (type, title, message) => {
     setStatusModalProps({
@@ -56,20 +55,26 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
     const file = e.target.files[0]
     if (!file) return
 
-    const maxSizeBytes = 2 * 1024 * 1024 // 2 MB
+    const maxSizeBytes = 3 * 1024 * 1024
     if (file.size > maxSizeBytes) {
       showStatusModal("error", "File Terlalu Besar", getPhotoSizeMessage())
       e.target.value = ""
       return
     }
 
-    setData("photo", file)
-    setPhotoPreview(URL.createObjectURL(file))
+    setPhotoToEdit(file)
+    e.target.value = ""
   }
 
-  const handleAuthorChange = (item) => {
-    setData("author_id", item.value)
-    setSelectedAuthor(item)
+  const handleEditedPhoto = (file) => {
+    setData("photo", file)
+    setPhotoPreview(URL.createObjectURL(file))
+    setPhotoToEdit(null)
+  }
+
+  const removePhoto = () => {
+    setData("photo", null)
+    setPhotoPreview(null)
   }
 
   const handleTypeActivityChange = (item) => {
@@ -107,12 +112,12 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
     reset()
     clearErrors()
     setData(createEmptyReportForm(currentUser?.id))
-    setSelectedAuthor(null)
     setSelectedArea(null)
     setSelectedSubArea(null)
     setSelectedActivity(null)
     setSelectedSubActivity(null)
     setPhotoPreview(null)
+    setPhotoToEdit(null)
   }
 
   const handleCancel = () => {
@@ -149,12 +154,6 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
     })
   }
 
-  const canChangeAuthor = userRole === "super_admin" || userRole === "admin"
-
-  const userOptions = users.map((user) => ({
-    label: user.name,
-    value: user.id,
-  }))
   const selectedParentActivity = activities.find((activity) => String(activity.id) === String(data.type_activity))
   const selectedAreaData = areas.find((area) => String(area.id) === String(data.area_activity))
   const subAreaOptions = selectedAreaData?.sub_areas?.map((subArea) => ({ label: subArea.name, value: subArea.id })) ?? []
@@ -176,14 +175,10 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
 
         <div className="p-4 sm:p-6 max-h-[calc(90vh-80px)] overflow-y-auto">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 sm:gap-5">
-            {canChangeAuthor ? (
-              <InputDropdown id="author_id" label="Name" itemList={userOptions} placeholder="Select user..." required setObject={handleAuthorChange} object={selectedAuthor} error={errors.author_id} />
-            ) : (
-              <>
-                <InputText label="Name" value={currentUser?.name ?? ""} disabled />
-                <input type="hidden" name="author_id" value={currentUser?.id} />
-              </>
-            )}
+            <>
+              <InputText label="Name" value={currentUser?.name ?? ""} disabled />
+              <input type="hidden" name="author_id" value={currentUser?.id} />
+            </>
 
             <InputDropdown
               id="area_activity"
@@ -236,8 +231,6 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
               error={errors.sub_activity_id}
             />
 
-            <InputText id="activity" label="Activity" value={data.activity} onChange={handleActivityChange} placeholder="Describe the activity..." error={errors.activity} />
-
             <div>
               <label htmlFor="issue" className="text-[13px] font-semibold text-foreground mb-1.5 block">
                 Issue <span className="text-destructive">*</span>
@@ -252,22 +245,24 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
               {errors.issue && <p className="text-xs text-destructive mt-1">{errors.issue}</p>}
             </div>
 
+            <InputText id="activity" label="Notes" value={data.activity} onChange={handleActivityChange} placeholder="Tambahkan catatan bila diperlukan..." error={errors.activity} />
+
             <div>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                 <div>
                   <p className="text-[13px] font-semibold text-foreground">
                     Photo <span className="text-[11px] text-muted-foreground font-normal">(optional)</span>
                   </p>
-                  <p className="text-[11px] text-muted-foreground">Maks. 2 MB (format: JPG, JPEG, PNG)</p>
+                  <p className="text-[11px] text-muted-foreground">Maks. 3 MB (format: JPG, JPEG, PNG)</p>
                 </div>
                 <label
                   htmlFor="photo"
                   className="inline-flex items-center justify-center gap-1.5 bg-accent text-primary px-3.5 py-1.5 rounded-md text-[12.5px] font-semibold cursor-pointer transition-colors hover:bg-primary/20 w-full sm:w-auto"
                 >
                   <HiOutlinePhotograph className="w-3.5 h-3.5" />
-                  Upload
+                  Pilih Foto
                 </label>
-                <input id="photo" type="file" accept="image/jpeg,image/png,image/jpg" onChange={handlePhotoChange} className="hidden" />
+                <input id="photo" type="file" accept="image/jpeg,image/png,image/jpg" capture="environment" onChange={handlePhotoChange} className="hidden" />
               </div>
 
               <div
@@ -277,14 +272,19 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
                 }}
               >
                 {photoPreview ? (
-                  <ExpandableImage src={photoPreview} alt="Preview" className="w-full max-h-[240px] object-cover" />
+                  <div className="relative w-full">
+                    <ExpandableImage src={photoPreview} alt="Preview" className="w-full max-h-[240px] object-cover" />
+                    <button type="button" onClick={removePhoto} className="absolute right-2 top-2 rounded-lg bg-black/60 px-2 py-1 text-xs text-white">
+                      Hapus foto
+                    </button>
+                  </div>
                 ) : report?.photo_before ? (
                   <ExpandableImage src={`/storage/${report.photo_before}`} alt="Existing" className="w-full max-h-[240px] object-cover" />
                 ) : (
                   <div className="text-center text-muted-foreground py-6">
                     <HiOutlinePhotograph className="w-9 h-9 mx-auto mb-2 opacity-40" />
                     <span className="text-[12.5px]">Click Upload to add a photo</span>
-                    <span className="block text-[11px] text-muted-foreground/80 mt-0.5">Maksimal 2 MB (JPG, JPEG, PNG)</span>
+                    <span className="block text-[11px] text-muted-foreground/80 mt-0.5">Maksimal 3 MB (JPG, JPEG, PNG)</span>
                   </div>
                 )}
               </div>
@@ -302,6 +302,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
           </form>
         </div>
       </div>
+      <PhotoEditorModal file={photoToEdit} onClose={() => setPhotoToEdit(null)} onSave={handleEditedPhoto} />
     </ModalOverlay>
   )
 }

@@ -221,7 +221,7 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Master Activity</h1>
           {canAdd && (
             <BtnDefault onClick={() => openAdd()} size="md" className="h-11 min-w-[132px] gap-2 rounded-2xl px-4 shadow-none sm:min-w-[148px] sm:px-5">
-              <HiOutlinePlus className="h-4 w-4" />
+              <HiOutlinePlus className="h-5 w-5" />
               Add Activity
             </BtnDefault>
           )}

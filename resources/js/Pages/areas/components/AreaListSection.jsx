@@ -3,7 +3,7 @@ import BtnDefault from "@/Components/Button/BtnDefault"
 import { HiOutlinePencil, HiOutlineTrash } from "react-icons/hi"
 import { Building2, FileText, RotateCcw, Trash2 } from "lucide-react"
 
-const AREA_TABLE_COLUMNS = ["No", "Area Name", "Sub-area & Supervisor", "Assigned Users", "Actions"]
+const AREA_TABLE_COLUMNS = ["No", "Area Name", "Sub-area & Supervisor", "Manager Area", "Actions"]
 
 function getUserInitials(name = "") {
   return name
@@ -15,26 +15,32 @@ function getUserInitials(name = "") {
     .toUpperCase()
 }
 
-function AreaAssignedUsers({ pics = [], compact = false }) {
-  if (!pics.length) {
-    return <span className="text-[12px] text-muted-foreground">No assigned user</span>
+function AreaManagers({ managers = [], compact = false }) {
+  if (!managers.length) {
+    return <span className="text-[12px] text-muted-foreground">Belum ada manager ditugaskan</span>
   }
 
   return (
     <div className={`flex flex-wrap items-center gap-2 ${compact ? "max-w-full" : ""}`}>
-      {pics.map((pic) => (
-        <div key={pic.id} className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-2.5 py-1.5">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-foreground">{getUserInitials(pic.name)}</span>
-          <span className="text-[12px] font-medium text-foreground">{pic.name}</span>
+      {managers.map((manager) => (
+        <div key={manager.id} className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-2.5 py-1.5">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-foreground">{getUserInitials(manager.name)}</span>
+          <span className="text-[12px] font-medium text-foreground">{manager.name}</span>
         </div>
       ))}
     </div>
   )
 }
 
-function SubAreaAssignments({ subAreas = [] }) {
+function SubAreaAssignments({ area, subAreas = [], canEdit, onAdd, onEdit, onDelete }) {
   if (!subAreas.length) {
-    return <span className="text-[12px] text-muted-foreground">Belum ada sub-area</span>
+    return canEdit ? (
+      <button type="button" onClick={() => onAdd(area)} className="text-[12px] font-medium text-primary hover:underline">
+        Tambah sub-area
+      </button>
+    ) : (
+      <span className="text-[12px] text-muted-foreground">Belum ada sub-area</span>
+    )
   }
 
   return (
@@ -43,13 +49,25 @@ function SubAreaAssignments({ subAreas = [] }) {
         <div key={subArea.id} className="rounded-xl border border-border bg-background px-3 py-2">
           <div className="flex items-start justify-between gap-2">
             <p className="text-[12px] font-semibold text-foreground">{subArea.name}</p>
-            <span className="shrink-0 text-[10px] text-muted-foreground">
-              {subArea.personnel_count}/{subArea.max_personnel} SPV
-            </span>
+            {canEdit && (
+              <div className="flex gap-1">
+                <button type="button" onClick={() => onEdit(area, subArea)} className="text-[11px] font-medium text-muted-foreground hover:text-foreground">
+                  Ubah
+                </button>
+                <button type="button" onClick={() => onDelete(area, subArea)} className="text-[11px] font-medium text-red-600 hover:text-red-700">
+                  Hapus
+                </button>
+              </div>
+            )}
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground">{subArea.supervisors?.length ? subArea.supervisors.map((supervisor) => supervisor.name).join(", ") : "Belum ada supervisor"}</p>
         </div>
       ))}
+      {canEdit && (
+        <button type="button" onClick={() => onAdd(area)} className="rounded-xl border border-dashed border-border px-3 py-2 text-left text-[12px] font-medium text-primary hover:bg-muted/40">
+          + Tambah sub-area
+        </button>
+      )}
     </div>
   )
 }
@@ -158,7 +176,7 @@ function AreaEmptyState() {
   )
 }
 
-function AreaDesktopTable({ areas, totalAreas, canEdit, canDelete, onEdit, onArchive, onRestore, onForceDelete }) {
+function AreaDesktopTable({ areas, totalAreas, canEdit, canDelete, onEdit, onAddSubArea, onEditSubArea, onDeleteSubArea, onArchive, onRestore, onForceDelete }) {
   return (
     <div className="hidden overflow-hidden rounded-[28px] border border-border bg-card shadow-sm sm:block">
       <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-5">
@@ -197,10 +215,10 @@ function AreaDesktopTable({ areas, totalAreas, canEdit, canDelete, onEdit, onArc
                     <p className="min-w-[220px] text-[14px] font-semibold text-foreground">{area.area}</p>
                   </td>
                   <td className="px-6 py-5">
-                    <SubAreaAssignments subAreas={area.sub_areas} />
+                    <SubAreaAssignments area={area} subAreas={area.sub_areas} canEdit={canEdit} onAdd={onAddSubArea} onEdit={onEditSubArea} onDelete={onDeleteSubArea} />
                   </td>
                   <td className="px-6 py-5 min-w-[280px]">
-                    <AreaAssignedUsers pics={area.pics} />
+                    <AreaManagers managers={area.managers} />
                   </td>
                   <td className="px-6 py-5 w-[220px]">
                     <AreaActions area={area} canEdit={canEdit} canDelete={canDelete} onEdit={onEdit} onArchive={onArchive} onRestore={onRestore} onForceDelete={onForceDelete} />
@@ -217,7 +235,7 @@ function AreaDesktopTable({ areas, totalAreas, canEdit, canDelete, onEdit, onArc
   )
 }
 
-function AreaMobileList({ areas, canEdit, canDelete, onEdit, onArchive, onRestore, onForceDelete }) {
+function AreaMobileList({ areas, canEdit, canDelete, onEdit, onAddSubArea, onEditSubArea, onDeleteSubArea, onArchive, onRestore, onForceDelete }) {
   return (
     <div className="flex flex-col gap-3 sm:hidden">
       {areas.data.length === 0 ? (
@@ -235,9 +253,9 @@ function AreaMobileList({ areas, canEdit, canDelete, onEdit, onArchive, onRestor
 
             <div className="mt-4 border-t border-border pt-4">
               <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Assigned Users</p>
-              <AreaAssignedUsers pics={area.pics} compact />
+              <AreaManagers managers={area.managers} compact />
               <p className="mb-3 mt-5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Sub-area & Supervisor</p>
-              <SubAreaAssignments subAreas={area.sub_areas} />
+              <SubAreaAssignments area={area} subAreas={area.sub_areas} canEdit={canEdit} onAdd={onAddSubArea} onEdit={onEditSubArea} onDelete={onDeleteSubArea} />
             </div>
           </div>
         ))

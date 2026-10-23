@@ -24,7 +24,7 @@ return [
         'areas.create' => ['group' => 'Area', 'label' => 'Membuat area', 'description' => 'Menambahkan area baru.'],
         'areas.edit' => ['group' => 'Area', 'label' => 'Mengubah area', 'description' => 'Mengubah nama, status, dan PIC area.'],
         'areas.delete' => ['group' => 'Area', 'label' => 'Menghapus area', 'description' => 'Mengarsipkan, memulihkan, atau menghapus area permanen bila tidak memiliki riwayat laporan.'],
-        'areas.assign.supervisor' => ['group' => 'Area', 'label' => 'Menetapkan PIC area', 'description' => 'Menetapkan supervisor sebagai PIC pada area.'],
+        'areas.assign.supervisor' => ['group' => 'Legacy', 'label' => 'Mapping PIC area (lama)', 'description' => 'Tidak digunakan. Scope Manager dan Supervisor diatur dari Pengaturan Pengguna.'],
 
         'activities.view' => ['group' => 'Aktivitas', 'label' => 'Melihat aktivitas', 'description' => 'Melihat aktivitas utama dan subaktivitas.'],
         'activities.create' => ['group' => 'Aktivitas', 'label' => 'Membuat aktivitas', 'description' => 'Menambahkan aktivitas utama atau subaktivitas.'],
@@ -50,7 +50,7 @@ return [
     'roles' => [
         'SUPER_ADMIN' => ['label' => 'Super Admin', 'description' => 'Mengelola seluruh konfigurasi aplikasi dan RBAC.', 'permissions' => ['*']],
         'ADMIN' => ['label' => 'Admin', 'description' => 'Mengelola operasional pengguna, area, aktivitas, dan laporan.', 'permissions' => [
-            'areas.view', 'areas.create', 'areas.edit', 'areas.delete', 'areas.assign.supervisor',
+            'areas.view', 'areas.create', 'areas.edit', 'areas.delete',
             'activities.view', 'activities.create', 'activities.edit', 'activities.delete',
             'users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign.area', 'users.promote',
             'reports.view.all', 'reports.create', 'reports.delete.all', 'reports.solve.all', 'settings.view',

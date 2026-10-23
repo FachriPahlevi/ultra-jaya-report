@@ -8,7 +8,7 @@ function ActivityTableHeader({ totalActivities }) {
     <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-5">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-muted/30 text-muted-foreground">
-          <FileText className="h-4 w-4" />
+          <FileText className="h-5 w-5" />
         </div>
         <h3 className="text-[15px] font-bold text-foreground">Activity Directory</h3>
       </div>

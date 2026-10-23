@@ -10,7 +10,10 @@ use App\Models\Report;
 use App\Models\SubArea;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
+use Database\Seeders\TestScenarioSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -100,21 +103,14 @@ class ManagementWorkflowTest extends TestCase
 
     public function test_default_roles_only_see_reports_in_their_assigned_scope(): void
     {
-        $this->seed(RoleSeeder::class);
-        $user = $this->roleUser('USER');
-        $supervisor = $this->roleUser('SUPERVISOR');
-        $manager = $this->roleUser('MANAGER');
-        $admin = $this->roleUser('ADMIN');
-        [$assignedArea, $assignedSubArea, $activity] = $this->reportContext();
-        $otherArea = Area::create(['area' => 'Area lain', 'is_active' => true]);
-        $otherSubArea = SubArea::create(['area_id' => $otherArea->id, 'name' => 'Sub area lain', 'max_personnel' => 1, 'is_active' => true]);
-
-        $assignedSubArea->supervisors()->attach($supervisor);
-        $manager->managedAreas()->attach($assignedArea);
-
-        $ownReport = $this->createReport($user, $assignedArea, $assignedSubArea, $activity, 'Laporan user');
-        $supervisorAreaReport = $this->createReport($admin, $assignedArea, $assignedSubArea, $activity, 'Laporan area SPV');
-        $otherReport = $this->createReport($admin, $otherArea, $otherSubArea, $activity, 'Laporan area lain');
+        $this->seed(TestScenarioSeeder::class);
+        $user = User::where('email', 'test.user@example.test')->firstOrFail();
+        $supervisor = User::where('email', 'test.supervisor@example.test')->firstOrFail();
+        $manager = User::where('email', 'test.manager@example.test')->firstOrFail();
+        $admin = User::where('email', 'test.admin@example.test')->firstOrFail();
+        $ownReport = Report::where('issue', 'Laporan milik user uji')->firstOrFail();
+        $supervisorAreaReport = Report::where('issue', 'Laporan area supervisor uji')->firstOrFail();
+        $otherReport = Report::where('issue', 'Laporan di luar scope uji')->firstOrFail();
 
         $this->actingAs($user)->get(route('reports.index'))
             ->assertInertia(fn (Assert $page) => $page->has('reports', 1)->where('reports.0.id', $ownReport->id));
@@ -129,6 +125,18 @@ class ManagementWorkflowTest extends TestCase
         $this->assertFalse($manager->can('close', $supervisorAreaReport));
         $this->assertTrue($supervisor->can('close', $supervisorAreaReport));
         $this->assertFalse($supervisor->can('close', $otherReport));
+    }
+
+    public function test_test_scenario_seeder_creates_valid_role_scopes(): void
+    {
+        $this->seed(TestScenarioSeeder::class);
+
+        $manager = User::where('email', 'test.manager@example.test')->firstOrFail();
+        $supervisor = User::where('email', 'test.supervisor@example.test')->firstOrFail();
+
+        $this->assertTrue($manager->managedAreas()->where('area', 'Area Uji RBAC')->exists());
+        $this->assertTrue($supervisor->supervisedSubAreas()->where('name', 'Sub-area Uji RBAC')->exists());
+        $this->assertDatabaseCount('reports', 3);
     }
 
     public function test_admin_creates_manager_and_supervisor_with_required_scope(): void
@@ -200,6 +208,44 @@ class ManagementWorkflowTest extends TestCase
         $this->actingAs($admin)->get(route('areas.index'))->assertOk();
         $this->actingAs($admin)->get(route('activities.index'))->assertOk();
         $this->actingAs($admin)->get(route('settings.index'))->assertOk();
+    }
+
+    public function test_report_photo_accepts_three_megabytes_and_rejects_larger_files(): void
+    {
+        Storage::fake('public');
+        $user = $this->userWithPermissions(['reports.create', 'reports.view.own']);
+        [$area, $subArea, $activity] = $this->reportContext();
+
+        $this->actingAs($user)->post(route('reports.store'), [
+            'type_activity' => $activity->id,
+            'area_activity' => $area->id,
+            'sub_area_id' => $subArea->id,
+            'issue' => 'Foto tiga megabyte',
+            'photo' => UploadedFile::fake()->image('evidence.jpg')->size(3072),
+        ])->assertRedirect();
+
+        $report = Report::firstOrFail();
+        $this->assertNotNull($report->photo_before);
+        Storage::disk('public')->assertExists($report->photo_before);
+
+        $this->actingAs($user)->post(route('reports.store'), [
+            'type_activity' => $activity->id,
+            'area_activity' => $area->id,
+            'sub_area_id' => $subArea->id,
+            'issue' => 'Foto terlalu besar',
+            'photo' => UploadedFile::fake()->image('too-large.jpg')->size(3073),
+        ])->assertSessionHasErrors('photo');
+    }
+
+    public function test_excel_export_is_an_xlsx_download(): void
+    {
+        $user = $this->userWithPermissions(['reports.view.all']);
+        [$area, $subArea, $activity] = $this->reportContext();
+        $this->createReport($user, $area, $subArea, $activity, 'Laporan ekspor');
+
+        $this->actingAs($user)->get(route('reports.export', 'excel'))
+            ->assertOk()
+            ->assertDownload();
     }
 
     private function userWithPermissions(array $permissions): User

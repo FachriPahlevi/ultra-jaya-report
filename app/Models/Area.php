@@ -29,6 +29,11 @@ class Area extends Model
     {
         return $this->belongsToMany(User::class)->withTimestamps();
     }
+
+    public function managers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class)->withTimestamps();
+    }
     public function subAreas(): HasMany { return $this->hasMany(SubArea::class); }
 
     public function reports(): HasMany

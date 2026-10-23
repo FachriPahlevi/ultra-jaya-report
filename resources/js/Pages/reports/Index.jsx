@@ -13,7 +13,7 @@ import Pagination from "@/Components/Navigation/Pagination"
 import ExpandableImage from "@/Components/UI/ExpandableImage"
 import { useReports } from "@/Pages/reports/hooks/useReports"
 import { HiOutlineX, HiOutlinePlus } from "react-icons/hi"
-import { SlidersHorizontal, File, FileDown, ChevronDown, ChevronUp, Search, FileText } from "lucide-react"
+import { CalendarClock, File, FileDown, FileText, Image as ImageIcon, MapPin, Search, SlidersHorizontal, StickyNote, UserRound, ChevronDown, ChevronUp } from "lucide-react"
 import { useState } from "react"
 import { LAYERS } from "@/lib/layers"
 
@@ -199,13 +199,37 @@ function PageSizeSelect({ value, onChange, total, compact = false }) {
   )
 }
 
+function DetailField({ icon: Icon, label, children, className = "" }) {
+  return (
+    <section className={`rounded-2xl border border-border bg-background p-3.5 ${className}`}>
+      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+        <Icon className="h-4 w-4" />
+        {label}
+      </div>
+      <div className="mt-2 text-sm text-foreground">{children}</div>
+    </section>
+  )
+}
+
+function ReportPhoto({ src, label }) {
+  if (!src) return null
+
+  return (
+    <div className="min-w-0">
+      <p className="mb-2 text-[12px] font-semibold text-foreground">{label}</p>
+      <ExpandableImage src={`/storage/${src}`} alt={label} className="h-40 w-full rounded-xl border border-border object-cover" />
+    </div>
+  )
+}
+
 function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onDelete, isReportEditable, isReportDeletable, formatDate }) {
   if (!report) return null
-  const activityLabel = report.sub_activity?.name ?? report.activity_type?.name ?? report.activity ?? "-"
+  const mainActivity = report.activity_type?.name ?? "-"
+  const subActivity = report.sub_activity?.name
 
   return (
     <ModalOverlay id="report-detail-modal" isOpen={isOpen} onClose={onClose}>
-      <div className="bg-card rounded-2xl w-full max-w-md shadow-xl border border-border">
+      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
         <div className="flex items-center justify-between p-5 border-b border-border">
           <h3 className="text-lg font-semibold text-foreground">Report Details</h3>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
@@ -213,61 +237,61 @@ function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onD
           </button>
         </div>
 
-        <div className="p-5 space-y-4">
-          <div>
-            <div className="text-sm text-muted-foreground">Activity</div>
-            <div className="text-foreground font-medium mt-1">{activityLabel}</div>
+        <div className="space-y-4 overflow-y-auto p-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <DetailField icon={CalendarClock} label="Dibuat pada">
+              {formatDate(report.created_at)}
+            </DetailField>
+            <DetailField icon={UserRound} label="Dilaporkan oleh">
+              <p className="font-medium">{report.author?.name ?? "-"}</p>
+              {report.author?.role && <p className="mt-0.5 text-xs text-muted-foreground">{report.author.role}</p>}
+            </DetailField>
+            <DetailField icon={MapPin} label="Area">
+              {report.area?.area ?? "-"}
+            </DetailField>
+            <DetailField icon={MapPin} label="Sub-area">
+              {report.sub_area?.name ?? "-"}
+            </DetailField>
+            <DetailField icon={FileText} label="Aktivitas">
+              <p className="font-medium">{mainActivity}</p>
+              {subActivity && <p className="mt-0.5 text-xs text-muted-foreground">Sub activity: {subActivity}</p>}
+            </DetailField>
+            <DetailField icon={FileText} label="Status">
+              <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${report.status === "closed" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                {report.status === "closed" ? "Closed" : "Open"}
+              </span>
+            </DetailField>
           </div>
 
-          <div>
-            <div className="text-sm text-muted-foreground">Created At</div>
-            <div className="text-foreground mt-1">{formatDate(report.created_at)}</div>
-          </div>
+          <DetailField icon={StickyNote} label="Issue">
+            <p className="whitespace-pre-wrap break-words">{report.issue || "-"}</p>
+          </DetailField>
 
-          {report.author && (
-            <div>
-              <div className="text-sm text-muted-foreground">Submitted By</div>
-              <div className="text-foreground mt-1">{report.author.name}</div>
-              {report.author.role && <div className="text-xs text-muted-foreground mt-0.5">{report.author.role}</div>}
-            </div>
+          <DetailField icon={StickyNote} label="Notes">
+            <p className="whitespace-pre-wrap break-words">{report.activity || "-"}</p>
+          </DetailField>
+
+          {(report.photo_before || report.photo_after) && (
+            <DetailField icon={ImageIcon} label="Foto laporan">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <ReportPhoto src={report.photo_before} label="Foto sebelum" />
+                <ReportPhoto src={report.photo_after} label="Foto setelah" />
+              </div>
+            </DetailField>
           )}
 
-          {report.area && (
-            <div>
-              <div className="text-sm text-muted-foreground">Area</div>
-              <div className="text-foreground mt-1">{report.area.area}</div>
-            </div>
-          )}
-
-          {report.issue && (
-            <div>
-              <div className="text-sm text-muted-foreground">Issue</div>
-              <div className="text-foreground mt-1 text-sm">{report.issue}</div>
-            </div>
-          )}
-
-          {report.close_comment && (
-            <div>
-              <div className="text-sm text-muted-foreground">Closing Comment</div>
-              <div className="text-foreground mt-1 text-sm whitespace-pre-wrap">{report.close_comment}</div>
-            </div>
-          )}
-
-          <div>
-            <div className="text-sm text-muted-foreground">Status</div>
-            <div className="mt-1">
-              {report.status === "closed" ? (
-                <div className="text-emerald-600 flex items-center gap-2">
-                  <span>Closed</span>
-                  <span className="text-sm text-foreground">{formatDate(report.closed_at)}</span>
-                </div>
-              ) : (
-                <div className="text-amber-600 flex items-center gap-2">
-                  <span>Open</span>
-                </div>
+          {report.status === "closed" && (
+            <DetailField icon={UserRound} label="Penyelesaian">
+              <p className="font-medium">Ditutup pada {formatDate(report.closed_at)}</p>
+              {report.closer && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Oleh {report.closer.name}
+                  {report.closer.role ? ` · ${report.closer.role}` : ""}
+                </p>
               )}
-            </div>
-          </div>
+              {report.close_comment && <p className="mt-3 whitespace-pre-wrap break-words rounded-xl bg-muted/50 p-3 text-sm">{report.close_comment}</p>}
+            </DetailField>
+          )}
         </div>
 
         <div className="flex items-center justify-end gap-3 p-5 border-t border-border">
@@ -304,9 +328,6 @@ function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onD
               Delete
             </button>
           )}
-          <button onClick={onClose} className="px-4 py-2 bg-foreground hover:opacity-90 text-background rounded-lg text-sm font-semibold transition-colors">
-            Close
-          </button>
         </div>
       </div>
     </ModalOverlay>
@@ -316,10 +337,10 @@ function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onD
 export default function Index({ reports = [], areas = [], activities = [], users = [] }) {
   const r = useReports(reports)
 
-  const assignedAreas = areas.filter((a) => a.pic_user_ids?.some((id) => String(id) === String(r.auth?.id)))
+  const assignedAreas = areas.filter((area) => area.is_in_current_user_scope)
   const exportAreas = r.perms.canExportAll ? areas : r.perms.canExportArea ? assignedAreas : []
   const exportUsers = r.perms.canExportAll ? users : []
-  const areaOfAuthUser = areas.find((a) => a.pic_user_ids?.some((id) => String(id) === String(r.auth?.id)))
+  const areaOfAuthUser = assignedAreas[0]
 
   const statusOptions = [
     { label: "All Statuses", value: "" },
