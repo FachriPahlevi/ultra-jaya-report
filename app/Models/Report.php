@@ -19,6 +19,7 @@ class Report extends Model
     protected $fillable = [
         'author_id',
         'area_id',
+        'sub_area_id',
         'activity_id',
         'sub_activity_id',
         'activity',
@@ -37,6 +38,7 @@ class Report extends Model
         return [
             'author_id' => 'integer',
             'area_id' => 'integer',
+            'sub_area_id' => 'integer',
             'activity_id' => 'integer',
             'sub_activity_id' => 'integer',
             'closed_at' => 'datetime',
@@ -53,6 +55,7 @@ class Report extends Model
     {
         return $this->belongsTo(Area::class);
     }
+    public function subArea(): BelongsTo { return $this->belongsTo(SubArea::class); }
 
     public function activityType(): BelongsTo
     {

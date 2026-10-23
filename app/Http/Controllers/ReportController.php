@@ -29,13 +29,14 @@ class ReportController extends Controller
         $user = Auth::user();
 
         $query = $this->visibleReportsFor($user)
-            ->with(['author.roles', 'area.pics', 'activityType.parent', 'subActivity']);
+            ->with(['author.roles', 'area', 'subArea.supervisors', 'activityType.parent', 'subActivity']);
 
         $reports = $query->latest()->get()->map(function ($report) {
             return [
                 'id' => $report->id,
                 'author_id' => $report->author_id,
                 'area_id' => $report->area_id,
+                'sub_area_id' => $report->sub_area_id,
                 'activity_id' => $report->activity_id,
                 'sub_activity_id' => $report->sub_activity_id,
                 'activity' => $report->activity,
@@ -82,12 +83,11 @@ class ReportController extends Controller
 
         return Inertia::render('reports/Index', [
             'reports' => $reports,
-            'areas' => Area::with('pics:id,name')->where('is_active', true)->select('id', 'area')->get()->map(function (Area $area) {
+            'areas' => Area::with(['subAreas' => fn ($query) => $query->where('is_active', true)])->where('is_active', true)->select('id', 'area')->get()->map(function (Area $area) {
                 return [
                     'id' => $area->id,
                     'area' => $area->area,
-                    'pics' => $area->pics->map(fn ($pic) => ['id' => $pic->id, 'name' => $pic->name])->values(),
-                    'pic_user_ids' => $area->pics->pluck('id')->values(),
+                    'sub_areas' => $area->subAreas->map(fn ($subArea) => ['id' => $subArea->id, 'name' => $subArea->name])->values(),
                 ];
             }),
             'activities' => Activity::with([
@@ -128,6 +128,8 @@ class ReportController extends Controller
 
         $validated = $request->validate($this->storeRules());
 
+        $this->validateSubArea((int) $validated['sub_area_id'], (int) $validated['area_activity']);
+
         if (! empty($validated['sub_activity_id'])) {
             $subActivityBelongsToParent = Activity::whereKey($validated['sub_activity_id'])
                 ->where('parent_id', $validated['type_activity'])
@@ -145,6 +147,7 @@ class ReportController extends Controller
             'activity_id' => $validated['type_activity'],
             'sub_activity_id' => $validated['sub_activity_id'] ?? null,
             'area_id' => $validated['area_activity'],
+            'sub_area_id' => $validated['sub_area_id'],
             'activity' => $validated['activity'] ?? null,
             'issue' => $validated['issue'],
             'status' => 'open',
@@ -162,6 +165,10 @@ class ReportController extends Controller
         $this->ensureReportIsOpen($report, 'diubah');
 
         $validated = $request->validate($this->updateRules());
+
+        if (isset($validated['sub_area_id']) || isset($validated['area_activity'])) {
+            $this->validateSubArea((int) ($validated['sub_area_id'] ?? $report->sub_area_id), (int) ($validated['area_activity'] ?? $report->area_id));
+        }
 
         $selectedParentId = $validated['type_activity'] ?? $report->activity_id;
         if (! empty($validated['sub_activity_id'])) {
@@ -186,6 +193,9 @@ class ReportController extends Controller
         }
         if (isset($validated['area_activity'])) {
             $data['area_id'] = $validated['area_activity'];
+        }
+        if (isset($validated['sub_area_id'])) {
+            $data['sub_area_id'] = $validated['sub_area_id'];
         }
         if (array_key_exists('activity', $validated)) {
             $data['activity'] = $validated['activity'];
@@ -339,6 +349,7 @@ class ReportController extends Controller
             'type_activity' => [$this->activeParentActivityRule()],
             'sub_activity_id' => ['nullable', $this->activeSubActivityRule()],
             'area_activity' => ['required', $this->activeAreaRule()],
+            'sub_area_id' => ['required', $this->activeSubAreaRule()],
             'activity' => ['nullable', 'string', 'max:255'],
             'issue' => ['required', 'string'],
             'photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
@@ -351,6 +362,7 @@ class ReportController extends Controller
             'type_activity' => ['sometimes', $this->activeParentActivityRule()],
             'sub_activity_id' => ['nullable', $this->activeSubActivityRule()],
             'area_activity' => ['sometimes', $this->activeAreaRule()],
+            'sub_area_id' => ['sometimes', $this->activeSubAreaRule()],
             'activity' => ['nullable', 'string', 'max:255'],
             'issue' => ['sometimes', 'string'],
             'photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
@@ -379,6 +391,18 @@ class ReportController extends Controller
             ->where(fn ($query) => $query->where('is_active', true)->whereNull('deleted_at'));
     }
 
+    private function activeSubAreaRule()
+    {
+        return Rule::exists('sub_areas', 'id')->where(fn ($query) => $query->where('is_active', true)->whereNull('deleted_at'));
+    }
+
+    private function validateSubArea(int $subAreaId, int $areaId): void
+    {
+        if (! \App\Models\SubArea::query()->whereKey($subAreaId)->where('area_id', $areaId)->exists()) {
+            throw ValidationException::withMessages(['sub_area_id' => 'Sub-area harus berada pada area yang dipilih.']);
+        }
+    }
+
     private function visibleReportsFor(User $user): Builder
     {
         $query = Report::query();
@@ -387,14 +411,18 @@ class ReportController extends Controller
             return $query;
         }
 
+        if ($user->can('reports.review.area')) {
+            return $query->whereHas('area.pics', fn (Builder $areas) => $areas->whereKey($user->id));
+        }
+
         if ($user->can('reports.view.own') && $user->can('reports.solve.own.area')) {
             return $query->where(fn (Builder $visible) => $visible
                 ->where('author_id', $user->id)
-                ->orWhereHas('area.pics', fn (Builder $pics) => $pics->whereKey($user->id)));
+                ->orWhereHas('subArea.supervisors', fn (Builder $supervisors) => $supervisors->whereKey($user->id)));
         }
 
         if ($user->can('reports.solve.own.area')) {
-            return $query->whereHas('area.pics', fn (Builder $pics) => $pics->whereKey($user->id));
+            return $query->whereHas('subArea.supervisors', fn (Builder $supervisors) => $supervisors->whereKey($user->id));
         }
 
         return $query->where('author_id', $user->id);

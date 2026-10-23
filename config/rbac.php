@@ -17,6 +17,7 @@ return [
         'reports.delete.all' => ['group' => 'Laporan', 'label' => 'Menghapus seluruh laporan', 'description' => 'Menghapus laporan terbuka dari seluruh pengguna.'],
         'reports.solve.own.area' => ['group' => 'Laporan', 'label' => 'Menyelesaikan laporan area PIC', 'description' => 'Menutup laporan pada area yang menjadi tanggung jawab PIC.'],
         'reports.solve.all' => ['group' => 'Laporan', 'label' => 'Menyelesaikan seluruh laporan', 'description' => 'Menutup laporan pada seluruh area.'],
+        'reports.review.area' => ['group' => 'Laporan', 'label' => 'Review laporan area', 'description' => 'Melihat laporan pada area yang ditugaskan tanpa mengubahnya.'],
 
         'areas.view' => ['group' => 'Area', 'label' => 'Melihat area', 'description' => 'Melihat daftar area yang dapat diakses.'],
         'areas.view.all' => ['group' => 'Area', 'label' => 'Melihat seluruh area', 'description' => 'Melihat termasuk area yang diarsipkan.'],
@@ -56,8 +57,8 @@ return [
             'roles.view', 'roles.create', 'roles.edit', 'roles.delete', 'permissions.manage',
         ]],
         'MANAGER' => ['label' => 'Manager', 'description' => 'Memantau dan menangani seluruh laporan tanpa mengelola konfigurasi.', 'permissions' => [
-            'areas.view', 'areas.view.all', 'activities.view',
-            'reports.view.all', 'reports.create', 'reports.edit.all', 'reports.delete.own', 'reports.solve.all',
+            'areas.view', 'activities.view',
+            'reports.review.area',
         ]],
         'SUPERVISOR' => ['label' => 'Supervisor', 'description' => 'Membuat laporan dan menangani laporan pada area PIC.', 'permissions' => [
             'reports.view.own', 'reports.create', 'reports.edit.own', 'reports.delete.own', 'reports.solve.own.area', 'areas.view', 'activities.view',

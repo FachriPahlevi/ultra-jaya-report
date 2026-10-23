@@ -40,6 +40,8 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Area::class)->withTimestamps();
     }
+    public function supervisedSubAreas(): BelongsToMany { return $this->belongsToMany(SubArea::class)->withTimestamps(); }
+    public function managedAreas(): BelongsToMany { return $this->belongsToMany(Area::class)->withTimestamps(); }
 
     public function assignedArea(): BelongsToMany
     {
