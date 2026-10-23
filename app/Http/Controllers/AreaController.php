@@ -14,7 +14,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,11 +25,11 @@ class AreaController extends Controller
 
         if ($user->can('areas.view.all') || $user->hasRole('SUPER_ADMIN') || $user->hasRole('ADMIN')) {
             $areas = Area::withTrashed()
-                ->with(['pics:id,name', 'subAreas.supervisors:id,name'])
+                ->with(['managers:id,name', 'subAreas.supervisors:id,name'])
                 ->latest()
                 ->paginate(10);
         } else {
-            $areas = Area::with(['pics:id,name', 'subAreas.supervisors:id,name'])
+            $areas = Area::with(['managers:id,name', 'subAreas.supervisors:id,name'])
                 ->where('is_active', true)
                 ->whereHas('pics', fn ($query) => $query->where('users.id', $user->id))
                 ->latest()
@@ -42,11 +41,10 @@ class AreaController extends Controller
                 'id' => $area->id,
                 'area' => $area->area,
                 'deleted_at' => $area->deleted_at,
-                'pics' => $area->pics->map(fn ($pic) => [
-                    'id' => $pic->id,
-                    'name' => $pic->name,
+                'managers' => $area->managers->map(fn (User $manager) => [
+                    'id' => $manager->id,
+                    'name' => $manager->name,
                 ])->values(),
-                'pic_user_ids' => $area->pics->pluck('id')->values(),
                 'sub_areas' => $area->subAreas->map(fn (SubArea $subArea) => [
                     'id' => $subArea->id,
                     'name' => $subArea->name,
@@ -59,28 +57,8 @@ class AreaController extends Controller
             ];
         });
 
-        $users = [];
-        if ($user->can('areas.assign.supervisor') || $user->hasRole('SUPER_ADMIN') || $user->hasRole('ADMIN')) {
-            $users = User::role('SUPERVISOR')
-                ->with(['assignedAreas:id,area'])
-                ->select('id', 'name')
-                ->get()
-                ->map(function (User $supervisor) {
-                    $assignedArea = $supervisor->assignedAreas->first();
-
-                    return [
-                        'id' => $supervisor->id,
-                        'name' => $supervisor->name,
-                        'assigned_area_id' => $assignedArea?->id,
-                        'assigned_area_name' => $assignedArea?->area,
-                    ];
-                })
-                ->values();
-        }
-
         return Inertia::render('areas/Index', [
             'areas' => $areas,
-            'users' => $users,
         ]);
     }
 
@@ -88,16 +66,12 @@ class AreaController extends Controller
     {
         $validated = $request->validate($this->areaRules());
 
-        $picUserIds = $validated['pic_user_ids'] ?? [];
-        $this->ensurePicsAvailable($picUserIds);
-
-        $area = DB::transaction(function () use ($validated, $picUserIds): Area {
+        $area = DB::transaction(function () use ($validated): Area {
             $area = Area::create([
                 'area' => $validated['name'],
                 'is_active' => true,
             ]);
 
-            $area->pics()->sync($picUserIds);
             $area->subAreas()->create(['name' => 'Umum', 'max_personnel' => 1]);
 
             return $area;
@@ -144,15 +118,11 @@ class AreaController extends Controller
     {
         $validated = $request->validate($this->areaRules($area));
 
-        $picUserIds = $validated['pic_user_ids'] ?? [];
-        $this->ensurePicsAvailable($picUserIds, $area->id);
-
-        DB::transaction(function () use ($area, $validated, $picUserIds): void {
+        DB::transaction(function () use ($area, $validated): void {
             $area->update([
                 'area' => $validated['name'],
             ]);
 
-            $area->pics()->sync($picUserIds);
         });
 
         if ($request->wantsJson()) {
@@ -199,7 +169,7 @@ class AreaController extends Controller
         }
 
         DB::transaction(function () use ($area): void {
-            $area->pics()->detach();
+            $area->managers()->detach();
             $area->forceDelete();
         });
 
@@ -208,30 +178,6 @@ class AreaController extends Controller
             'message' => 'Area berhasil dihapus permanen.',
         ]);
 
-    }
-
-    private function ensurePicsAvailable(array $picUserIds, ?int $currentAreaId = null): void
-    {
-        if ($picUserIds === []) {
-            return;
-        }
-
-        $conflicts = DB::table('area_user')
-            ->join('areas', 'areas.id', '=', 'area_user.area_id')
-            ->join('users', 'users.id', '=', 'area_user.user_id')
-            ->whereIn('area_user.user_id', $picUserIds)
-            ->when($currentAreaId, fn ($query) => $query->where('area_user.area_id', '!=', $currentAreaId))
-            ->select('users.name', 'areas.area')
-            ->get()
-            ->map(fn ($item) => "{$item->name} sudah ditetapkan sebagai PIC di area {$item->area}")
-            ->values()
-            ->all();
-
-        if (! empty($conflicts)) {
-            throw ValidationException::withMessages([
-                'pic_user_ids' => $conflicts,
-            ]);
-        }
     }
 
     private function areaRules(?Area $area = null): array
@@ -244,8 +190,6 @@ class AreaController extends Controller
 
         return [
             'name' => ['required', 'string', 'max:255', $uniqueArea],
-            'pic_user_ids' => ['nullable', 'array'],
-            'pic_user_ids.*' => ['exists:users,id'],
         ];
     }
 

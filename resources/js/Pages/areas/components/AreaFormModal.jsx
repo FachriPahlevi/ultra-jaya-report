@@ -1,10 +1,9 @@
 import InputText from "@/Components/Input/InputText"
-import MultiSelectChecklist from "@/Components/Input/MultiSelectChecklist"
 import BtnDefault from "@/Components/Button/BtnDefault"
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
 import { HiOutlineX } from "react-icons/hi"
 
-export default function AreaFormModal({ isOpen, onClose, onSubmit, editTarget, form, errors, processing, canAssignPic, picOptions, onFieldChange }) {
+export default function AreaFormModal({ isOpen, onClose, onSubmit, editTarget, form, errors, processing, onFieldChange }) {
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
       <div className="w-full max-w-[560px] rounded-[28px] border border-border bg-card shadow-xl">
@@ -13,7 +12,9 @@ export default function AreaFormModal({ isOpen, onClose, onSubmit, editTarget, f
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{editTarget ? "Update Area" : "Create Area"}</p>
             <h2 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-foreground">{editTarget ? "Edit Area" : "Add New Area"}</h2>
             <p className="mt-1 text-[12.5px] leading-5 text-muted-foreground">
-              {editTarget ? `Update area detail and PIC assignment for ${editTarget.area}.` : "Create a new area and assign the responsible PIC."}
+              {editTarget
+                ? `Perbarui nama area ${editTarget.area}. Pengaturan Manager dan Supervisor dilakukan dari Pengaturan Pengguna.`
+                : "Buat area baru. Pengaturan Manager dan Supervisor dilakukan dari Pengaturan Pengguna."}
             </p>
           </div>
           <button onClick={onClose} className="shrink-0 rounded-xl border border-border p-2 text-muted-foreground transition-colors hover:text-foreground" aria-label="Close">
@@ -24,19 +25,6 @@ export default function AreaFormModal({ isOpen, onClose, onSubmit, editTarget, f
         <div className="px-5 py-5">
           <div className="flex flex-col gap-4">
             <InputText label="Area Name" placeholder="Enter area name" value={form.name} onChange={(e) => onFieldChange("name", e.target.value)} error={errors.name} required />
-
-            {canAssignPic && (
-              <MultiSelectChecklist
-                label="PIC Area"
-                values={form.pic_user_ids}
-                options={picOptions}
-                onChange={(nextValues) => onFieldChange("pic_user_ids", nextValues)}
-                error={errors.pic_user_ids}
-                helperText="You can assign one or more PIC for the same area."
-                searchPlaceholder="Search supervisor..."
-                emptyText="No supervisor found."
-              />
-            )}
 
             <div className="flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:justify-end">
               <BtnDefault outline onClick={onClose} className="w-full rounded-xl sm:w-auto sm:min-w-[116px]">

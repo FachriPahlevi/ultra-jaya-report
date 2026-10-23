@@ -10,7 +10,7 @@ function ActivityActionButton({ children, tone = "subtle", className = "", ...pr
   }
 
   return (
-    <button {...props} className={`inline-flex h-8 items-center justify-center rounded-lg border px-2.5 text-[12px] font-medium transition-colors ${tones[tone]} ${className}`}>
+    <button {...props} className={`inline-flex h-9 items-center justify-center rounded-xl border px-3 text-[12px] font-medium transition-colors ${tones[tone]} ${className}`}>
       {children}
     </button>
   )
@@ -41,7 +41,8 @@ export function ActivityPagination({ links = [] }) {
 
 export function ActivityActions({ activity, canEdit, canDelete, onAddSub, onEdit, onDelete, mobile = false }) {
   const isCompactSubAction = !mobile && Boolean(activity.parent_id)
-  const iconButtonClass = mobile || isCompactSubAction ? "h-8 w-8 rounded-lg px-0" : "px-2"
+  const iconButtonClass = mobile ? "h-10 w-10 rounded-xl px-0" : isCompactSubAction ? "h-9 w-9 rounded-xl px-0" : "px-3"
+  const iconClass = mobile ? "h-5 w-5" : "h-[18px] w-[18px]"
   const canAddSub = canEdit && !activity.parent_id && activity.is_active
 
   return (
@@ -49,10 +50,10 @@ export function ActivityActions({ activity, canEdit, canDelete, onAddSub, onEdit
       {canAddSub && (
         <ActivityActionButton onClick={() => onAddSub(activity)} title="Add Sub Activity" className={iconButtonClass}>
           {mobile ? (
-            <HiOutlinePlus className="h-4 w-4" />
+            <HiOutlinePlus className={iconClass} />
           ) : (
             <>
-              <HiOutlinePlus className="mr-1.5 h-4 w-4" />
+              <HiOutlinePlus className={`mr-1.5 ${iconClass}`} />
               Add Sub
             </>
           )}
@@ -62,10 +63,10 @@ export function ActivityActions({ activity, canEdit, canDelete, onAddSub, onEdit
       {canEdit && (
         <ActivityActionButton onClick={() => onEdit(activity)} title="Edit Activity" className={iconButtonClass}>
           {mobile || isCompactSubAction ? (
-            <HiOutlinePencil className="h-4 w-4" />
+            <HiOutlinePencil className={iconClass} />
           ) : (
             <>
-              <HiOutlinePencil className="mr-1.5 h-4 w-4" />
+              <HiOutlinePencil className={`mr-1.5 ${iconClass}`} />
               Edit
             </>
           )}
@@ -75,10 +76,10 @@ export function ActivityActions({ activity, canEdit, canDelete, onAddSub, onEdit
       {canDelete && (
         <ActivityActionButton onClick={() => onDelete(activity)} tone="danger" title="Delete Activity" className={iconButtonClass}>
           {mobile || isCompactSubAction ? (
-            <HiOutlineTrash className="h-4 w-4" />
+            <HiOutlineTrash className={iconClass} />
           ) : (
             <>
-              <HiOutlineTrash className="mr-1.5 h-4 w-4" />
+              <HiOutlineTrash className={`mr-1.5 ${iconClass}`} />
               Delete
             </>
           )}

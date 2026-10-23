@@ -1,6 +1,6 @@
 import { getRequestErrorMessage } from "@/lib/errorMessages"
 import { useState, useEffect } from "react"
-import { Head, router, usePage } from "@inertiajs/react"
+import { Head, router } from "@inertiajs/react"
 import http from "@/lib/http"
 import AppLayout from "@/Layouts/AppLayout"
 import BtnDefault from "@/Components/Button/BtnDefault"
@@ -8,22 +8,20 @@ import { useStatusModal } from "@/Components/Context/StatusModalContext"
 import { HiOutlinePlus } from "react-icons/hi"
 import AreaListSection from "./components/AreaListSection"
 import AreaFormModal from "./components/AreaFormModal"
+import SubAreaFormModal from "./components/SubAreaFormModal"
 import { useAuthorization } from "@/hooks/useAuthorization"
 
 const INITIAL_FORM = {
   name: "",
-  pic_user_ids: [],
 }
 
 function buildAreaForm(area) {
   return {
     name: area.area,
-    pic_user_ids: area.pic_user_ids?.map(String) || [],
   }
 }
 
 export default function Index({ areas = { data: [], links: [], meta: {} } }) {
-  const { props } = usePage()
   const { can } = useAuthorization()
   const { setStatusModalProps } = useStatusModal()
   const [showModal, setShowModal] = useState(false)
@@ -31,21 +29,15 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
   const [processing, setProcessing] = useState(false)
   const [form, setForm] = useState(INITIAL_FORM)
   const [errors, setErrors] = useState({})
-
-  const users = props.users || []
-  const canAssignPic = can("areas.assign.supervisor")
+  const [subAreaTarget, setSubAreaTarget] = useState(null)
+  const [subAreaArea, setSubAreaArea] = useState(null)
+  const [subAreaName, setSubAreaName] = useState("")
+  const [subAreaError, setSubAreaError] = useState("")
 
   const canAdd = can("areas.create")
   const canEdit = can("areas.edit")
   const canDelete = can("areas.delete")
   const totalAreas = areas.meta?.total ?? areas.data.length
-  const picOptions = users.map((user) => ({
-    value: String(user.id),
-    label: user.name,
-    description: user.assigned_area_name ? (editTarget?.id === user.assigned_area_id ? `Assigned to this area` : `Already assigned to ${user.assigned_area_name}`) : "Available to assign",
-    disabled: Boolean(user.assigned_area_id && editTarget?.id !== user.assigned_area_id),
-  }))
-
   useEffect(() => {
     if (showModal && editTarget) {
       setForm(buildAreaForm(editTarget))
@@ -126,7 +118,6 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
 
     const submitData = {
       name: form.name,
-      pic_user_ids: form.pic_user_ids.map(Number),
     }
 
     try {
@@ -171,6 +162,63 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
             showRequestError(error)
           },
         })
+      },
+    })
+  }
+
+  const openSubAreaModal = (area, subArea = null) => {
+    setSubAreaArea(area)
+    setSubAreaTarget(subArea)
+    setSubAreaName(subArea?.name ?? "")
+    setSubAreaError("")
+  }
+
+  const closeSubAreaModal = () => {
+    setSubAreaArea(null)
+    setSubAreaTarget(null)
+    setSubAreaName("")
+    setSubAreaError("")
+  }
+
+  const submitSubArea = async (event) => {
+    event.preventDefault()
+    if (!subAreaArea || processing) return
+
+    setProcessing(true)
+    setSubAreaError("")
+    const payload = { name: subAreaName, max_personnel: subAreaTarget?.max_personnel ?? 1 }
+
+    try {
+      if (subAreaTarget) {
+        await http.put(`/areas/${subAreaArea.id}/sub-areas/${subAreaTarget.id}`, payload)
+        showStatusModal("success", "Berhasil", "Sub-area berhasil diperbarui.")
+      } else {
+        await http.post(`/areas/${subAreaArea.id}/sub-areas`, payload)
+        showStatusModal("success", "Berhasil", "Sub-area berhasil ditambahkan.")
+      }
+      router.reload()
+      closeSubAreaModal()
+    } catch (error) {
+      setSubAreaError(error.response?.data?.errors?.name?.[0] ?? getRequestErrorMessage(error))
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  const confirmDeleteSubArea = (area, subArea) => {
+    openConfirmModal({
+      title: "Hapus Sub-area",
+      message: `Sub-area "${subArea.name}" akan dihapus.`,
+      confirmText: "Hapus",
+      confirmVariant: "danger",
+      onConfirm: async () => {
+        try {
+          await http.delete(`/areas/${area.id}/sub-areas/${subArea.id}`)
+          showStatusModal("success", "Berhasil", "Sub-area berhasil dihapus.")
+          router.reload()
+        } catch (error) {
+          showRequestError(error)
+        }
       },
     })
   }
@@ -252,23 +300,26 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
           canEdit={canEdit}
           canDelete={canDelete}
           onEdit={openEdit}
+          onAddSubArea={openSubAreaModal}
+          onEditSubArea={openSubAreaModal}
+          onDeleteSubArea={confirmDeleteSubArea}
           onArchive={confirmDelete}
           onRestore={confirmRestore}
           onForceDelete={confirmForceDelete}
         />
       </div>
 
-      <AreaFormModal
-        isOpen={showModal}
-        onClose={closeModal}
-        onSubmit={submit}
-        editTarget={editTarget}
-        form={form}
-        errors={errors}
+      <AreaFormModal isOpen={showModal} onClose={closeModal} onSubmit={submit} editTarget={editTarget} form={form} errors={errors} processing={processing} onFieldChange={handleFormChange} />
+      <SubAreaFormModal
+        isOpen={Boolean(subAreaArea)}
+        onClose={closeSubAreaModal}
+        onSubmit={submitSubArea}
+        area={subAreaArea}
+        subArea={subAreaTarget}
+        name={subAreaName}
+        error={subAreaError}
         processing={processing}
-        canAssignPic={canAssignPic}
-        picOptions={picOptions}
-        onFieldChange={handleFormChange}
+        onNameChange={setSubAreaName}
       />
     </AppLayout>
   )

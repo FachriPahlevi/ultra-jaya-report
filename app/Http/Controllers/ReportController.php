@@ -21,15 +21,20 @@ use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 
 class ReportController extends Controller
 {
     public function index(): Response
     {
         $user = Auth::user();
+        $managedAreaIds = $user->managedAreas()->pluck('areas.id')->all();
+        $supervisedSubAreaIds = $user->supervisedSubAreas()->pluck('sub_areas.id')->all();
 
         $query = $this->visibleReportsFor($user)
-            ->with(['author.roles', 'area', 'subArea.supervisors', 'activityType.parent', 'subActivity']);
+            ->with(['author.roles', 'area', 'subArea', 'activityType.parent', 'subActivity', 'closer.roles']);
 
         $reports = $query->latest()->get()->map(function ($report) {
             return [
@@ -66,6 +71,10 @@ class ReportController extends Controller
                         'name' => $pic->name,
                     ])->values(),
                 ] : null,
+                'sub_area' => $report->subArea ? [
+                    'id' => $report->subArea->id,
+                    'name' => $report->subArea->name,
+                ] : null,
                 'activity_type' => $report->activityType ? [
                     'id' => $report->activityType->id,
                     'name' => $report->activityType->name,
@@ -78,15 +87,23 @@ class ReportController extends Controller
                     'name' => $report->subActivity->name,
                     'description' => $report->subActivity->description,
                 ] : null,
+                'closer' => $report->closer ? [
+                    'id' => $report->closer->id,
+                    'name' => $report->closer->name,
+                    'role' => $report->closer->roles->first()?->name,
+                ] : null,
             ];
         });
 
         return Inertia::render('reports/Index', [
             'reports' => $reports,
-            'areas' => Area::with(['subAreas' => fn ($query) => $query->where('is_active', true)])->where('is_active', true)->select('id', 'area')->get()->map(function (Area $area) {
+            'areas' => Area::with(['managers:id,name', 'subAreas' => fn ($query) => $query->where('is_active', true)])->where('is_active', true)->select('id', 'area')->get()->map(function (Area $area) use ($managedAreaIds, $supervisedSubAreaIds) {
                 return [
                     'id' => $area->id,
                     'area' => $area->area,
+                    'managers' => $area->managers->map(fn (User $manager) => ['id' => $manager->id, 'name' => $manager->name])->values(),
+                    'is_in_current_user_scope' => in_array($area->id, $managedAreaIds, true)
+                        || $area->subAreas->contains(fn ($subArea) => in_array($subArea->id, $supervisedSubAreaIds, true)),
                     'sub_areas' => $area->subAreas->map(fn ($subArea) => ['id' => $subArea->id, 'name' => $subArea->name])->values(),
                 ];
             }),
@@ -225,7 +242,7 @@ class ReportController extends Controller
 
         $validated = $request->validate([
             'close_comment' => ['required', 'string'],
-            'photo_after' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
+            'photo_after' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:3072'],
         ]);
 
         $data = [
@@ -265,7 +282,7 @@ class ReportController extends Controller
         Gate::authorize('view', $report);
 
         return Inertia::render('reports/Show', [
-            'report' => $report->load(['author', 'area.pics', 'activityType.parent', 'subActivity']),
+            'report' => $report->load(['author', 'area.managers', 'subArea', 'activityType.parent', 'subActivity', 'closer']),
         ]);
     }
 
@@ -299,7 +316,31 @@ class ReportController extends Controller
 
         $reports = $query->latest()->get();
 
-        return $type === 'excel' ? $this->exportCsv($reports) : $this->exportPdf($reports);
+        return $type === 'excel' ? $this->exportExcel($reports) : $this->exportPdf($reports);
+    }
+
+    private function exportExcel($reports): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    {
+        $sheet = (new Spreadsheet())->getActiveSheet();
+        $sheet->fromArray(['No', 'Pelapor', 'Area', 'Aktivitas', 'Temuan', 'Foto Sebelum', 'Foto Sesudah', 'Status', 'Dibuat'], null, 'A1');
+        $sheet->getStyle('A1:I1')->getFont()->setBold(true);
+        $sheet->getColumnDimension('E')->setWidth(36);
+        $sheet->getColumnDimension('F')->setWidth(18);
+        $sheet->getColumnDimension('G')->setWidth(18);
+        foreach ($reports as $index => $report) {
+            $row = $index + 2;
+            $sheet->fromArray([$index + 1, $report->author?->name, $report->area?->area, $report->subActivity?->name ?? $report->activityType?->name, $report->issue, '', '', strtoupper($report->status), $report->created_at?->format('d-m-Y H:i')], null, "A{$row}");
+            $sheet->getRowDimension($row)->setRowHeight(70);
+            foreach (['photo_before' => 'F', 'photo_after' => 'G'] as $field => $column) {
+                $path = $report->{$field} ? storage_path('app/public/'.$report->{$field}) : null;
+                if ($path && file_exists($path)) {
+                    $drawing = new Drawing(); $drawing->setPath($path); $drawing->setHeight(65); $drawing->setCoordinates("{$column}{$row}"); $drawing->setWorksheet($sheet);
+                }
+            }
+        }
+        $file = storage_path('app/reports-'.uniqid().'.xlsx');
+        (new Xlsx($sheet->getParent()))->save($file);
+        return response()->download($file, 'laporan-'.now()->format('Y-m-d_H-i-s').'.xlsx')->deleteFileAfterSend();
     }
 
     private function exportCsv($reports): StreamedResponse
@@ -352,7 +393,7 @@ class ReportController extends Controller
             'sub_area_id' => ['required', $this->activeSubAreaRule()],
             'activity' => ['nullable', 'string', 'max:255'],
             'issue' => ['required', 'string'],
-            'photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
+            'photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:3072'],
         ];
     }
 
@@ -365,7 +406,7 @@ class ReportController extends Controller
             'sub_area_id' => ['sometimes', $this->activeSubAreaRule()],
             'activity' => ['nullable', 'string', 'max:255'],
             'issue' => ['sometimes', 'string'],
-            'photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:2048'],
+            'photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:3072'],
         ];
     }
 
@@ -412,7 +453,7 @@ class ReportController extends Controller
         }
 
         if ($user->can('reports.review.area')) {
-            return $query->whereHas('area.pics', fn (Builder $areas) => $areas->whereKey($user->id));
+            return $query->whereHas('area.managers', fn (Builder $areas) => $areas->whereKey($user->id));
         }
 
         if ($user->can('reports.view.own') && $user->can('reports.solve.own.area')) {
