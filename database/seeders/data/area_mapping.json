@@ -1,0 +1,478 @@
+[
+  {
+    "name": "Public Facility",
+    "sub_areas": [
+      {
+        "name": "Gym"
+      },
+      {
+        "name": "Kantin"
+      },
+      {
+        "name": "Klinik"
+      },
+      {
+        "name": "Loker"
+      },
+      {
+        "name": "Mushola"
+      },
+      {
+        "name": "Ruang Meeting"
+      },
+      {
+        "name": "Ruang Training"
+      },
+      {
+        "name": "Toilet"
+      },
+      {
+        "name": "Visitor Gallery"
+      }
+    ]
+  },
+  {
+    "name": "TPS",
+    "sub_areas": [
+      {
+        "name": "TPS Produksi"
+      },
+      {
+        "name": "TPS Area Luar"
+      },
+      {
+        "name": "TPS B3"
+      }
+    ]
+  },
+  {
+    "name": "Office",
+    "sub_areas": [
+      {
+        "name": "Office Factory"
+      },
+      {
+        "name": "Office Admin"
+      }
+    ]
+  },
+  {
+    "name": "MRU",
+    "sub_areas": [
+      {
+        "name": "Control Room Fresh Milk"
+      },
+      {
+        "name": "MRU Station 1"
+      },
+      {
+        "name": "MRU Station 2"
+      },
+      {
+        "name": "MRU Station 3"
+      },
+      {
+        "name": "Milk Tank 1"
+      },
+      {
+        "name": "Milk Tank 2"
+      },
+      {
+        "name": "Milk Tank 3"
+      },
+      {
+        "name": "Milk Tank 4"
+      }
+    ]
+  },
+  {
+    "name": "Dry Process",
+    "sub_areas": [
+      {
+        "name": "Tipping & Silo SMP/WMP"
+      },
+      {
+        "name": "Tipping & Silo Sugar"
+      },
+      {
+        "name": "Tipping & Silo Stabilizer"
+      },
+      {
+        "name": "Tipping & Silo Choco"
+      },
+      {
+        "name": "White Hopper"
+      },
+      {
+        "name": "Brown Hopper"
+      }
+    ]
+  },
+  {
+    "name": "Wet Process",
+    "sub_areas": [
+      {
+        "name": "Milk Pasteurization"
+      },
+      {
+        "name": "Control Room Mixing"
+      },
+      {
+        "name": "Mixing Line"
+      },
+      {
+        "name": "Homogenizer"
+      },
+      {
+        "name": "UHT Sterilizer No 1"
+      },
+      {
+        "name": "UHT Sterilizer No 2"
+      },
+      {
+        "name": "UHT Sterilizer No 3"
+      },
+      {
+        "name": "Intermediate Tank No 1"
+      },
+      {
+        "name": "Intermediate Tank No 2"
+      },
+      {
+        "name": "Intermediate Tank No 3"
+      },
+      {
+        "name": "Intermediate Tank No 4"
+      },
+      {
+        "name": "Aceptic Tank No 1"
+      },
+      {
+        "name": "Aceptic Tank No 2"
+      },
+      {
+        "name": "Aceptic Tank No 3"
+      },
+      {
+        "name": "CIP Kitchen"
+      }
+    ]
+  },
+  {
+    "name": "Filling Area",
+    "sub_areas": [
+      {
+        "name": "Annex Room"
+      },
+      {
+        "name": "Antheroom Filling"
+      },
+      {
+        "name": "PSA Filling"
+      },
+      {
+        "name": "Filling UHT 125 Line 1"
+      },
+      {
+        "name": "Filling UHT 125 Line 2"
+      },
+      {
+        "name": "Filling UHT 125 Line 3"
+      },
+      {
+        "name": "Filling UHT 125 Line 4"
+      },
+      {
+        "name": "Filling UHT 200 Line 5"
+      },
+      {
+        "name": "Filling UHT 200 Line 6"
+      },
+      {
+        "name": "Filling UHT 200 Line 7"
+      },
+      {
+        "name": "Filling Procomac"
+      }
+    ]
+  },
+  {
+    "name": "Packing Area",
+    "sub_areas": [
+      {
+        "name": "Helix UHT 125 Line 1"
+      },
+      {
+        "name": "Helix UHT 125 Line 2"
+      },
+      {
+        "name": "Helix UHT 125 Line 3"
+      },
+      {
+        "name": "Helix UHT 125 Line 4"
+      },
+      {
+        "name": "Helix UHT 200 Line 5"
+      },
+      {
+        "name": "Helix UHT 200 Line 6"
+      },
+      {
+        "name": "Helix UHT 200 Line 7"
+      },
+      {
+        "name": "Straw Applicator UHT 125 Line 1"
+      },
+      {
+        "name": "Straw Applicator UHT 125 Line 2"
+      },
+      {
+        "name": "Straw Applicator UHT 125 Line 3"
+      },
+      {
+        "name": "Straw Applicator UHT 125 Line 4"
+      },
+      {
+        "name": "Straw Applicator UHT 200 Line 5"
+      },
+      {
+        "name": "Straw Applicator UHT 200 Line 6"
+      },
+      {
+        "name": "Straw Applicator UHT 200 Line 7"
+      },
+      {
+        "name": "CBP UHT 125 Line 1"
+      },
+      {
+        "name": "CBP UHT 125 Line 2"
+      },
+      {
+        "name": "CBP UHT 125 Line 3"
+      },
+      {
+        "name": "CBP UHT 125 Line 4"
+      },
+      {
+        "name": "CBP UHT 200 Line 5"
+      },
+      {
+        "name": "CBP UHT 200 Line 6"
+      },
+      {
+        "name": "CBP UHT 200 Line 7"
+      },
+      {
+        "name": "X-Ray Machine"
+      },
+      {
+        "name": "Gzhuayan"
+      }
+    ]
+  },
+  {
+    "name": "AGV & Robotic Palletizer",
+    "sub_areas": [
+      {
+        "name": "AGV No 02"
+      },
+      {
+        "name": "AGV No 09"
+      },
+      {
+        "name": "AGV No 11"
+      },
+      {
+        "name": "AGV No 12"
+      },
+      {
+        "name": "AGV No 13"
+      },
+      {
+        "name": "AGV No 14"
+      },
+      {
+        "name": "AGV No 15"
+      },
+      {
+        "name": "AGV No 16"
+      },
+      {
+        "name": "AGV No 17"
+      },
+      {
+        "name": "AGV No 18"
+      },
+      {
+        "name": "Robotic Palletizer UHT 125 Line 1"
+      },
+      {
+        "name": "Robotic Palletizer UHT 125 Line 2"
+      },
+      {
+        "name": "Robotic Palletizer UHT 125 Line 3"
+      },
+      {
+        "name": "Robotic Palletizer UHT 125 Line 4"
+      },
+      {
+        "name": "Robotic Palletizer UHT 200 Line 5"
+      },
+      {
+        "name": "Robotic Palletizer UHT 200 Line 6"
+      },
+      {
+        "name": "Robotic Palletizer UHT 200 Line 7"
+      },
+      {
+        "name": "Robotic Palletizer UHT Procomac"
+      }
+    ]
+  },
+  {
+    "name": "Workshop",
+    "sub_areas": [
+      {
+        "name": "Workshop"
+      }
+    ]
+  },
+  {
+    "name": "Utility",
+    "sub_areas": [
+      {
+        "name": "Boiler No 1"
+      },
+      {
+        "name": "Boiler No 2"
+      },
+      {
+        "name": "Boiler No 3"
+      },
+      {
+        "name": "Chiller Grasso No 1"
+      },
+      {
+        "name": "Compress Air No 1"
+      },
+      {
+        "name": "Compress Air No 2"
+      },
+      {
+        "name": "Compress Air No 3"
+      },
+      {
+        "name": "Compress Air No 4"
+      },
+      {
+        "name": "Compress Air No 5"
+      },
+      {
+        "name": "HT No 1"
+      },
+      {
+        "name": "HT No 2"
+      },
+      {
+        "name": "HT No 3"
+      },
+      {
+        "name": "HT No 4"
+      },
+      {
+        "name": "HT No 5"
+      },
+      {
+        "name": "HT No 6"
+      },
+      {
+        "name": "MCC Production No 1"
+      },
+      {
+        "name": "MCC Production No 2"
+      }
+    ]
+  },
+  {
+    "name": "WWTP Area",
+    "sub_areas": [
+      {
+        "name": "Control Room WWTP"
+      },
+      {
+        "name": "WWTP"
+      },
+      {
+        "name": "Fishpond"
+      },
+      {
+        "name": "Lagoon"
+      }
+    ]
+  },
+  {
+    "name": "WTP Area",
+    "sub_areas": [
+      {
+        "name": "WTP"
+      },
+      {
+        "name": "Raw Water Tank"
+      },
+      {
+        "name": "Process Water Tank"
+      },
+      {
+        "name": "Hydrant Area"
+      }
+    ]
+  },
+  {
+    "name": "Laboratory",
+    "sub_areas": [
+      {
+        "name": "Lab Physcem"
+      },
+      {
+        "name": "Lab Micro"
+      },
+      {
+        "name": "Ruang Organoleptic"
+      },
+      {
+        "name": "Ruang Office SPV"
+      },
+      {
+        "name": "Lab In Process"
+      },
+      {
+        "name": "Lab Fresh Milk"
+      },
+      {
+        "name": "Retain Room"
+      }
+    ]
+  },
+  {
+    "name": "Ruang Server & Arsip",
+    "sub_areas": [
+      {
+        "name": "Ruang Server"
+      },
+      {
+        "name": "Ruang Arsip"
+      }
+    ]
+  },
+  {
+    "name": "Technical Store & Gudang",
+    "sub_areas": [
+      {
+        "name": "Technical Store"
+      },
+      {
+        "name": "Gudang UJ"
+      }
+    ]
+  }
+]

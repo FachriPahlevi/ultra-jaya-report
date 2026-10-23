@@ -19,6 +19,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
   const [photoPreview, setPhotoPreview] = useState(null)
   const [selectedAuthor, setSelectedAuthor] = useState(null)
   const [selectedArea, setSelectedArea] = useState(null)
+  const [selectedSubArea, setSelectedSubArea] = useState(null)
   const [selectedActivity, setSelectedActivity] = useState(null)
   const [selectedSubActivity, setSelectedSubActivity] = useState(null)
 
@@ -35,6 +36,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
     setData(form)
     setSelectedAuthor(selections.author)
     setSelectedArea(selections.area)
+    setSelectedSubArea(selections.subArea)
     setSelectedActivity(selections.activity)
     setSelectedSubActivity(selections.subActivity)
     setPhotoPreview(null)
@@ -84,7 +86,13 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
 
   const handleAreaActivityChange = (item) => {
     setData("area_activity", item.value)
+    setData("sub_area_id", "")
     setSelectedArea(item)
+    setSelectedSubArea(null)
+  }
+  const handleSubAreaChange = (item) => {
+    setData("sub_area_id", item.value)
+    setSelectedSubArea(item)
   }
 
   const handleActivityChange = (e) => {
@@ -101,6 +109,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
     setData(createEmptyReportForm(currentUser?.id))
     setSelectedAuthor(null)
     setSelectedArea(null)
+    setSelectedSubArea(null)
     setSelectedActivity(null)
     setSelectedSubActivity(null)
     setPhotoPreview(null)
@@ -147,6 +156,8 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
     value: user.id,
   }))
   const selectedParentActivity = activities.find((activity) => String(activity.id) === String(data.type_activity))
+  const selectedAreaData = areas.find((area) => String(area.id) === String(data.area_activity))
+  const subAreaOptions = selectedAreaData?.sub_areas?.map((subArea) => ({ label: subArea.name, value: subArea.id })) ?? []
   const subActivityOptions =
     selectedParentActivity?.sub_activities?.map((activity) => ({
       label: activity.name,
@@ -186,6 +197,18 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
               setObject={handleAreaActivityChange}
               object={selectedArea}
               error={errors.area_activity}
+            />
+
+            <InputDropdown
+              id="sub_area_id"
+              label="Sub-area"
+              itemList={subAreaOptions}
+              placeholder={selectedAreaData ? "Pilih sub-area..." : "Pilih area terlebih dahulu"}
+              required
+              setObject={handleSubAreaChange}
+              object={selectedSubArea}
+              disabled={!selectedAreaData}
+              error={errors.sub_area_id}
             />
 
             <InputDropdown

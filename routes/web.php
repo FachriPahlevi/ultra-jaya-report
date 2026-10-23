@@ -17,7 +17,7 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::prefix('reports')->as('reports.')->group(function (): void {
         Route::get('/', [ReportController::class, 'index'])
             ->name('index')
-            ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area');
+            ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area|reports.review.area');
 
         Route::post('/', [ReportController::class, 'store'])
             ->name('store')
@@ -26,7 +26,7 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         Route::get('/export/{type}', [ReportController::class, 'export'])
             ->name('export')
             ->whereIn('type', ['pdf', 'excel'])
-            ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area');
+            ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area|reports.review.area');
 
         Route::post('/{report}/close', [ReportController::class, 'close'])
             ->name('close')
@@ -58,9 +58,9 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
             ->name('update')
             ->middleware('can:areas.edit');
 
-        Route::patch('/{area}/status', [AreaController::class, 'updateStatus'])
-            ->name('status')
-            ->middleware('can:areas.edit');
+        Route::post('/{area}/sub-areas', [AreaController::class, 'storeSubArea'])->name('sub-areas.store')->middleware('can:areas.edit');
+        Route::put('/{area}/sub-areas/{subArea}', [AreaController::class, 'updateSubArea'])->name('sub-areas.update')->middleware('can:areas.edit');
+        Route::delete('/{area}/sub-areas/{subArea}', [AreaController::class, 'destroySubArea'])->name('sub-areas.destroy')->middleware('can:areas.edit');
 
         Route::patch('/{areaId}/restore', [AreaController::class, 'restore'])
             ->name('restore')

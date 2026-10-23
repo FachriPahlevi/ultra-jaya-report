@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\BusinessException;
 use App\Models\Area;
+use App\Models\SubArea;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -25,11 +26,11 @@ class AreaController extends Controller
 
         if ($user->can('areas.view.all') || $user->hasRole('SUPER_ADMIN') || $user->hasRole('ADMIN')) {
             $areas = Area::withTrashed()
-                ->with('pics:id,name')
+                ->with(['pics:id,name', 'subAreas.supervisors:id,name'])
                 ->latest()
                 ->paginate(10);
         } else {
-            $areas = Area::with('pics:id,name')
+            $areas = Area::with(['pics:id,name', 'subAreas.supervisors:id,name'])
                 ->where('is_active', true)
                 ->whereHas('pics', fn ($query) => $query->where('users.id', $user->id))
                 ->latest()
@@ -40,13 +41,21 @@ class AreaController extends Controller
             return [
                 'id' => $area->id,
                 'area' => $area->area,
-                'is_active' => $area->is_active,
                 'deleted_at' => $area->deleted_at,
                 'pics' => $area->pics->map(fn ($pic) => [
                     'id' => $pic->id,
                     'name' => $pic->name,
                 ])->values(),
                 'pic_user_ids' => $area->pics->pluck('id')->values(),
+                'sub_areas' => $area->subAreas->map(fn (SubArea $subArea) => [
+                    'id' => $subArea->id,
+                    'name' => $subArea->name,
+                    'max_personnel' => $subArea->max_personnel,
+                    'personnel_count' => $subArea->supervisors->count(),
+                    'supervisors' => $subArea->supervisors
+                        ->map(fn (User $supervisor) => ['id' => $supervisor->id, 'name' => $supervisor->name])
+                        ->values(),
+                ])->values(),
             ];
         });
 
@@ -85,10 +94,11 @@ class AreaController extends Controller
         $area = DB::transaction(function () use ($validated, $picUserIds): Area {
             $area = Area::create([
                 'area' => $validated['name'],
-                'is_active' => $validated['is_active'] ?? true,
+                'is_active' => true,
             ]);
 
             $area->pics()->sync($picUserIds);
+            $area->subAreas()->create(['name' => 'Umum', 'max_personnel' => 1]);
 
             return $area;
         });
@@ -98,6 +108,36 @@ class AreaController extends Controller
         }
 
         return redirect()->route('areas.index');
+    }
+
+    public function storeSubArea(Request $request, Area $area): JsonResponse
+    {
+        $validated = $request->validate($this->subAreaRules($area));
+
+        return response()->json(['data' => $area->subAreas()->create($validated)], 201);
+    }
+
+    public function updateSubArea(Request $request, Area $area, SubArea $subArea): JsonResponse
+    {
+        $this->ensureSubAreaBelongsToArea($area, $subArea);
+
+        $subArea->update($request->validate($this->subAreaRules($area, $subArea)));
+
+        return response()->json(['data' => $subArea->fresh()]);
+    }
+
+    public function destroySubArea(Area $area, SubArea $subArea): JsonResponse
+    {
+        $this->ensureSubAreaBelongsToArea($area, $subArea);
+
+        if ($subArea->reports()->exists()) {
+            throw new BusinessException('Sub-area yang sudah memiliki laporan tidak dapat dihapus.');
+        }
+
+        $subArea->supervisors()->detach();
+        $subArea->delete();
+
+        return response()->json(['message' => 'Sub-area berhasil dihapus.']);
     }
 
     public function update(Request $request, Area $area): JsonResponse|RedirectResponse
@@ -110,7 +150,6 @@ class AreaController extends Controller
         DB::transaction(function () use ($area, $validated, $picUserIds): void {
             $area->update([
                 'area' => $validated['name'],
-                'is_active' => $validated['is_active'] ?? $area->is_active,
             ]);
 
             $area->pics()->sync($picUserIds);
@@ -132,20 +171,6 @@ class AreaController extends Controller
         }
 
         return redirect()->route('areas.index');
-    }
-
-    public function updateStatus(Request $request, Area $area): JsonResponse
-    {
-        $validated = $request->validate(['is_active' => ['required', 'boolean']]);
-
-        $area->update([
-            'is_active' => $validated['is_active'],
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => $validated['is_active'] ? 'Area berhasil diaktifkan.' : 'Area berhasil dinonaktifkan.',
-        ]);
     }
 
     public function restore(int $areaId): JsonResponse
@@ -219,9 +244,31 @@ class AreaController extends Controller
 
         return [
             'name' => ['required', 'string', 'max:255', $uniqueArea],
-            'is_active' => ['nullable', 'boolean'],
             'pic_user_ids' => ['nullable', 'array'],
             'pic_user_ids.*' => ['exists:users,id'],
         ];
+    }
+
+    private function subAreaRules(Area $area, ?SubArea $subArea = null): array
+    {
+        $uniqueName = Rule::unique('sub_areas', 'name')
+            ->where('area_id', $area->id)
+            ->whereNull('deleted_at');
+
+        if ($subArea !== null) {
+            $uniqueName->ignore($subArea);
+        }
+
+        return [
+            'name' => ['required', 'string', 'max:255', $uniqueName],
+            'max_personnel' => ['required', 'integer', 'min:1', 'max:100'],
+        ];
+    }
+
+    private function ensureSubAreaBelongsToArea(Area $area, SubArea $subArea): void
+    {
+        if ($subArea->area_id !== $area->id) {
+            abort(404);
+        }
     }
 }

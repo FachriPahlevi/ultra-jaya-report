@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\Activity;
 use App\Models\Area;
 use App\Models\Report;
+use App\Models\SubArea;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -94,7 +95,7 @@ class RbacAccessTest extends TestCase
         $this->assertFalse($author->can('update', $report->fresh()));
     }
 
-    public function test_area_pic_can_close_only_reports_in_their_area(): void
+    public function test_supervisor_can_close_only_reports_in_their_sub_area(): void
     {
         $this->seed(RoleSeeder::class);
 
@@ -103,12 +104,15 @@ class RbacAccessTest extends TestCase
         $pic->givePermissionTo('reports.solve.own.area');
         $assignedArea = Area::create(['area' => 'Area PIC', 'is_active' => true]);
         $otherArea = Area::create(['area' => 'Area Lain', 'is_active' => true]);
-        $assignedArea->pics()->attach($pic);
+        $assignedSubArea = SubArea::create(['area_id' => $assignedArea->id, 'name' => 'Sub Area PIC', 'max_personnel' => 1]);
+        $otherSubArea = SubArea::create(['area_id' => $otherArea->id, 'name' => 'Sub Area Lain', 'max_personnel' => 1]);
+        $assignedSubArea->supervisors()->attach($pic);
         $activity = Activity::create(['name' => 'Aktivitas Uji', 'is_active' => true]);
 
         $assignedReport = Report::create([
             'author_id' => $author->id,
             'area_id' => $assignedArea->id,
+            'sub_area_id' => $assignedSubArea->id,
             'activity_id' => $activity->id,
             'issue' => 'Temuan PIC',
             'status' => Report::STATUS_OPEN,
@@ -116,6 +120,7 @@ class RbacAccessTest extends TestCase
         $otherReport = Report::create([
             'author_id' => $author->id,
             'area_id' => $otherArea->id,
+            'sub_area_id' => $otherSubArea->id,
             'activity_id' => $activity->id,
             'issue' => 'Temuan lain',
             'status' => Report::STATUS_OPEN,

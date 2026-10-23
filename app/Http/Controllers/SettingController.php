@@ -6,6 +6,8 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\BusinessException;
 use App\Models\User;
+use App\Models\Area;
+use App\Models\SubArea;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,7 +38,7 @@ class SettingController extends Controller
         $canViewUsers = $user->can('users.view');
         $canViewRoles = $user->can('roles.view');
 
-        $users = User::with(['roles', 'assignedAreas:id,area'])
+        $users = User::with(['roles', 'managedAreas:id,area', 'supervisedSubAreas:id,area_id,name', 'supervisedSubAreas.area:id,area'])
             ->when(! $canViewUsers, fn ($query) => $query->whereRaw('1 = 0'))
             ->latest()
             ->paginate($usersPerPage)
@@ -52,6 +54,7 @@ class SettingController extends Controller
             'roles' => $roles,
             'permissions' => $permissions,
             'systemRoles' => array_keys(config('rbac.roles')),
+            'areas' => Area::with(['subAreas' => fn ($query) => $query->where('is_active', true)->withCount('supervisors')])->where('is_active', true)->orderBy('area')->get(),
             'filters' => [
                 'users_per_page' => $usersPerPage,
                 'active_tab' => $activeTab,
@@ -66,6 +69,8 @@ class SettingController extends Controller
             'email' => ['required', 'email', 'unique:users,email'],
             'role' => ['required', 'string', 'exists:roles,name'],
             'password' => ['required', 'string', 'min:6'],
+            'area_ids' => ['nullable', 'array'], 'area_ids.*' => ['integer', 'exists:areas,id'],
+            'sub_area_ids' => ['nullable', 'array'], 'sub_area_ids.*' => ['integer', 'exists:sub_areas,id'],
         ]);
 
         if ($validated['role'] === 'SUPER_ADMIN' && ! Auth::user()->hasRole('SUPER_ADMIN')) {
@@ -80,6 +85,7 @@ class SettingController extends Controller
         ]);
 
         $user->assignRole($validated['role']);
+        $this->syncScope($user, $validated);
 
         if ($request->wantsJson()) {
             return response()->json(['message' => 'User berhasil dibuat', 'user' => $user], 201);
@@ -95,6 +101,8 @@ class SettingController extends Controller
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($user)],
             'role' => ['required', 'string', 'exists:roles,name'],
             'password' => ['nullable', 'string', 'min:6'],
+            'area_ids' => ['nullable', 'array'], 'area_ids.*' => ['integer', 'exists:areas,id'],
+            'sub_area_ids' => ['nullable', 'array'], 'sub_area_ids.*' => ['integer', 'exists:sub_areas,id'],
         ]);
 
         if (! Auth::user()->hasRole('SUPER_ADMIN')) {
@@ -118,6 +126,7 @@ class SettingController extends Controller
 
         $user->update($data);
         $user->syncRoles([$validated['role']]);
+        $this->syncScope($user, $validated);
 
         if ($request->wantsJson()) {
             return response()->json(['message' => 'User berhasil diupdate', 'user' => $user], 200);
@@ -257,5 +266,17 @@ class SettingController extends Controller
     private function isSystemRole(Role $role): bool
     {
         return array_key_exists($role->name, config('rbac.roles'));
+    }
+
+    private function syncScope(User $user, array $validated): void
+    {
+        $role = $validated['role']; $areaIds = $validated['area_ids'] ?? []; $subAreaIds = $validated['sub_area_ids'] ?? [];
+        if ($role === 'MANAGER' && $areaIds === []) throw \Illuminate\Validation\ValidationException::withMessages(['area_ids' => 'Manager wajib ditugaskan ke minimal satu area.']);
+        if ($role === 'SUPERVISOR' && $subAreaIds === []) throw \Illuminate\Validation\ValidationException::withMessages(['sub_area_ids' => 'Supervisor wajib ditugaskan ke minimal satu sub-area.']);
+        foreach (SubArea::whereIn('id', $subAreaIds)->withCount('supervisors')->get() as $subArea) {
+            if (! $subArea->supervisors()->whereKey($user->id)->exists() && $subArea->supervisors_count >= $subArea->max_personnel) throw \Illuminate\Validation\ValidationException::withMessages(['sub_area_ids' => "Kapasitas sub-area {$subArea->name} sudah penuh."]);
+        }
+        $user->managedAreas()->sync($role === 'MANAGER' ? $areaIds : []);
+        $user->supervisedSubAreas()->sync($role === 'SUPERVISOR' ? $subAreaIds : []);
     }
 }
