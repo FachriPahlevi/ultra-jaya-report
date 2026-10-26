@@ -1,12 +1,13 @@
-import { getPhotoSizeMessage } from "@/lib/errorMessages"
 import { useForm, usePage, Link } from "@inertiajs/react"
 import { useState } from "react"
 import AppLayout from "@/Layouts/AppLayout"
-import { formatDate } from "@/lib/format.ts"
+import { formatDate as formatLocalizedDate } from "@/lib/format.ts"
 import InputText from "@/Components/Input/InputText"
 import InputDropdown from "@/Components/Input/InputDropdown"
 import BtnDefault from "@/Components/Button/BtnDefault"
 import { useStatusModal } from "@/Components/Context/StatusModalContext"
+
+const formatDate = (date) => formatLocalizedDate(date, "en-US")
 
 export default function CloseTicket({ report = {}, areas = [], activities = [] }) {
   const { auth } = usePage().props
@@ -43,7 +44,7 @@ export default function CloseTicket({ report = {}, areas = [], activities = [] }
 
     const maxSizeBytes = 2 * 1024 * 1024
     if (file.size > maxSizeBytes) {
-      showStatusModal("error", "File Terlalu Besar", getPhotoSizeMessage())
+      showStatusModal("error", "File too large", "The photo must be 2 MB or smaller.")
       e.target.value = ""
       return
     }
@@ -58,7 +59,7 @@ export default function CloseTicket({ report = {}, areas = [], activities = [] }
 
     const maxSizeBytes = 2 * 1024 * 1024
     if (file.size > maxSizeBytes) {
-      showStatusModal("error", "File Terlalu Besar", getPhotoSizeMessage())
+      showStatusModal("error", "File too large", "The photo must be 2 MB or smaller.")
       e.target.value = ""
       return
     }
@@ -151,7 +152,7 @@ export default function CloseTicket({ report = {}, areas = [], activities = [] }
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 mb-2">
               <div>
                 <p className="text-[13px] font-semibold text-foreground mb-0">Photos</p>
-                <p className="text-[11px] text-muted-foreground">Maks. 2 MB per foto (format: JPG, JPEG, PNG)</p>
+                <p className="text-[11px] text-muted-foreground">Max. 2 MB per photo (JPG, JPEG, PNG)</p>
               </div>
               <div className="flex gap-2">
                 <label
@@ -180,7 +181,7 @@ export default function CloseTicket({ report = {}, areas = [], activities = [] }
                   ) : (
                     <div className="text-center text-muted-foreground p-4 text-xs">
                       <span>No photo</span>
-                      <span className="block text-[10.5px] text-muted-foreground/80 mt-0.5">Maks. 2 MB</span>
+                      <span className="block text-[10.5px] text-muted-foreground/80 mt-0.5">Max. 2 MB</span>
                     </div>
                   )}
                 </div>
@@ -198,7 +199,7 @@ export default function CloseTicket({ report = {}, areas = [], activities = [] }
                     ) : (
                       <div className="text-center text-muted-foreground p-4 text-xs">
                         <span>Click to upload</span>
-                        <span className="block text-[10.5px] text-muted-foreground/80 mt-0.5">Maks. 2 MB</span>
+                        <span className="block text-[10.5px] text-muted-foreground/80 mt-0.5">Max. 2 MB</span>
                       </div>
                     )}
                   </div>

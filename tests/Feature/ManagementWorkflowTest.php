@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\Activity;
 use App\Models\Area;
 use App\Models\Report;
+use App\Models\SubActivity;
 use App\Models\SubArea;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -29,6 +30,7 @@ class ManagementWorkflowTest extends TestCase
 
         $this->actingAs($user)->post(route('reports.store'), [
             'type_activity' => $activity->id,
+            'sub_activity_id' => $activity->children()->firstOrFail()->id,
             'area_activity' => $area->id,
             'sub_area_id' => $subArea->id,
             'issue' => 'Temuan awal',
@@ -56,6 +58,7 @@ class ManagementWorkflowTest extends TestCase
             'sub_area_id' => $subArea->id,
             'activity_id' => $activity->id,
             'issue' => 'Milik user lain',
+            'sub_activity_id' => $activity->children()->firstOrFail()->id,
             'status' => Report::STATUS_OPEN,
         ]);
 
@@ -221,6 +224,7 @@ class ManagementWorkflowTest extends TestCase
             'area_activity' => $area->id,
             'sub_area_id' => $subArea->id,
             'issue' => 'Foto tiga megabyte',
+            'sub_activity_id' => $activity->children()->firstOrFail()->id,
             'photo' => UploadedFile::fake()->image('evidence.jpg')->size(3072),
         ])->assertRedirect();
 
@@ -242,13 +246,14 @@ class ManagementWorkflowTest extends TestCase
             'area_activity' => $area->id,
             'sub_area_id' => $subArea->id,
             'issue' => 'Foto terlalu besar',
+            'sub_activity_id' => $activity->children()->firstOrFail()->id,
             'photo' => UploadedFile::fake()->image('too-large.jpg')->size(3073),
         ])->assertSessionHasErrors('photo');
     }
 
     public function test_excel_export_is_an_xlsx_download(): void
     {
-        $user = $this->userWithPermissions(['reports.view.all']);
+        $user = $this->userWithPermissions(['reports.view.all', 'reports.export']);
         [$area, $subArea, $activity] = $this->reportContext();
         $this->createReport($user, $area, $subArea, $activity, 'Laporan ekspor');
 
@@ -271,6 +276,7 @@ class ManagementWorkflowTest extends TestCase
         $area = Area::create(['area' => fake()->unique()->word(), 'is_active' => true]);
         $subArea = SubArea::create(['area_id' => $area->id, 'name' => fake()->unique()->word(), 'max_personnel' => 1, 'is_active' => true]);
         $activity = Activity::create(['name' => fake()->unique()->word(), 'is_active' => true]);
+        SubActivity::create(['activity_id' => $activity->id, 'name' => fake()->unique()->word()]);
 
         return [$area, $subArea, $activity];
     }
@@ -291,6 +297,7 @@ class ManagementWorkflowTest extends TestCase
             'sub_area_id' => $subArea->id,
             'activity_id' => $activity->id,
             'issue' => $issue,
+            'sub_activity_id' => $activity->children()->firstOrFail()->id,
             'status' => Report::STATUS_OPEN,
         ]);
     }

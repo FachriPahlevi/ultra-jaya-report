@@ -1,5 +1,9 @@
 # Menambah akses halaman dan komponen
 
+Untuk panduan operasional dan matriks role bawaan, lihat [Panduan Sistem dan Hak Akses Pengguna](panduan-sistem-pengguna.md). Dokumen ini ditujukan untuk pengembang.
+
+Untuk role custom, permission penugasan dan kategori, serta perubahan kemampuan Manager/SPV, lihat [RBAC dinamis](rbac-dinamis.md). Pemeriksaan kemampuan operasional menggunakan permission; nama role hanya digunakan untuk template dan perlindungan administrasi akun/role sistem.
+
 Permission menjelaskan tindakan yang diizinkan. Role adalah kumpulan permission yang dapat diubah melalui halaman Pengaturan. Backend selalu memutuskan apakah request boleh dijalankan; frontend memakai hasilnya untuk menampilkan menu dan komponen.
 
 `<Can>` dapat membungkus komponen React apa pun: tombol, tautan, tab, kolom tabel, form, atau seluruh panel. Gunakan `permission`, `any`, atau `all` sesuai kebutuhan. `useAuthorization()` tersedia jika izin menentukan logika di dalam komponen. Untuk komponen yang berkaitan dengan satu record, pakai hasil policy dari backend (`record.can.update`, dan seterusnya), karena izin umum belum tentu cukup untuk record tersebut.

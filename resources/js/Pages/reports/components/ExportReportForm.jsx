@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react"
 import BtnDefault from "@/Components/Button/BtnDefault"
-import InputText from "@/Components/Input/InputText"
+import InputDate from "@/Components/Input/InputDate"
 import InputDropdown from "@/Components/Input/InputDropdown"
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
+import { ModalBody, ModalFooter, ModalHeader, ModalPanel } from "@/Components/Modal/ModalLayout"
 import { useStatusModal } from "@/Components/Context/StatusModalContext"
-import { HiOutlineX } from "react-icons/hi"
 
 const createInitialForm = (canExportAll, canExportArea) => ({
   type: "excel",
@@ -17,7 +17,7 @@ const createInitialForm = (canExportAll, canExportArea) => ({
   my_reports_only: !canExportAll && !canExportArea,
 })
 
-export default function ExportForm({ isOpen, onClose, areas, activities, users, canExportAll = false, canExportArea = false, assignedAreas = [] }) {
+export default function ExportForm({ isOpen, onClose, areas, activities, users, canExportAll = false, canExportArea = false }) {
   const { setStatusModalProps } = useStatusModal()
   const [processing, setProcessing] = useState(false)
   const [form, setForm] = useState(() => createInitialForm(canExportAll, canExportArea))
@@ -48,6 +48,7 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
     { label: "All", value: "" },
     { label: "Open", value: "open" },
     { label: "Closed", value: "closed" },
+    { label: "Report", value: "report" },
   ]
 
   const handleCheckboxChange = (id, type, checked) => {
@@ -133,23 +134,24 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
-      <div className="max-h-[90vh] w-full max-w-[600px] overflow-y-auto rounded-t-xl border border-border bg-card shadow-lg sm:rounded-xl">
-        <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl">
-          <h2 className="text-xl font-bold text-foreground">Export Report</h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
-            <HiOutlineX className="w-5 h-5" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
-          <InputDropdown label="Export Type" value={form.type} setObject={(item) => setForm({ ...form, type: item.value })} itemList={typeOptions} required />
+      <ModalPanel width="lg">
+        <ModalHeader title="Export reports" description="Choose a format and limit the reports to include." onClose={onClose} />
+        <ModalBody>
+        <form id="export-report-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <InputDropdown
+            label="Export format"
+            object={typeOptions.find((item) => item.value === form.type)}
+            setObject={(item) => setForm({ ...form, type: item.value })}
+            itemList={typeOptions}
+            required
+          />
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <InputText label="Start Date" type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
-            <InputText label="End Date" type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
+            <InputDate label="Start date" value={form.start_date} onChange={(event) => setForm((current) => ({ ...current, start_date: event.target.value }))} />
+            <InputDate label="End date" value={form.end_date} min={form.start_date || undefined} onChange={(event) => setForm((current) => ({ ...current, end_date: event.target.value }))} />
           </div>
 
-          {canExportAll && (
+          {users.length > 1 && (
             <div>
               <p className="text-[13px] font-semibold text-foreground mb-2 block">Authors</p>
               <div className="border border-border rounded-lg p-3 max-h-[150px] overflow-y-auto">
@@ -177,7 +179,7 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
             </div>
           )}
 
-          {(canExportAll || canExportArea) && (
+          {areas.length > 0 && (
             <div>
               <p className="text-[13px] font-semibold text-foreground mb-2 block">Areas</p>
               <div className="border border-border rounded-lg p-3 max-h-[150px] overflow-y-auto">
@@ -187,7 +189,6 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
                     checked={form.area_ids.length === areas.length}
                     onChange={() => handleSelectAll("area", areas)}
                     className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                    disabled={!canExportAll && !canExportArea}
                   />
                   Select All
                 </label>
@@ -198,15 +199,12 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
                       checked={form.area_ids.includes(area.id)}
                       onChange={(e) => handleCheckboxChange(area.id, "area", e.target.checked)}
                       className="w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                      disabled={!canExportAll && !canExportArea}
                     />
                     <label className="text-[13px] text-foreground cursor-pointer">{area.area}</label>
                   </div>
                 ))}
               </div>
-              {!canExportAll && canExportArea && assignedAreas.length === 1 && (
-                <p className="text-[12px] text-muted-foreground mt-2">Anda hanya dapat mengekspor area yang ditugaskan: {assignedAreas[0].area}.</p>
-              )}
+              <p className="mt-2 text-xs text-muted-foreground">Only reports you can access will be exported.</p>
             </div>
           )}
 
@@ -236,7 +234,7 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
             </div>
           </div>
 
-          <InputDropdown label="Status" value={form.status} setObject={(item) => setForm({ ...form, status: item.value })} itemList={statusOptions} />
+          <InputDropdown label="Status" object={statusOptions.find((item) => item.value === form.status)} setObject={(item) => setForm({ ...form, status: item.value })} itemList={statusOptions} />
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
@@ -252,20 +250,17 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
                 Export only my reports
               </label>
             </div>
-            {!canExportAll && !canExportArea && <p className="text-[12px] text-muted-foreground">Sebagai user biasa, Anda hanya dapat mengekspor laporan yang Anda unggah sendiri.</p>}
-            {canExportArea && !canExportAll && <p className="text-[12px] text-muted-foreground">Sebagai supervisor, ekspor akan dibatasi ke area yang ditugaskan.</p>}
+            {!canExportAll && !canExportArea && <p className="text-[12px] text-muted-foreground">You can export only reports you submitted.</p>}
+            {canExportArea && !canExportAll && <p className="text-[12px] text-muted-foreground">Exports are limited to reports within your assigned scope.</p>}
           </div>
 
-          <div className="flex gap-3 pt-4">
-            <BtnDefault outline onClick={onClose} className="flex-1">
-              Cancel
-            </BtnDefault>
-            <BtnDefault type="submit" loading={processing} className="flex-[2]">
-              Export
-            </BtnDefault>
-          </div>
         </form>
-      </div>
+        </ModalBody>
+        <ModalFooter>
+          <BtnDefault outline onClick={onClose} className="w-full">Cancel</BtnDefault>
+          <BtnDefault form="export-report-form" type="submit" loading={processing} className="w-full">Export</BtnDefault>
+        </ModalFooter>
+      </ModalPanel>
     </ModalOverlay>
   )
 }

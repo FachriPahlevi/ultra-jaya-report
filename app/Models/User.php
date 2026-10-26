@@ -53,7 +53,12 @@ class User extends Authenticatable
 
     public function assignedActivities(): BelongsToMany
     {
-        return $this->belongsToMany(Activity::class)->withTimestamps();
+        return $this->belongsToMany(Activity::class, 'activity_managers')->withTimestamps();
+    }
+
+    public function assignedSubActivities(): BelongsToMany
+    {
+        return $this->belongsToMany(SubActivity::class, 'sub_activity_supervisors')->withTimestamps();
     }
 
     public function assignedArea(): BelongsToMany

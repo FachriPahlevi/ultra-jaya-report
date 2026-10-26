@@ -17,18 +17,12 @@ const getInitials = (name) =>
     .map((word) => word[0]?.toUpperCase())
     .join("") ?? "U"
 
-const getVisibleUsers = (users, auth) => users.data.filter((user) => user.roles[0]?.name !== "SUPER_ADMIN" || user.id === auth.user.id)
-const isSupervisor = (user) => user.roles[0]?.name === "SUPERVISOR"
-const isManager = (user) => user.roles[0]?.name === "MANAGER"
+const getVisibleUsers = (users, auth) => users.data.filter((user) => auth.user.roles.includes("SUPER_ADMIN") || user.roles[0]?.name !== "SUPER_ADMIN" || user.id === auth.user.id)
 
 function AreaAssignmentChips({ user }) {
-  const assignments = isManager(user)
-    ? user.managed_areas?.map((area) => area.area)
-    : isSupervisor(user)
-      ? user.supervised_sub_areas?.map((subArea) => `${subArea.area?.area ?? "Area"} / ${subArea.name}`)
-      : null
+  const assignments = [...(user.managed_areas?.map((area) => area.area) ?? []), ...(user.supervised_sub_areas?.map((subArea) => `${subArea.area?.area ?? "Area"} / ${subArea.name}`) ?? [])]
 
-  if (!assignments) {
+  if (!assignments.length && !user.scope_capabilities?.review && !user.scope_capabilities?.close) {
     return null
   }
 
@@ -117,13 +111,15 @@ function DesktopTable({ users, auth, onEdit, onDelete }) {
                 </td>
                 <td className="px-6 py-5">
                   <div className="flex items-center gap-1.5">
-                    <Can permission="users.edit">
-                      <UserActionButton onClick={() => onEdit(user)} title="Edit User">
-                        <HiOutlinePencil className="mr-1.5 h-4 w-4" />
-                        Edit
-                      </UserActionButton>
-                    </Can>
-                    {user.roles[0]?.name !== "SUPER_ADMIN" && (
+                    {user.can?.update && (
+                      <Can permission="users.edit">
+                        <UserActionButton onClick={() => onEdit(user)} title="Edit User">
+                          <HiOutlinePencil className="mr-1.5 h-4 w-4" />
+                          Edit
+                        </UserActionButton>
+                      </Can>
+                    )}
+                    {user.can?.delete && (
                       <Can permission="users.delete">
                         <UserActionButton onClick={() => onDelete(user)} tone="danger" title="Delete User">
                           <HiOutlineTrash className="mr-1.5 h-4 w-4" />
@@ -170,13 +166,15 @@ function MobileList({ users, auth, onEdit, onDelete }) {
             <AreaAssignmentChips user={user} />
 
             <div className="mt-4 flex gap-2 border-t border-border pt-4 max-sm:[&>button]:flex-1">
-              <Can permission="users.edit">
-                <UserActionButton onClick={() => onEdit(user)} title="Edit User">
-                  <HiOutlinePencil className="mr-1.5 h-4 w-4" />
-                  Edit
-                </UserActionButton>
-              </Can>
-              {user.roles[0]?.name !== "SUPER_ADMIN" && (
+              {user.can?.update && (
+                <Can permission="users.edit">
+                  <UserActionButton onClick={() => onEdit(user)} title="Edit User">
+                    <HiOutlinePencil className="mr-1.5 h-4 w-4" />
+                    Edit
+                  </UserActionButton>
+                </Can>
+              )}
+              {user.can?.delete && (
                 <Can permission="users.delete">
                   <UserActionButton onClick={() => onDelete(user)} tone="danger" title="Delete User">
                     <HiOutlineTrash className="mr-1.5 h-4 w-4" />

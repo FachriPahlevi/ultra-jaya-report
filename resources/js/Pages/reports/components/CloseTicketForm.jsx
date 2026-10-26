@@ -1,11 +1,11 @@
-import { getPhotoSizeMessage } from "@/lib/errorMessages"
 // resources/js/Components/Form/CloseTicketForm.jsx
 import { useState, useEffect } from "react"
 import { router } from "@inertiajs/react"
 import BtnDefault from "@/Components/Button/BtnDefault"
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
+import { ModalBody, ModalFooter, ModalHeader, ModalPanel } from "@/Components/Modal/ModalLayout"
 import { useStatusModal } from "@/Components/Context/StatusModalContext"
-import { HiOutlineX, HiOutlinePhotograph } from "react-icons/hi"
+import { HiOutlinePhotograph } from "react-icons/hi"
 
 export default function CloseTicketForm({ isOpen, onClose, report }) {
   const { setStatusModalProps } = useStatusModal()
@@ -37,7 +37,7 @@ export default function CloseTicketForm({ isOpen, onClose, report }) {
 
   const handleCloseSubmit = () => {
     if (!reportId) {
-      showStatusModal("error", "Error", "Report ID tidak valid. Silakan tutup dan buka kembali form.")
+      showStatusModal("error", "Error", "Invalid report ID. Close and reopen this form.")
       return
     }
 
@@ -63,7 +63,7 @@ export default function CloseTicketForm({ isOpen, onClose, report }) {
           return
         }
         if (!page?.props?.flash?.success) {
-          showStatusModal("success", "Berhasil", "Tiket berhasil diselesaikan dan ditutup")
+          showStatusModal("success", "Success", "Ticket closed successfully")
         }
         setClosePhoto(null)
         setClosePhotoPreview(null)
@@ -72,8 +72,8 @@ export default function CloseTicketForm({ isOpen, onClose, report }) {
       },
       onError: (errors) => {
         console.error("Close ticket error:", errors)
-        const errorMessage = errors.close_comment || errors.photo_after || "Gagal menutup tiket laporan"
-        showStatusModal("error", "Gagal Menutup Tiket", errorMessage)
+        const errorMessage = errors.close_comment || errors.photo_after || "Unable to close the ticket"
+        showStatusModal("error", "Unable to close ticket", errorMessage)
         setProcessing(false)
       },
     })
@@ -81,18 +81,9 @@ export default function CloseTicketForm({ isOpen, onClose, report }) {
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
-      <div className="mx-auto max-h-[90vh] w-full max-w-[560px] overflow-y-auto rounded-t-xl border border-border bg-card shadow-lg sm:rounded-xl">
-        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
-          <div>
-            <h2 className="m-0 text-lg font-semibold tracking-[-0.02em] text-foreground">Close Ticket {reportId ? `#${reportId}` : ""}</h2>
-            <p className="mt-1 text-[12.5px] text-muted-foreground">Review the issue, add a closing note, then optionally attach evidence.</p>
-          </div>
-          <button onClick={onClose} className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground" aria-label="Close">
-            <HiOutlineX className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="px-5 py-4">
+      <ModalPanel>
+        <ModalHeader title={`Close ticket${reportId ? ` #${reportId}` : ""}`} description="Review the issue, add a closing note, and optionally attach evidence." onClose={onClose} />
+        <ModalBody>
           <div className="flex flex-col gap-4">
             <div className="grid gap-3 rounded-2xl border border-border bg-background px-4 py-3 sm:grid-cols-2">
               <div>
@@ -130,7 +121,7 @@ export default function CloseTicketForm({ isOpen, onClose, report }) {
                   <p className="block text-[12.5px] font-semibold text-foreground">
                     Closing Photo <span className="font-normal text-muted-foreground">(optional)</span>
                   </p>
-                  <p className="text-[11px] text-muted-foreground">Maks. 2 MB (format: JPG, JPEG, PNG)</p>
+                  <p className="text-[11px] text-muted-foreground">Max. 2 MB (JPG, JPEG, PNG)</p>
                 </div>
                 <label
                   htmlFor="photo_after"
@@ -150,7 +141,7 @@ export default function CloseTicketForm({ isOpen, onClose, report }) {
                   if (file) {
                     const maxSizeBytes = 2 * 1024 * 1024
                     if (file.size > maxSizeBytes) {
-                      showStatusModal("error", "File Terlalu Besar", getPhotoSizeMessage())
+                      showStatusModal("error", "File too large", "The closing photo must be 2 MB or smaller.")
                       e.target.value = ""
                       return
                     }
@@ -174,7 +165,7 @@ export default function CloseTicketForm({ isOpen, onClose, report }) {
                     <div>
                       <HiOutlinePhotograph className="mx-auto mb-2 h-8 w-8 opacity-35" />
                       <span className="text-[12px]">No photo uploaded</span>
-                      <span className="block text-[11px] text-muted-foreground/80 mt-0.5">Maksimal 2 MB (JPG, JPEG, PNG)</span>
+                      <span className="block text-[11px] text-muted-foreground/80 mt-0.5">Max. 2 MB (JPG, JPEG, PNG)</span>
                     </div>
                   </div>
                 )}
@@ -183,17 +174,13 @@ export default function CloseTicketForm({ isOpen, onClose, report }) {
               {closePhoto && <p className="mt-2 truncate text-[11.5px] text-muted-foreground">{closePhoto.name}</p>}
             </div>
 
-            <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
-              <BtnDefault outline onClick={onClose} className="w-full sm:w-auto sm:min-w-[116px]">
-                Cancel
-              </BtnDefault>
-              <BtnDefault onClick={handleCloseSubmit} loading={processing} className="w-full sm:w-auto sm:min-w-[168px]">
-                {processing ? "Closing..." : "Close Ticket"}
-              </BtnDefault>
-            </div>
           </div>
-        </div>
-      </div>
+        </ModalBody>
+        <ModalFooter>
+          <BtnDefault outline onClick={onClose} className="w-full">Cancel</BtnDefault>
+          <BtnDefault onClick={handleCloseSubmit} loading={processing} className="w-full">{processing ? "Closing..." : "Close ticket"}</BtnDefault>
+        </ModalFooter>
+      </ModalPanel>
     </ModalOverlay>
   )
 }

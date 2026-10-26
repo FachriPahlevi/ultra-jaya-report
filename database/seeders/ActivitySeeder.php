@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Activity;
+use App\Models\SubActivity;
 use Illuminate\Database\Seeder;
 
 class ActivitySeeder extends Seeder
@@ -74,29 +75,22 @@ class ActivitySeeder extends Seeder
             ->flatMap(fn ($act) => array_merge([$act['name']], array_column($act['children'], 'name')))
             ->all();
 
-        // Delete children first, then parents that are not in the valid activities list
-        Activity::whereNotIn('name', $allValidNames)->whereNotNull('parent_id')->forceDelete();
-        Activity::whereNotIn('name', $allValidNames)->whereNull('parent_id')->forceDelete();
-
         foreach ($activityMap as $activityData) {
             $parent = Activity::withTrashed()->updateOrCreate(
                 ['name' => $activityData['name']],
                 [
                     'description' => $activityData['description'],
                     'is_active' => true,
-                    'parent_id' => null,
-                    'category' => 'ISSUE',
                     'deleted_at' => null,
                 ]
             );
 
             foreach ($activityData['children'] as $childData) {
-                Activity::withTrashed()->updateOrCreate(
-                    ['name' => $childData['name']],
+                SubActivity::withTrashed()->updateOrCreate(
+                    ['activity_id' => $parent->id, 'name' => $childData['name']],
                     [
                         'description' => $childData['description'],
-                        'is_active' => true,
-                        'parent_id' => $parent->id,
+                        'activity_id' => $parent->id,
                         'category' => $childData['category'] ?? 'ISSUE',
                         'deleted_at' => null,
                     ]

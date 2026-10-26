@@ -5,15 +5,17 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Exceptions\BusinessException;
-use App\Models\User;
 use App\Models\Area;
 use App\Models\SubArea;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Permission;
@@ -39,8 +41,9 @@ class SettingController extends Controller
         $canViewUsers = $user->can('users.view');
         $canViewRoles = $user->can('roles.view');
 
-        $users = User::with(['roles', 'managedAreas:id,area', 'supervisedSubAreas:id,area_id,name', 'supervisedSubAreas.area:id,area'])
+        $users = User::with(['roles.permissions', 'permissions', 'managedAreas:id,area', 'supervisedSubAreas:id,area_id,name', 'supervisedSubAreas.area:id,area'])
             ->when(! $canViewUsers, fn ($query) => $query->whereRaw('1 = 0'))
+            ->when(! $user->hasRole('SUPER_ADMIN'), fn ($query) => $query->whereDoesntHave('roles', fn ($roles) => $roles->where('name', 'SUPER_ADMIN')))
             ->when($userSearch !== '', fn ($query) => $query->where(function ($nestedQuery) use ($userSearch) {
                 $nestedQuery->where('name', 'like', "%{$userSearch}%")
                     ->orWhere('email', 'like', "%{$userSearch}%");
@@ -49,8 +52,22 @@ class SettingController extends Controller
             ->paginate($usersPerPage === -1 ? 2147483647 : $usersPerPage)
             ->withQueryString();
 
+        $users->through(function (User $account): User {
+            $account->setAttribute('direct_permissions', $account->permissions->pluck('name')->values());
+            $account->setAttribute('scope_capabilities', [
+                'review' => $account->can('reports.review.area'),
+                'close' => $account->can('reports.solve.own.area'),
+            ]);
+            $account->setAttribute('can', [
+                'update' => Auth::user()->can('users.edit') && (! $account->hasRole('SUPER_ADMIN') || Auth::user()->hasRole('SUPER_ADMIN')),
+                'delete' => Auth::user()->can('users.delete') && $account->id !== Auth::id() && ! $account->hasRole('SUPER_ADMIN'),
+            ]);
+
+            return $account;
+        });
+
         $roles = $canViewRoles || $user->can('users.create') || $user->can('users.edit')
-            ? Role::with('permissions')->orderBy('name')->get()
+            ? Role::with('permissions')->when(! $user->hasRole('SUPER_ADMIN'), fn ($query) => $query->where('name', '<>', 'SUPER_ADMIN'))->orderBy('name')->get()
             : collect();
         $permissions = $user->can('permissions.manage') ? $this->permissionCatalog() : [];
 
@@ -59,7 +76,7 @@ class SettingController extends Controller
             'roles' => $roles,
             'permissions' => $permissions,
             'systemRoles' => array_keys(config('rbac.roles')),
-            'areas' => Area::with(['subAreas' => fn ($query) => $query->where('is_active', true)->withCount('supervisors')])->where('is_active', true)->orderBy('area')->get(),
+            'areas' => $user->can('users.assign.area') ? Area::with(['subAreas' => fn ($query) => $query->where('is_active', true)->withCount('supervisors')])->where('is_active', true)->orderBy('area')->get() : collect(),
             'filters' => [
                 'users_per_page' => $usersPerPage,
                 'active_tab' => $activeTab,
@@ -83,15 +100,19 @@ class SettingController extends Controller
             throw new BusinessException('Hanya SUPER_ADMIN yang dapat menetapkan role SUPER_ADMIN.');
         }
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'is_active' => true,
-        ]);
+        $user = DB::transaction(function () use ($validated): User {
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'is_active' => true,
+            ]);
 
-        $user->assignRole($validated['role']);
-        $this->syncScope($user, $validated);
+            $user->assignRole($validated['role']);
+            $this->syncScope($user, $validated);
+
+            return $user;
+        });
 
         if ($request->wantsJson()) {
             return response()->json(['message' => 'User berhasil dibuat', 'user' => $user], 201);
@@ -121,6 +142,10 @@ class SettingController extends Controller
             }
         }
 
+        if (! $user->hasRole($validated['role']) && ! Auth::user()->can('users.promote')) {
+            throw new BusinessException('Anda tidak memiliki izin untuk mengubah role pengguna.', 403);
+        }
+
         $data = [
             'name' => $validated['name'],
             'email' => $validated['email'],
@@ -130,9 +155,11 @@ class SettingController extends Controller
             $data['password'] = Hash::make($validated['password']);
         }
 
-        $user->update($data);
-        $user->syncRoles([$validated['role']]);
-        $this->syncScope($user, $validated);
+        DB::transaction(function () use ($user, $data, $validated): void {
+            $user->update($data);
+            $user->syncRoles([$validated['role']]);
+            $this->syncScope($user, $validated);
+        });
 
         if ($request->wantsJson()) {
             return response()->json(['message' => 'User berhasil diupdate', 'user' => $user], 200);
@@ -247,7 +274,10 @@ class SettingController extends Controller
             throw new BusinessException('Hanya SUPER_ADMIN yang dapat mengubah role user SUPER_ADMIN.');
         }
 
-        $user->syncRoles([$validated['role']]);
+        DB::transaction(function () use ($user, $validated): void {
+            $user->syncRoles([$validated['role']]);
+            $this->syncScope($user, $validated);
+        });
 
         return redirect()->route('settings.index')->with('success', 'Role berhasil diassign ke user');
     }
@@ -276,13 +306,28 @@ class SettingController extends Controller
 
     private function syncScope(User $user, array $validated): void
     {
-        $role = $validated['role']; $areaIds = $validated['area_ids'] ?? []; $subAreaIds = $validated['sub_area_ids'] ?? [];
-        if ($role === 'MANAGER' && $areaIds === []) throw \Illuminate\Validation\ValidationException::withMessages(['area_ids' => 'Manager wajib ditugaskan ke minimal satu area.']);
-        if ($role === 'SUPERVISOR' && $subAreaIds === []) throw \Illuminate\Validation\ValidationException::withMessages(['sub_area_ids' => 'Supervisor wajib ditugaskan ke minimal satu sub-area.']);
-        foreach (SubArea::whereIn('id', $subAreaIds)->withCount('supervisors')->get() as $subArea) {
-            if (! $subArea->supervisors()->whereKey($user->id)->exists() && $subArea->supervisors_count >= $subArea->max_personnel) throw \Illuminate\Validation\ValidationException::withMessages(['sub_area_ids' => "Kapasitas sub-area {$subArea->name} sudah penuh."]);
+        $areaIds = $validated['area_ids'] ?? $user->managedAreas()->pluck('areas.id')->all();
+        $subAreaIds = $validated['sub_area_ids'] ?? $user->supervisedSubAreas()->pluck('sub_areas.id')->all();
+        if (! Auth::user()->can('users.assign.area')) {
+            $existingAreas = $user->managedAreas()->pluck('areas.id')->map(fn ($id) => (int) $id)->sort()->values()->all();
+            $existingSubAreas = $user->supervisedSubAreas()->pluck('sub_areas.id')->map(fn ($id) => (int) $id)->sort()->values()->all();
+            if (collect($areaIds)->map(fn ($id) => (int) $id)->sort()->values()->all() !== $existingAreas
+                || collect($subAreaIds)->map(fn ($id) => (int) $id)->sort()->values()->all() !== $existingSubAreas) {
+                throw new BusinessException('Anda tidak memiliki izin untuk mengubah penugasan lokasi.', 403);
+            }
         }
-        $user->managedAreas()->sync($role === 'MANAGER' ? $areaIds : []);
-        $user->supervisedSubAreas()->sync($role === 'SUPERVISOR' ? $subAreaIds : []);
+        if ($user->can('reports.review.area') && $areaIds === []) {
+            throw ValidationException::withMessages(['area_ids' => 'Pengguna dengan izin review wajib ditugaskan ke minimal satu area.']);
+        }
+        if ($user->can('reports.solve.own.area') && $subAreaIds === []) {
+            throw ValidationException::withMessages(['sub_area_ids' => 'Pengguna dengan izin close sesuai penugasan wajib memiliki minimal satu sub-area.']);
+        }
+        foreach (SubArea::whereIn('id', $subAreaIds)->lockForUpdate()->withCount('supervisors')->get() as $subArea) {
+            if (! $subArea->supervisors()->whereKey($user->id)->exists() && $subArea->supervisors_count >= $subArea->max_personnel) {
+                throw ValidationException::withMessages(['sub_area_ids' => "Kapasitas sub-area {$subArea->name} sudah penuh."]);
+            }
+        }
+        $user->managedAreas()->sync($areaIds);
+        $user->supervisedSubAreas()->sync($subAreaIds);
     }
 }

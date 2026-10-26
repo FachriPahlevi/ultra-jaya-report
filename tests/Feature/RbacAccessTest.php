@@ -7,6 +7,7 @@ namespace Tests\Feature;
 use App\Models\Activity;
 use App\Models\Area;
 use App\Models\Report;
+use App\Models\SubActivity;
 use App\Models\SubArea;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -84,6 +85,7 @@ class RbacAccessTest extends TestCase
             'area_id' => $area->id,
             'activity_id' => $activity->id,
             'issue' => 'Temuan uji',
+            'sub_activity_id' => SubActivity::create(['activity_id' => $activity->id, 'name' => 'Sub Uji'])->id,
             'status' => Report::STATUS_OPEN,
         ]);
 
@@ -109,7 +111,8 @@ class RbacAccessTest extends TestCase
         $otherSubArea = SubArea::create(['area_id' => $otherArea->id, 'name' => 'Sub Area Lain', 'max_personnel' => 1]);
         $assignedSubArea->supervisors()->attach($pic);
         $activity = Activity::create(['name' => 'Aktivitas Uji', 'is_active' => true]);
-        $activity->assignees()->attach($pic);
+        $assignedSubActivity = SubActivity::create(['activity_id' => $activity->id, 'name' => 'Sub Uji']);
+        $assignedSubActivity->supervisors()->attach($pic);
         $unassignedActivity = Activity::create(['name' => 'Aktivitas Tidak Ditugaskan', 'is_active' => true]);
 
         $assignedReport = Report::create([
@@ -118,6 +121,7 @@ class RbacAccessTest extends TestCase
             'sub_area_id' => $assignedSubArea->id,
             'activity_id' => $activity->id,
             'issue' => 'Temuan PIC',
+            'sub_activity_id' => $assignedSubActivity->id,
             'status' => Report::STATUS_OPEN,
         ]);
         $otherReport = Report::create([
@@ -126,6 +130,7 @@ class RbacAccessTest extends TestCase
             'sub_area_id' => $otherSubArea->id,
             'activity_id' => $activity->id,
             'issue' => 'Temuan lain',
+            'sub_activity_id' => $assignedSubActivity->id,
             'status' => Report::STATUS_OPEN,
         ]);
         $unassignedActivityReport = Report::create([
@@ -134,6 +139,7 @@ class RbacAccessTest extends TestCase
             'sub_area_id' => $assignedSubArea->id,
             'activity_id' => $unassignedActivity->id,
             'issue' => 'Temuan aktivitas lain',
+            'sub_activity_id' => SubActivity::create(['activity_id' => $unassignedActivity->id, 'name' => 'Sub Lain'])->id,
             'status' => Report::STATUS_OPEN,
         ]);
 
@@ -155,14 +161,13 @@ class RbacAccessTest extends TestCase
         $subArea = SubArea::create(['area_id' => $area->id, 'name' => 'Sub Area Uji', 'max_personnel' => 1]);
         $subArea->supervisors()->attach($supervisor);
         $activity = Activity::create(['name' => 'Aktivitas Observasi', 'is_active' => true]);
-        $activity->assignees()->attach($supervisor);
-        $reportOnlySubActivity = Activity::create([
+        $reportOnlySubActivity = SubActivity::create([
             'name' => 'Kondisi Baik',
-            'parent_id' => $activity->id,
+            'activity_id' => $activity->id,
             'category' => 'REPORT',
             'is_active' => true,
         ]);
-        $reportOnlySubActivity->assignees()->attach($supervisor);
+        $reportOnlySubActivity->supervisors()->attach($supervisor);
         $report = Report::create([
             'author_id' => $author->id,
             'area_id' => $area->id,
@@ -206,6 +211,7 @@ class RbacAccessTest extends TestCase
             'area_id' => $area->id,
             'activity_id' => $activity->id,
             'issue' => 'Temuan uji',
+            'sub_activity_id' => SubActivity::create(['activity_id' => $activity->id, 'name' => 'Sub Uji'])->id,
             'status' => Report::STATUS_OPEN,
         ]);
 

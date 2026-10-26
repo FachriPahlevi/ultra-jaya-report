@@ -15,14 +15,14 @@ final class ReportPhotoService
     public function store(UploadedFile $photo, Report $report, string $stage): string
     {
         if (! in_array($stage, ['before', 'after'], true)) {
-            throw new RuntimeException('Tahap foto laporan tidak valid.');
+            throw new RuntimeException('Invalid report photo stage.');
         }
 
         $contents = file_get_contents($photo->getRealPath());
         $source = $contents === false ? false : imagecreatefromstring($contents);
 
         if ($source === false) {
-            throw new RuntimeException('Foto laporan tidak dapat diproses.');
+            throw new RuntimeException('The report photo could not be processed.');
         }
 
         $sourceWidth = imagesx($source);
@@ -43,7 +43,7 @@ final class ReportPhotoService
         imagedestroy($target);
 
         if (! is_string($encoded)) {
-            throw new RuntimeException('Foto laporan gagal dikompresi.');
+            throw new RuntimeException('The report photo could not be compressed.');
         }
 
         $path = sprintf(
@@ -57,7 +57,7 @@ final class ReportPhotoService
         );
 
         if (! Storage::disk($this->disk())->put($path, $encoded)) {
-            throw new RuntimeException('Foto laporan gagal disimpan.');
+            throw new RuntimeException('The report photo could not be saved.');
         }
 
         return $path;

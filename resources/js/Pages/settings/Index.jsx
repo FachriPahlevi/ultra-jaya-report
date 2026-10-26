@@ -30,16 +30,21 @@ export default function Settings({ users, auth, roles, permissions, systemRoles,
   const [roleForPermissions, setRoleForPermissions] = useState(null)
   const canViewRoles = can("roles.view")
   const canViewUsers = can("users.view")
-  const canAddRoles = can("roles.create")
-  const canAddUsers = can("users.create")
+  const canAddRoles = canViewRoles && can("roles.create")
+  const canAddUsers = canViewUsers && can("users.create")
   const [activeTab, setActiveTab] = useState(filters.active_tab === "users" && canViewUsers ? "users" : canViewRoles ? "roles" : "users")
   const [roleDisplayCount, setRoleDisplayCount] = useState(10)
   const [userSearch, setUserSearch] = useState(filters.user_search ?? "")
 
   const isSuperadmin = auth.user.roles.includes("SUPER_ADMIN")
-  const visibleUsersCount = users.data.filter((user) => user.roles[0]?.name !== "SUPER_ADMIN" || user.id === auth.user.id).length
+  const visibleUsersCount = users.data.length
   const visibleRolesCount = roles.filter((role) => isSuperadmin || role.name !== "SUPER_ADMIN").length
   const usersPerPage = String(filters.users_per_page ?? 10)
+
+  useEffect(() => {
+    if (activeTab === "roles" && !canViewRoles && canViewUsers) setActiveTab("users")
+    if (activeTab === "users" && !canViewUsers && canViewRoles) setActiveTab("roles")
+  }, [activeTab, canViewRoles, canViewUsers])
 
   useEffect(() => {
     if (userSearch === (filters.user_search ?? "")) return undefined
@@ -229,7 +234,9 @@ export default function Settings({ users, auth, roles, permissions, systemRoles,
         </div>
 
         <section>
-          {activeTab === "roles" ? (
+          {!canViewRoles && !canViewUsers ? (
+            <p className="py-10 text-center text-sm text-muted-foreground">Anda belum memiliki izin untuk melihat pengguna atau role.</p>
+          ) : activeTab === "roles" && canViewRoles ? (
             <RolesTable
               roles={roles}
               onEdit={openRoleModal}

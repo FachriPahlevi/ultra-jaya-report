@@ -4,62 +4,29 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use App\Models\Activity;
 use App\Models\Report;
 use App\Models\User;
+use App\Services\ReportCapabilities;
 
 class ReportPolicy
 {
     public function view(User $user, Report $report): bool
     {
-        return $user->can('reports.view.all')
-            || ($user->can('reports.view.own') && $report->author_id === $user->id)
-            || ($user->can('reports.solve.own.area') && $this->isSupervisor($user, $report))
-            || ($user->can('reports.review.area') && $this->isManagerAssignedToActivity($user, $report));
+        return (new ReportCapabilities($user))->view($report);
     }
 
     public function update(User $user, Report $report): bool
     {
-        return $report->isOpen() && (
-            $user->can('reports.edit.all')
-            || ($user->can('reports.edit.own') && $report->author_id === $user->id)
-        );
+        return (new ReportCapabilities($user))->update($report);
     }
 
     public function delete(User $user, Report $report): bool
     {
-        return $report->isOpen() && (
-            $user->can('reports.delete.all')
-            || ($user->can('reports.delete.own') && $report->author_id === $user->id)
-        );
+        return (new ReportCapabilities($user))->delete($report);
     }
 
     public function close(User $user, Report $report): bool
     {
-        return $report->isOpen() && $this->isClosableIssue($report) && (
-            $user->can('reports.solve.all')
-            || ($user->can('reports.solve.own.area') && $this->isSupervisor($user, $report))
-        );
-    }
-
-    private function isSupervisor(User $user, Report $report): bool
-    {
-        return ($report->subArea?->supervisors()->whereKey($user->id)->exists() ?? false)
-            && $this->assignedActivity($report)?->supervisors()->whereKey($user->id)->exists();
-    }
-
-    private function isClosableIssue(Report $report): bool
-    {
-        return ($report->subActivity?->category ?? $report->activityType?->category) === 'ISSUE';
-    }
-
-    private function isManagerAssignedToActivity(User $user, Report $report): bool
-    {
-        return $report->activityType?->managers()->whereKey($user->id)->exists() ?? false;
-    }
-
-    private function assignedActivity(Report $report): ?Activity
-    {
-        return $report->subActivity ?? $report->activityType;
+        return (new ReportCapabilities($user))->close($report);
     }
 }

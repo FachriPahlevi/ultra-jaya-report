@@ -7,6 +7,7 @@ namespace Database\Seeders;
 use App\Models\Activity;
 use App\Models\Area;
 use App\Models\Report;
+use App\Models\SubActivity;
 use App\Models\SubArea;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -20,6 +21,9 @@ class TestScenarioSeeder extends Seeder
 {
     public function run(): void
     {
+        if (! app()->environment(['local', 'testing'])) {
+            throw new \RuntimeException('Seeder fixture test hanya boleh digunakan di local/testing.');
+        }
         $this->call(RoleSeeder::class);
 
         $superAdmin = $this->createUser('Super Admin Uji', 'test.superadmin@example.test', 'SUPER_ADMIN');
@@ -46,12 +50,17 @@ class TestScenarioSeeder extends Seeder
         );
         $activity = Activity::withTrashed()->updateOrCreate(
             ['name' => 'Aktivitas Uji RBAC'],
-            ['description' => 'Aktivitas khusus feature test.', 'is_active' => true, 'parent_id' => null, 'deleted_at' => null],
+            ['description' => 'Aktivitas khusus feature test.', 'is_active' => true, 'deleted_at' => null],
         );
 
         $manager->managedAreas()->sync([$area->id]);
         $supervisor->supervisedSubAreas()->sync([$subArea->id]);
-        $activity->assignees()->sync([$manager->id, $supervisor->id]);
+        $activity->managers()->sync([$manager->id]);
+        $subActivity = SubActivity::withTrashed()->updateOrCreate(
+            ['activity_id' => $activity->id, 'name' => 'Sub-aktivitas Uji RBAC'],
+            ['category' => 'ISSUE', 'deleted_at' => null],
+        );
+        $subActivity->supervisors()->sync([$supervisor->id]);
 
         $this->createReport($user, $area, $subArea, $activity, 'Laporan milik user uji');
         $this->createReport($admin, $area, $subArea, $activity, 'Laporan area supervisor uji');
@@ -84,6 +93,7 @@ class TestScenarioSeeder extends Seeder
                 'area_id' => $area->id,
                 'sub_area_id' => $subArea->id,
                 'activity_id' => $activity->id,
+                'sub_activity_id' => $activity->children()->firstOrFail()->id,
                 'status' => Report::STATUS_OPEN,
             ],
         );

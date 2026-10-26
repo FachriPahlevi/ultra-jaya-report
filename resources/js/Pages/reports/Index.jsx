@@ -1,8 +1,10 @@
 import { Head } from "@inertiajs/react"
 import AppLayout from "@/Layouts/AppLayout"
-import { formatDate } from "@/lib/format.ts"
+import { formatDate as formatLocalizedDate } from "@/lib/format.ts"
 import BtnDefault from "@/Components/Button/BtnDefault"
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
+import InputDate from "@/Components/Input/InputDate"
+import { ModalHeader, ModalPanel } from "@/Components/Modal/ModalLayout"
 import ReportForm from "@/Pages/reports/components/ReportForm"
 import CloseTicketForm from "@/Pages/reports/components/CloseTicketForm"
 import ExportForm from "@/Pages/reports/components/ExportReportForm"
@@ -11,8 +13,7 @@ import Pagination from "@/Components/Navigation/Pagination"
 import ExpandableImage from "@/Components/UI/ExpandableImage"
 import { useReports } from "@/Pages/reports/hooks/useReports"
 import { HiOutlineX, HiOutlinePlus } from "react-icons/hi"
-import { CalendarClock, File, FileText, Layers3, MapPin, StickyNote, UserRound, ChevronDown, ChevronUp, RotateCcw, SlidersHorizontal } from "lucide-react"
-import { useState } from "react"
+import { CalendarClock, File, FileText, Layers3, MapPin, StickyNote, UserRound, RotateCcw } from "lucide-react"
 import { LAYERS } from "@/lib/layers"
 import PageHeader from "@/Components/Layout/PageHeader"
 import DataTableToolbar from "@/Components/Table/DataTableToolbar"
@@ -20,116 +21,31 @@ import FilterChoiceGroup from "@/Components/Table/FilterChoiceGroup"
 import FilterMultiSelect from "@/Components/Table/FilterMultiSelect"
 import FilterSelectField from "@/Components/Table/FilterSelectField"
 
-const RichText = ({ text, maxLines = 3 }) => {
-  const [expanded, setExpanded] = useState(false)
-  if (!text || text === "-") return <span className="text-muted-foreground text-[12px]">–</span>
-  const lines = text
-    .split(/\n/)
-    .map((l) => l.trim())
-    .filter(Boolean)
-  const isList = lines.length > 1 && lines.every((l) => /^[-•*]|^\d+[.)]\s/.test(l))
-  const cleanLine = (l) => l.replace(/^[-•*]\s*|^\d+[.)]\s*/, "")
-  const visibleLines = expanded ? lines : lines.slice(0, maxLines)
-  const hasMore = lines.length > maxLines
-  if (isList) {
-    return (
-      <div className="space-y-0.5">
-        <ul className="space-y-0.5 list-none m-0 p-0">
-          {visibleLines.map((line, i) => (
-            <li key={i} className="flex items-start gap-1.5 text-[12.5px] text-foreground leading-snug">
-              <span className="mt-1 w-1.5 h-1.5 rounded-full bg-primary/50 shrink-0" />
-              <span>{cleanLine(line)}</span>
-            </li>
-          ))}
-        </ul>
-        {hasMore && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              setExpanded(!expanded)
-            }}
-            className="flex items-center gap-1 text-[11px] text-primary font-medium mt-1 hover:underline"
-          >
-            {expanded ? (
-              <>
-                <ChevronUp className="w-3 h-3" /> Show less
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-3 h-3" /> +{lines.length - maxLines} more
-              </>
-            )}
-          </button>
-        )}
-      </div>
-    )
-  }
-  const fullText = lines.join(" ")
-  const isLong = fullText.length > 120 || lines.length > maxLines
-  const shortText = fullText.slice(0, 120)
-  return (
-    <div>
-      <p className="text-[12.5px] text-foreground leading-snug whitespace-pre-wrap break-words">{expanded || !isLong ? fullText : shortText + "…"}</p>
-      {isLong && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation()
-            setExpanded(!expanded)
-          }}
-          className="flex items-center gap-1 text-[11px] text-primary font-medium mt-1 hover:underline"
-        >
-          {expanded ? (
-            <>
-              <ChevronUp className="w-3 h-3" /> Show less
-            </>
-          ) : (
-            <>
-              <ChevronDown className="w-3 h-3" /> Show more
-            </>
-          )}
-        </button>
-      )}
-    </div>
-  )
-}
+const formatDate = (date) => formatLocalizedDate(date, "en-US")
 
 function FilterFields({ temp, statusOptions, filterAreaOptions, typeOptions, subAreaOptions, authorOptions, roleOptions, canFilterReporter, canToggleOwn }) {
   return (
     <div className="flex flex-col gap-4">
       <section className="rounded-2xl border border-border bg-card p-3.5 sm:p-4">
-        <p className="text-sm font-semibold text-foreground">Waktu & urutan</p>
-        <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Batasi periode dan tentukan laporan yang ditampilkan lebih dahulu.</p>
+        <p className="text-sm font-semibold text-foreground">Date & sorting</p>
+        <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Choose a date range and how reports are ordered.</p>
         <div className="mt-4">
-          <p className="mb-2 text-[12px] font-semibold text-foreground">Periode dibuat</p>
-          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-            <input
-              type="date"
-              value={temp.tempDateFrom}
-              onChange={(e) => temp.setTempDateFrom(e.target.value)}
-              aria-label="Tanggal mulai"
-              className="min-h-11 min-w-0 w-full rounded-xl border border-border bg-background px-2 py-2 text-xs text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 min-[375px]:px-3 min-[375px]:text-[13px]"
-            />
-            <span className="text-muted-foreground text-sm font-medium shrink-0">–</span>
-            <input
-              type="date"
-              value={temp.tempDateTo}
-              onChange={(e) => temp.setTempDateTo(e.target.value)}
-              aria-label="Tanggal akhir"
-              className="min-h-11 min-w-0 w-full rounded-xl border border-border bg-background px-2 py-2 text-xs text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 min-[375px]:px-3 min-[375px]:text-[13px]"
-            />
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+            <InputDate label="Start date" value={temp.tempDateFrom} onChange={(event) => temp.setTempDateFrom(event.target.value)} />
+            <InputDate label="End date" value={temp.tempDateTo} min={temp.tempDateFrom || undefined} onChange={(event) => temp.setTempDateTo(event.target.value)} />
           </div>
         </div>
         <div className="mt-4">
           <FilterSelectField
-            label="Urutkan berdasarkan"
+            label="Sort by"
             value={temp.tempSort}
             onChange={temp.setTempSort}
             options={[
-              ["latest", "Terbaru lebih dulu"],
-              ["oldest", "Terlama lebih dulu"],
+              ["latest", "Newest first"],
+              ["oldest", "Oldest first"],
               ["area-asc", "Area A–Z"],
-              ["activity-asc", "Aktivitas A–Z"],
-              ...(canFilterReporter ? [["reporter-asc", "Nama pelapor A–Z"]] : []),
+              ["activity-asc", "Activity A–Z"],
+              ...(canFilterReporter ? [["reporter-asc", "Reporter A–Z"]] : []),
             ]}
           />
         </div>
@@ -137,8 +53,8 @@ function FilterFields({ temp, statusOptions, filterAreaOptions, typeOptions, sub
 
       <section className="rounded-2xl border border-border bg-card p-3.5 sm:p-4">
         <FilterChoiceGroup
-          legend="Status laporan"
-          description="Anda dapat memilih lebih dari satu status."
+          legend="Report status"
+          description="Select one or more statuses."
           value={temp.tempStatus}
           onChange={temp.setTempStatus}
           options={statusOptions.filter((option) => option.value)}
@@ -147,43 +63,43 @@ function FilterFields({ temp, statusOptions, filterAreaOptions, typeOptions, sub
         />
         <div className="my-4 h-px bg-border" />
         <FilterChoiceGroup
-          legend="Dokumentasi foto"
-          description="Pilih kelengkapan dokumentasi yang diperlukan."
+          legend="Photo documentation"
+          description="Choose which photos should be available."
           value={temp.tempPhoto}
           onChange={temp.setTempPhoto}
           options={[
-            ["", "Apa pun"],
-            ["before", "Foto awal"],
-            ["after", "Foto akhir"],
-            ["complete", "Lengkap"],
+            ["", "Any"],
+            ["before", "Before photo"],
+            ["after", "After photo"],
+            ["complete", "Both photos"],
           ]}
           variant="chips"
         />
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-3.5 sm:p-4">
-        <p className="text-sm font-semibold text-foreground">Lokasi & aktivitas</p>
-        <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Pilih satu atau beberapa cakupan laporan.</p>
+        <p className="text-sm font-semibold text-foreground">Location & activity</p>
+        <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Select one or more locations or activities.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <FilterMultiSelect label="Area" values={temp.tempArea} onChange={temp.setTempArea} options={filterAreaOptions.filter((option) => option.value)} placeholder="Semua area" />
-          <FilterMultiSelect label="Sub-area" values={temp.tempSubArea} onChange={temp.setTempSubArea} options={subAreaOptions.filter((option) => option.value)} placeholder="Semua sub-area" />
+          <FilterMultiSelect label="Area" values={temp.tempArea} onChange={temp.setTempArea} options={filterAreaOptions.filter((option) => option.value)} placeholder="All areas" />
+          <FilterMultiSelect label="Sub-area" values={temp.tempSubArea} onChange={temp.setTempSubArea} options={subAreaOptions.filter((option) => option.value)} placeholder="All sub-areas" />
         </div>
         <div className="mt-4">
-          <FilterMultiSelect label="Aktivitas" values={temp.tempType} onChange={temp.setTempType} options={typeOptions.filter((option) => option.value)} placeholder="Semua aktivitas" />
+          <FilterMultiSelect label="Activity" values={temp.tempType} onChange={temp.setTempType} options={typeOptions.filter((option) => option.value)} placeholder="All activities" />
         </div>
       </section>
 
       {canFilterReporter && (
         <section className="rounded-2xl border border-border bg-card p-3.5 sm:p-4">
-          <p className="text-sm font-semibold text-foreground">Pelapor</p>
+          <p className="text-sm font-semibold text-foreground">Reporter</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <FilterMultiSelect label="Dibuat oleh" values={temp.tempAuthor} onChange={temp.setTempAuthor} options={authorOptions.filter((option) => option.value)} placeholder="Semua pengguna" />
+            <FilterMultiSelect label="Created by" values={temp.tempAuthor} onChange={temp.setTempAuthor} options={authorOptions.filter((option) => option.value)} placeholder="All users" />
             <FilterMultiSelect
-              label="Peran pembuat"
+              label="Reporter role"
               values={temp.tempRole}
               onChange={temp.setTempRole}
               options={roleOptions.filter((option) => option.value)}
-              placeholder="Semua peran"
+              placeholder="All roles"
               searchable={false}
             />
           </div>
@@ -193,14 +109,14 @@ function FilterFields({ temp, statusOptions, filterAreaOptions, typeOptions, sub
       {canToggleOwn && (
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-3.5 py-3.5 sm:px-4">
           <div>
-            <p className="text-[13px] font-semibold text-foreground">Hanya laporan saya</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">Sembunyikan laporan pengguna lain.</p>
+            <p className="text-[13px] font-semibold text-foreground">My reports only</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">Show only reports you submitted.</p>
           </div>
           <button
             type="button"
             role="switch"
             aria-checked={temp.tempMyReportsOnly}
-            aria-label="Tampilkan hanya laporan saya"
+            aria-label="Show only my reports"
             onClick={() => temp.setTempMyReportsOnly((v) => !v)}
             className={`relative h-6 w-10 shrink-0 cursor-pointer rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${temp.tempMyReportsOnly ? "bg-primary" : "bg-border"}`}
           >
@@ -212,31 +128,19 @@ function FilterFields({ temp, statusOptions, filterAreaOptions, typeOptions, sub
   )
 }
 
-function DesktopStatusPill({ status }) {
+function DesktopStatusPill({ status, category }) {
+  const isReport = category === "REPORT"
   const isClosed = status === "closed"
 
   return (
     <span
       className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[12px] font-medium ${
-        isClosed ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-blue-200 bg-blue-50 text-blue-700"
+        isReport ? "border-slate-200 bg-slate-50 text-slate-700" : isClosed ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-blue-200 bg-blue-50 text-blue-700"
       }`}
     >
-      <span className={`h-2 w-2 rounded-full ${isClosed ? "bg-emerald-500" : "bg-blue-500"}`} />
-      {isClosed ? "Selesai" : "Terbuka"}
+      <span className={`h-2 w-2 rounded-full ${isReport ? "bg-slate-500" : isClosed ? "bg-emerald-500" : "bg-blue-500"}`} />
+      {isReport ? "Report" : isClosed ? "Closed" : "Open"}
     </span>
-  )
-}
-
-function TablePhotoPreview({ src, label }) {
-  if (!src) {
-    return <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 text-[10px] font-medium text-muted-foreground">-</div>
-  }
-
-  return (
-    <div className="flex flex-col items-center gap-1">
-      <ExpandableImage src={`/storage/${src}`} alt={label} className="h-12 w-12 rounded-xl border border-border object-cover" />
-      <span className="text-[10px] font-medium uppercase tracking-[0.04em] text-muted-foreground">{label}</span>
-    </div>
   )
 }
 
@@ -284,35 +188,19 @@ function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onD
 
   return (
     <ModalOverlay id="report-detail-modal" isOpen={isOpen} onClose={onClose}>
-      <div className="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl border border-border bg-card shadow-2xl sm:rounded-2xl">
-        <div className="flex items-start justify-between border-b border-border bg-card px-4 py-4 sm:px-6 sm:py-5">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-lg font-bold tracking-tight text-foreground">Detail laporan</h3>
-              <DesktopStatusPill status={report.status} />
-            </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Dibuat {formatDate(report.created_at)} · {report.author?.name ?? "Pelapor tidak diketahui"}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Tutup detail laporan"
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <HiOutlineX className="w-5 h-5" />
-          </button>
-        </div>
+      <ModalPanel width="xl">
+        <ModalHeader title="Report details" description={`Created ${formatDate(report.created_at)} · ${report.author?.name ?? "Unknown reporter"}`} onClose={onClose}>
+          <DesktopStatusPill status={report.status} category={report.category_snapshot} />
+        </ModalHeader>
 
         <div className="space-y-4 overflow-y-auto bg-slate-50/40 p-4 sm:p-6">
           <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
-            <h4 className="mb-5 text-[15px] font-bold text-foreground">Informasi laporan</h4>
+            <h4 className="mb-5 text-[15px] font-bold text-foreground">Report information</h4>
             <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-              <DetailField icon={CalendarClock} label="Dibuat pada">
+              <DetailField icon={CalendarClock} label="Created at">
                 {formatDate(report.created_at)}
               </DetailField>
-              <DetailField icon={UserRound} label="Dilaporkan oleh">
+              <DetailField icon={UserRound} label="Reported by">
                 <p className="font-medium">{report.author?.name ?? "-"}</p>
                 {report.author?.role && <p className="mt-0.5 text-xs text-muted-foreground">{report.author.role}</p>}
               </DetailField>
@@ -322,40 +210,40 @@ function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onD
               <DetailField icon={Layers3} label="Sub-area">
                 {report.sub_area?.name ?? "-"}
               </DetailField>
-              <DetailField icon={FileText} label="Aktivitas">
+              <DetailField icon={FileText} label="Activity">
                 <p className="font-medium">{mainActivity}</p>
-                {subActivity && <p className="mt-0.5 text-xs text-muted-foreground">Sub-aktivitas: {subActivity}</p>}
+                {subActivity && <p className="mt-0.5 text-xs text-muted-foreground">Sub-activity: {subActivity}</p>}
               </DetailField>
             </div>
           </section>
 
           <section className="rounded-xl border border-border bg-card px-4 py-3 sm:px-5">
-            <h4 className="mb-1 text-[15px] font-bold text-foreground">Detail isi laporan</h4>
-            <ReportContentRow icon={FileText} label="Kendala">
+            <h4 className="mb-1 text-[15px] font-bold text-foreground">Report content</h4>
+            <ReportContentRow icon={FileText} label={report.category_snapshot === "REPORT" ? "Observation" : "Finding"}>
               <p className="whitespace-pre-wrap break-words">{report.issue || "-"}</p>
             </ReportContentRow>
-            <ReportContentRow icon={StickyNote} label="Catatan" divided>
+            <ReportContentRow icon={StickyNote} label="Additional notes" divided>
               <p className="whitespace-pre-wrap break-words">{report.activity || "-"}</p>
             </ReportContentRow>
           </section>
 
           {(report.photo_before || report.photo_after) && (
             <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
-              <h4 className="mb-3 text-[15px] font-bold text-foreground">Dokumentasi foto</h4>
+              <h4 className="mb-3 text-[15px] font-bold text-foreground">Photo documentation</h4>
               <div className={`grid grid-cols-1 gap-4 ${report.photo_before && report.photo_after ? "sm:grid-cols-2" : ""}`}>
-                <ReportPhoto src={report.photo_before} label="Foto sebelum" showLabel={Boolean(report.photo_after)} />
-                <ReportPhoto src={report.photo_after} label="Foto setelah" showLabel={Boolean(report.photo_before)} />
+                <ReportPhoto src={report.photo_before} label="Before photo" showLabel={Boolean(report.photo_after)} />
+                <ReportPhoto src={report.photo_after} label="After photo" showLabel={Boolean(report.photo_before)} />
               </div>
             </section>
           )}
 
           {report.status === "closed" && (
             <section className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 sm:p-5">
-              <DetailField icon={UserRound} label="Penyelesaian">
-                <p className="font-medium">Ditutup pada {formatDate(report.closed_at)}</p>
+              <DetailField icon={UserRound} label="Resolution">
+                <p className="font-medium">Closed at {formatDate(report.closed_at)}</p>
                 {report.closer && (
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Oleh {report.closer.name}
+                    By {report.closer.name}
                     {report.closer.role ? ` · ${report.closer.role}` : ""}
                   </p>
                 )}
@@ -374,7 +262,7 @@ function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onD
               }}
               className="min-h-11 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
             >
-              Selesaikan laporan
+              Close ticket
             </button>
           )}
           {isReportEditable(report) && (
@@ -385,7 +273,7 @@ function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onD
               }}
               className="min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
             >
-              Ubah
+              Edit
             </button>
           )}
           {isReportDeletable(report) && (
@@ -396,11 +284,11 @@ function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onD
               }}
               className="min-h-11 rounded-xl px-4 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
             >
-              Hapus
+              Delete
             </button>
           )}
         </div>
-      </div>
+      </ModalPanel>
     </ModalOverlay>
   )
 }
@@ -408,35 +296,37 @@ function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onD
 export default function Index({ reports = [], areas = [], activities = [], users = [] }) {
   const r = useReports(reports)
 
-  const assignedAreas = areas.filter((area) => area.is_in_current_user_scope)
-  const exportAreas = r.perms.canExportAll ? areas : r.perms.canExportArea ? assignedAreas : []
-  const exportUsers = r.perms.canExportAll ? users : []
+  const exportAreas = [...new Map(reports.filter((report) => report.area).map((report) => [report.area.id, report.area])).values()]
+  const exportUsers = [...new Map(reports.filter((report) => report.author).map((report) => [report.author.id, report.author])).values()]
+  const exportActivities = [...new Map(reports.filter((report) => report.activity_type).map((report) => [report.activity_type.id, report.activity_type])).values()]
 
   const statusOptions = [
-    { label: "Semua status", value: "" },
-    { label: "Terbuka", value: "open" },
-    { label: "Selesai", value: "closed" },
+    { label: "All statuses", value: "" },
+    { label: "Open", value: "open" },
+    { label: "Closed", value: "closed" },
+    { label: "Report", value: "report" },
   ]
-  const typeOptions = [{ label: "All Activities", value: "" }, ...activities.map((a) => ({ label: a.name, value: String(a.id) }))]
-  const areaOptions = [{ label: "All Areas", value: "" }, ...areas.map((a) => ({ label: a.area, value: String(a.id) }))]
+  const typeOptions = [{ label: "All activities", value: "" }, ...exportActivities.map((a) => ({ label: a.name, value: String(a.id) }))]
+  const areaOptions = [{ label: "All areas", value: "" }, ...exportAreas.map((a) => ({ label: a.area, value: String(a.id) }))]
   const visibleReportAreaIds = new Set(reports.map((report) => String(report.area_id)).filter(Boolean))
   const filterAreaOptions = r.perms.canViewAll
     ? areaOptions
-    : [{ label: "Semua area yang dapat diakses", value: "" }, ...areas.filter((area) => visibleReportAreaIds.has(String(area.id))).map((area) => ({ label: area.area, value: String(area.id) }))]
-  const scopedAreaIds = new Set(filterAreaOptions.filter((option) => option.value).map((option) => String(option.value)))
+    : [{ label: "All accessible areas", value: "" }, ...areas.filter((area) => visibleReportAreaIds.has(String(area.id))).map((area) => ({ label: area.area, value: String(area.id) }))]
   const subAreaOptions = [
-    { label: "Semua sub-area", value: "" },
-    ...areas
-      .filter((area) => r.perms.canViewAll || scopedAreaIds.has(String(area.id)))
-      .flatMap((area) => area.sub_areas.map((subArea) => ({ label: `${area.area} / ${subArea.name}`, value: String(subArea.id) }))),
+    { label: "All sub-areas", value: "" },
+    ...[
+      ...new Map(
+        reports.filter((report) => report.sub_area).map((report) => [report.sub_area.id, { label: `${report.area?.area ?? "Area"} / ${report.sub_area.name}`, value: String(report.sub_area.id) }]),
+      ).values(),
+    ],
   ]
   const authorOptions = [
-    { label: "Semua pelapor", value: "" },
+    { label: "All reporters", value: "" },
     ...[...new Map(reports.filter((report) => report.author).map((report) => [report.author.id, { label: report.author.name, value: String(report.author.id) }])).values()].sort((left, right) =>
       left.label.localeCompare(right.label, "id"),
     ),
   ]
-  const roleOptions = [{ label: "Semua role", value: "" }, ...[...new Set(reports.map((report) => report.author?.role).filter(Boolean))].sort().map((role) => ({ label: role, value: role }))]
+  const roleOptions = [{ label: "All roles", value: "" }, ...[...new Set(reports.map((report) => report.author?.role).filter(Boolean))].sort().map((role) => ({ label: role, value: role }))]
 
   const { temp } = r
   const temporaryFilterCount = [
@@ -453,31 +343,35 @@ export default function Index({ reports = [], areas = [], activities = [], users
   ].reduce((total, count) => total + count, 0)
 
   return (
-    <AppLayout title="Laporan">
+    <AppLayout title="Reports">
       <Head>
-        <title>Laporan</title>
+        <title>Reports</title>
       </Head>
 
-      <div className="hidden xl:flex flex-col gap-5">
+      <div className="flex flex-col gap-4 xl:gap-5">
         <PageHeader
-          title="Laporan"
+          title="Reports"
           mobileAction={
-            r.perms.canCreate ? (
-              <button
-                type="button"
-                onClick={r.openCreateModal}
-                aria-label="Buat laporan"
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm outline-none transition-colors hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-              >
-                <HiOutlinePlus className="h-5 w-5" />
-              </button>
+            r.perms.canCreate || r.perms.canExport ? (
+              <div className="flex items-center gap-2">
+                {r.perms.canExport && (
+                  <button type="button" onClick={() => r.setIsExportModalOpen(true)} aria-label="Export reports" className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary">
+                    <File className="h-5 w-5" />
+                  </button>
+                )}
+                {r.perms.canCreate && (
+                  <button type="button" onClick={r.openCreateModal} aria-label="Create report" className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm outline-none hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                    <HiOutlinePlus className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
             ) : null
           }
           actions={
             r.perms.canCreate ? (
               <BtnDefault onClick={r.openCreateModal} size="lg" className="min-w-[152px] gap-2">
                 <HiOutlinePlus className="w-4 h-4" />
-                Buat Laporan
+                Create report
               </BtnDefault>
             ) : null
           }
@@ -485,194 +379,52 @@ export default function Index({ reports = [], areas = [], activities = [], users
 
         <div className="ui-panel overflow-hidden">
           <DataTableToolbar
+            language="en"
             search={r.search}
             onSearchChange={(value) => {
               r.setSearch(value)
               r.setPage(1)
             }}
-            searchPlaceholder="Cari kendala, pelapor, atau aktivitas..."
+            searchPlaceholder="Search findings, reporters, or activities..."
             perPage={r.perPage}
             onPerPageChange={(value) => {
               r.setPerPage(value)
               r.setPage(1)
             }}
-            resultText={`${r.filtered.length} hasil`}
-            onMobileFilter={r.openFilterModal}
+            resultText={`${r.filtered.length} results`}
+            onMobileFilter={() => (window.matchMedia("(min-width: 1280px)").matches ? r.openFilterModal() : r.openFilterSheet())}
             mobileFilterActive={r.hasActiveFilter}
             actions={
               <>
                 {r.perms.canExport && (
                   <BtnDefault outline onClick={() => r.setIsExportModalOpen(true)} size="sm" className="gap-2">
-                    <File className="h-4 w-4" /> Ekspor
+                    <File className="h-4 w-4" /> Export
                   </BtnDefault>
                 )}
               </>
             }
           />
-          <div className="overflow-x-auto">
-            <table className="ui-table">
-              <thead>
-                <tr>
-                  {["No", "Tanggal", "Pelapor", "Area", "Kendala", "Foto", "Aktivitas", "Status", "Selesai pada"].map((col) => (
-                    <th key={col}>{col}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60">
-                {r.paginated.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="py-16 text-center text-muted-foreground text-[13px]">
-                      Laporan tidak ditemukan
-                    </td>
-                  </tr>
-                ) : (
-                  r.paginated.map((report, index) => {
-                    const isClosed = report.status === "closed"
-                    const isSelected = r.selectedReport?.id === report.id
-                    return (
-                      <tr
-                        key={report.id}
-                        onClick={() => r.handleSelectReport(report)}
-                        className={`cursor-pointer transition-all duration-150 align-top hover:bg-muted/20 ${isSelected ? "bg-muted/20" : ""}`}
-                      >
-                        <td className="px-5 py-4 text-[13px] text-foreground font-semibold w-12">{(r.page - 1) * 10 + index + 1}</td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          <p className="text-[14px] font-semibold text-foreground">{formatDate(report.created_at)}</p>
-                          {report.updated_at !== report.created_at && <p className="text-[12px] text-muted-foreground mt-1">↑ {formatDate(report.updated_at)}</p>}
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          <p className="text-[14px] font-semibold text-foreground">{report.author?.name ?? "-"}</p>
-                          {report.author?.role && <p className="text-[12px] text-muted-foreground mt-1 uppercase">{report.author.role}</p>}
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[12px] font-medium text-slate-600">{report.area?.area ?? "-"}</span>
-                        </td>
-                        <td className="px-5 py-4 min-w-[250px]">{report.issue && <RichText text={report.issue} maxLines={3} />}</td>
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-2">
-                            <TablePhotoPreview src={report.photo_before} label="Sebelum" />
-                            {report.status === "closed" && <TablePhotoPreview src={report.photo_after} label="Sesudah" />}
-                          </div>
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[12px] font-medium text-slate-700">
-                            {report.sub_activity?.name ?? report.activity_type?.name ?? "-"}
-                          </span>
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          <DesktopStatusPill status={report.status} />
-                        </td>
-                        <td className="px-5 py-4 whitespace-nowrap">
-                          {isClosed ? <span className="text-[13px] font-semibold text-foreground">{formatDate(report.closed_at)}</span> : <span className="text-[13px] text-muted-foreground">-</span>}
-                        </td>
-                      </tr>
-                    )
-                  })
-                )}
-              </tbody>
-            </table>
+          <div className="border-b border-border/70 px-4 py-2 text-xs text-muted-foreground sm:hidden">{r.filtered.length} results</div>
+          <div className="hidden grid-cols-[2.5rem_minmax(0,2.2fr)_minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1.1fr)_7.5rem_6.5rem] gap-4 border-b border-border bg-muted/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground xl:grid">
+            <span>No</span><span>Finding</span><span>Reporter</span><span>Location</span><span>Activity</span><span>Photos</span><span>Status</span>
           </div>
-          <Pagination page={r.page} totalPages={r.totalPages} onChange={r.setPage} total={r.filtered.length} perPage={r.perPage} />
-        </div>
-
-        <ReportDetailModal
-          report={r.selectedReport}
-          isOpen={!!r.selectedReport}
-          onClose={r.handleCloseSelected}
-          onCloseTicket={(report) => r.openCloseTicketModal(report)}
-          onEdit={(report) => r.openEditModal(report)}
-          onDelete={(report) => r.confirmDelete(report)}
-          isReportEditable={r.isReportEditable}
-          isReportDeletable={r.isReportDeletable}
-          formatDate={formatDate}
-        />
-      </div>
-
-      <div className="flex flex-col gap-4 bg-background xl:hidden">
-        <PageHeader
-          title="Laporan"
-          mobileAction={
-            r.perms.canCreate ? (
-              <button
-                type="button"
-                onClick={r.openCreateModal}
-                aria-label="Buat laporan"
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm outline-none transition-colors hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-              >
-                <HiOutlinePlus className="h-5 w-5" />
-              </button>
-            ) : null
-          }
-          actions={
-            r.perms.canCreate ? (
-              <BtnDefault onClick={r.openCreateModal} className="w-full gap-2">
-                <HiOutlinePlus className="h-4 w-4" /> Buat Laporan
-              </BtnDefault>
-            ) : null
-          }
-        />
-        <div className="ui-panel overflow-hidden">
-          <DataTableToolbar
-            search={r.search}
-            onSearchChange={(value) => {
-              r.setSearch(value)
-              r.setPage(1)
-            }}
-            searchPlaceholder="Cari laporan..."
-            perPage={r.perPage}
-            onPerPageChange={(value) => {
-              r.setPerPage(value)
-              r.setPage(1)
-            }}
-            resultText={`${r.filtered.length} hasil`}
-            onMobileFilter={r.openFilterSheet}
-            mobileFilterActive={r.hasActiveFilter}
-            actions={
-              r.perms.canExport ? (
-                <BtnDefault outline onClick={() => r.setIsExportModalOpen(true)} size="sm" className="gap-2">
-                  <File className="h-4 w-4" /> Ekspor
-                </BtnDefault>
-              ) : null
-            }
-          />
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {r.paginated.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
-              <div className="w-20 h-20 mb-4 opacity-30">
-                <svg viewBox="0 0 80 80" fill="none">
-                  <path d="M40 8L72 24V56L40 72L8 56V24L40 8Z" stroke="#94a3b8" strokeWidth="2" fill="none" />
-                  <path d="M40 8V72M8 24L72 56M72 24L8 56" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 3" />
-                </svg>
-              </div>
-              <p className="text-[16px] font-semibold text-gray-700 mb-1">Belum ada laporan</p>
-              <p className="text-[13px] text-gray-400 mb-5">Laporan yang Anda buat akan muncul di sini.</p>
-              {r.perms.canCreate && (
-                <button
-                  onClick={r.openCreateModal}
-                  className="flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-blue-700"
-                >
-                  <HiOutlinePlus className="w-4 h-4" />
-                  Buat Laporan Baru
-                </button>
-              )}
-            </div>
+            <div className="px-5 py-16 text-center text-sm text-muted-foreground">No reports found</div>
           ) : (
-            r.paginated.map((report) => (
-              <ReportCard
-                key={report.id}
-                report={report}
-                isSelected={r.selectedReport?.id === report.id}
-                onSelect={r.handleSelectReport}
-                onDelete={() => r.confirmDelete(report)}
-                showDelete={r.isReportDeletable(report)}
-              />
-            ))
+            <div>
+              {r.paginated.map((report, index) => (
+                <ReportCard
+                  key={report.id}
+                  report={report}
+                  number={(r.page - 1) * (r.perPage === -1 ? r.filtered.length : r.perPage) + index + 1}
+                  isSelected={r.selectedReport?.id === report.id}
+                  onSelect={r.handleSelectReport}
+                />
+              ))}
+            </div>
           )}
+          <Pagination page={r.page} totalPages={r.totalPages} onChange={r.setPage} total={r.filtered.length} perPage={r.perPage} language="en" />
         </div>
-
-        <Pagination page={r.page} totalPages={r.totalPages} onChange={r.setPage} total={r.filtered.length} perPage={r.perPage} />
 
         <ReportDetailModal
           report={r.selectedReport}
@@ -688,26 +440,8 @@ export default function Index({ reports = [], areas = [], activities = [], users
       </div>
 
       <ModalOverlay isOpen={r.isFilterModalOpen} onClose={() => r.setIsFilterModalOpen(false)}>
-        <div className="flex h-[100dvh] w-full max-w-3xl flex-col overflow-hidden bg-card shadow-2xl sm:h-auto sm:max-h-[88dvh] sm:rounded-2xl sm:border sm:border-border">
-          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-border bg-card px-4 py-4 sm:px-6 sm:py-5">
-            <div className="flex min-w-0 items-start gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <SlidersHorizontal className="h-5 w-5" />
-              </span>
-              <div className="min-w-0">
-                <h2 className="text-lg font-bold tracking-tight text-foreground sm:text-xl">Filter laporan</h2>
-                <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Sesuaikan daftar laporan tanpa mengubah filter aktif sampai diterapkan.</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => r.setIsFilterModalOpen(false)}
-              aria-label="Tutup filter laporan"
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <HiOutlineX className="h-5 w-5" />
-            </button>
-          </div>
+        <ModalPanel width="xl" className="h-[100dvh] sm:h-auto">
+          <ModalHeader title="Filter reports" description="Changes take effect when you apply the filters." onClose={() => r.setIsFilterModalOpen(false)} />
           <div className="flex-1 overflow-y-auto bg-muted/30 px-4 py-4 sm:px-6 sm:py-5">
             <FilterFields
               temp={temp}
@@ -717,43 +451,43 @@ export default function Index({ reports = [], areas = [], activities = [], users
               subAreaOptions={subAreaOptions}
               authorOptions={authorOptions}
               roleOptions={roleOptions}
-              canFilterReporter={r.perms.canViewAll}
+              canFilterReporter={r.perms.canViewAll || r.perms.canReviewArea || r.perms.canSolveOwnArea}
               canToggleOwn={r.perms.canViewAll || r.perms.canReviewArea || r.perms.canSolveOwnArea}
             />
           </div>
           <div className="shrink-0 border-t border-border bg-card px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] sm:px-6" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
             <div className="mb-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-              <span>{temporaryFilterCount ? `${temporaryFilterCount} pengaturan dipilih` : "Belum ada filter tambahan"}</span>
-              {temporaryFilterCount > 0 && <span>Hasil diperbarui setelah diterapkan</span>}
+              <span>{temporaryFilterCount ? `${temporaryFilterCount} filters selected` : "No additional filters"}</span>
+              {temporaryFilterCount > 0 && <span>Results update after you apply</span>}
             </div>
             <div className="grid grid-cols-2 gap-2.5">
               <BtnDefault outline onClick={r.resetTempFilter} className="min-h-12 rounded-xl text-sm">
-                <RotateCcw className="h-4 w-4" /> Atur ulang
+                <RotateCcw className="h-4 w-4" /> Reset
               </BtnDefault>
               <BtnDefault onClick={r.applyFilterModal} className="min-h-12 rounded-xl text-sm">
-                Terapkan filter
+                Apply filters
               </BtnDefault>
             </div>
           </div>
-        </div>
+        </ModalPanel>
       </ModalOverlay>
 
       {r.isFilterSheetOpen && (
         <div className={`fixed inset-0 ${LAYERS.modal} xl:hidden`}>
-          <button type="button" aria-label="Tutup filter laporan" className="absolute inset-0 bg-slate-950/55" onClick={() => r.setIsFilterSheetOpen(false)} />
+          <button type="button" aria-label="Close report filters" className="absolute inset-0 bg-slate-950/55" onClick={() => r.setIsFilterSheetOpen(false)} />
           <div className="absolute bottom-0 left-0 right-0 flex max-h-[90dvh] flex-col overflow-hidden rounded-t-3xl border-t border-border bg-card shadow-2xl">
             <div className="flex shrink-0 justify-center pt-3">
               <div className="h-1 w-10 rounded-full bg-border" />
             </div>
             <div className="flex shrink-0 items-start justify-between gap-4 border-b border-border px-5 pb-3 pt-2">
               <div>
-                <h3 className="text-lg font-bold tracking-tight text-foreground">Filter laporan</h3>
-                <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Pilih kriteria yang ingin ditampilkan.</p>
+                <h3 className="text-lg font-bold tracking-tight text-foreground">Filter reports</h3>
+                <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Choose which reports to display.</p>
               </div>
               <button
                 type="button"
                 onClick={() => r.setIsFilterSheetOpen(false)}
-                aria-label="Tutup filter laporan"
+                aria-label="Close report filters"
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <HiOutlineX className="h-5 w-5" />
@@ -768,17 +502,17 @@ export default function Index({ reports = [], areas = [], activities = [], users
                 subAreaOptions={subAreaOptions}
                 authorOptions={authorOptions}
                 roleOptions={roleOptions}
-                canFilterReporter={r.perms.canViewAll}
+                canFilterReporter={r.perms.canViewAll || r.perms.canReviewArea || r.perms.canSolveOwnArea}
                 canToggleOwn={r.perms.canViewAll || r.perms.canReviewArea || r.perms.canSolveOwnArea}
               />
             </div>
             <div className="shrink-0 border-t border-border bg-card px-4 py-3" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
               <div className="grid grid-cols-2 gap-2.5">
                 <BtnDefault outline onClick={r.resetTempFilter} className="min-h-12 rounded-xl text-sm">
-                  <RotateCcw className="h-4 w-4" /> Atur ulang
+                  <RotateCcw className="h-4 w-4" /> Reset
                 </BtnDefault>
                 <BtnDefault onClick={r.applyFilterSheet} className="min-h-12 rounded-xl text-sm">
-                  Terapkan
+                  Apply
                 </BtnDefault>
               </div>
             </div>
@@ -792,12 +526,11 @@ export default function Index({ reports = [], areas = [], activities = [], users
         isOpen={r.isExportModalOpen}
         onClose={() => r.setIsExportModalOpen(false)}
         areas={exportAreas}
-        activities={activities}
+        activities={exportActivities}
         users={exportUsers}
         canExportAll={r.perms.canExportAll}
         canExportArea={r.perms.canExportArea}
         canExportOwn={r.perms.canExportOwn}
-        assignedAreas={assignedAreas}
       />
     </AppLayout>
   )

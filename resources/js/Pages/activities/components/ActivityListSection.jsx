@@ -15,7 +15,7 @@ function ExpandButton({ expanded, onClick, label, emphasized = false }) {
       type="button"
       onClick={onClick}
       aria-expanded={expanded}
-      aria-label={`${expanded ? "Tutup" : "Buka"} detail ${label}`}
+      aria-label={`${expanded ? "Collapse" : "Expand"} details for ${label}`}
       className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${emphasized ? "text-slate-500 hover:bg-slate-100 xl:bg-blue-50 xl:text-blue-600 xl:hover:bg-blue-100" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}
     >
       {expanded ? <HiChevronDown className="h-5 w-5" /> : <HiChevronRight className="h-5 w-5" />}
@@ -27,7 +27,7 @@ function CategoryIndicator({ category }) {
   if (category !== "REPORT") return null
 
   return (
-    <span role="img" aria-label="Kategori report" title="Report" className="text-blue-600">
+    <span role="img" aria-label="Report category" title="Report" className="text-blue-600">
       <FileText className="h-3.5 w-3.5" strokeWidth={2} />
     </span>
   )
@@ -44,7 +44,7 @@ function ReportSummary({ count }) {
 
   return total > 0 ? (
     <>
-      <ReportCount count={total} compact /> laporan
+      <ReportCount count={total} compact /> {total === 1 ? "report" : "reports"}
     </>
   ) : (
     <ReportCount count={total} compact />
@@ -73,10 +73,10 @@ function ActivityTree({ activities, expandedIds, onToggle, canEdit, canDelete, c
   return (
     <div>
       <div className="hidden grid-cols-[minmax(320px,40%)_minmax(120px,14%)_minmax(220px,30%)_1fr] border-b border-slate-200 bg-slate-50/80 px-6 py-3 xl:grid">
-        <p className="text-xs font-semibold text-slate-600">Aktivitas</p>
-        <p className="text-xs font-semibold text-slate-600">Jumlah laporan</p>
-        <p className="text-xs font-semibold text-slate-600">Penanggung Jawab</p>
-        <span className="sr-only">Aksi</span>
+        <p className="text-xs font-semibold text-slate-600">Activity</p>
+        <p className="text-xs font-semibold text-slate-600">Reports</p>
+        <p className="text-xs font-semibold text-slate-600">Assignees</p>
+        <span className="sr-only">Actions</span>
       </div>
       <div className="divide-y divide-slate-200">
         {activities.data.map((activity) => {
@@ -89,7 +89,7 @@ function ActivityTree({ activities, expandedIds, onToggle, canEdit, canDelete, c
                   <ExpandButton expanded={expanded} onClick={() => onToggle(activity.id)} label={activity.name} emphasized />
                   <div className="min-w-0 pt-1.5 pr-1">
                     <h3 className="text-[15px] font-semibold leading-5 text-slate-900">{activity.name}</h3>
-                    <p className="mt-1 text-xs font-medium text-slate-500">{activity.children_count} sub-aktivitas</p>
+                    <p className="mt-1 text-xs font-medium text-slate-500">{activity.children_count} {activity.children_count === 1 ? "sub-activity" : "sub-activities"}</p>
                   </div>
                 </div>
                 <div className="hidden xl:block">
@@ -113,7 +113,7 @@ function ActivityTree({ activities, expandedIds, onToggle, canEdit, canDelete, c
                 </div>
               </div>
               {expanded && (
-                <section aria-label={`Sub-aktivitas ${activity.name}`} className="border-t border-slate-200 bg-slate-50/60 xl:bg-slate-50/60">
+                <section aria-label={`Sub-activities for ${activity.name}`} className="border-t border-slate-200 bg-slate-50/60 xl:bg-slate-50/60">
                   <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-200 px-4 py-2.5 text-xs text-slate-600 sm:px-6 xl:hidden">
                     <span className="whitespace-nowrap">
                       <ReportSummary count={activity.usage_count} />
@@ -121,11 +121,11 @@ function ActivityTree({ activities, expandedIds, onToggle, canEdit, canDelete, c
                     <span className="text-slate-300" aria-hidden="true">
                       ·
                     </span>
-                    <span className="shrink-0">Manager</span>
+                    <span className="shrink-0">Reviewer</span>
                     <AssignmentList people={activity.managers} emptyLabel="-" />
                   </div>
                   {activity.children.length === 0 ? (
-                    <p className="px-6 py-4 text-sm text-slate-500">Belum ada sub-aktivitas.</p>
+                    <p className="px-6 py-4 text-sm text-slate-500">No sub-activities yet.</p>
                   ) : (
                     activity.children.map((child, index) => {
                       const isLast = index === activity.children.length - 1
@@ -150,7 +150,7 @@ function ActivityTree({ activities, expandedIds, onToggle, canEdit, canDelete, c
                                 <CategoryIndicator category={child.category} />
                               </div>
                               <p className="mt-1 text-xs text-slate-500 xl:hidden">
-                                <span className="sr-only">Jumlah laporan: </span>
+                                <span className="sr-only">Report count: </span>
                                 <ReportSummary count={child.usage_count} />
                               </p>
                               <div className="xl:hidden">
@@ -188,7 +188,7 @@ function ActivityTree({ activities, expandedIds, onToggle, canEdit, canDelete, c
                         className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary outline-none transition-colors hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                       >
                         <HiOutlinePlus className="h-4 w-4" />
-                        Tambah sub-aktivitas
+                        Add sub-activity
                       </button>
                     </div>
                   )}
@@ -202,60 +202,72 @@ function ActivityTree({ activities, expandedIds, onToggle, canEdit, canDelete, c
   )
 }
 
-function ActivitySortOptions({ sort, onSortChange, childFilter, onChildFilterChange, scopeFilter, onScopeFilterChange, roleFilter, onRoleFilterChange, descriptionFilter, onDescriptionFilterChange }) {
+function ActivitySortOptions({
+  sort,
+  onSortChange,
+  childFilter,
+  onChildFilterChange,
+  assignmentFilter,
+  onAssignmentFilterChange,
+  categoryFilter,
+  onCategoryFilterChange,
+  descriptionFilter,
+  onDescriptionFilterChange,
+}) {
   const options = [
-    ["default", "Terbaru"],
-    ["name-asc", "Nama A–Z"],
-    ["name-desc", "Nama Z–A"],
-    ["children-desc", "Sub-aktivitas terbanyak"],
-    ["children-asc", "Sub-aktivitas tersedikit"],
+    ["default", "Default order"],
+    ["name-asc", "Name A–Z"],
+    ["name-desc", "Name Z–A"],
+    ["children-desc", "Most sub-activities"],
+    ["children-asc", "Fewest sub-activities"],
+    ["reports-desc", "Most reports"],
   ]
   return (
     <div className="space-y-5">
-      <FilterSelectField label="Susun aktivitas" description="Tentukan urutan yang paling mudah dipindai." value={sort} onChange={onSortChange} options={options} />
+      <FilterSelectField label="Sort activities" description="Choose the order that works best for you." value={sort} onChange={onSortChange} options={options} />
       <FilterChoiceGroup
-        legend="Sub-aktivitas"
+        legend="Sub-activities"
         value={childFilter}
         onChange={onChildFilterChange}
         options={[
-          ["all", "Semua"],
-          ["available", "Memiliki sub-aktivitas"],
-          ["empty", "Tanpa sub-aktivitas"],
+          ["all", "All"],
+          ["available", "Has sub-activities"],
+          ["empty", "No sub-activities"],
         ]}
         variant="chips"
       />
       <FilterChoiceGroup
-        legend="Jangkauan area"
-        value={scopeFilter}
-        onChange={onScopeFilterChange}
+        legend="Assignees"
+        value={assignmentFilter}
+        onChange={onAssignmentFilterChange}
         options={[
-          ["all", "Semua"],
-          ["global", "Seluruh area"],
-          ["limited", "Area tertentu"],
+          ["all", "All"],
+          ["reviewer", "Has reviewer"],
+          ["closer", "Has ticket closer"],
+          ["empty", "Unassigned"],
         ]}
         variant="chips"
       />
       <FilterChoiceGroup
-        legend="Dapat diakses oleh"
-        description="Pilih satu atau beberapa peran."
-        value={roleFilter}
-        onChange={onRoleFilterChange}
+        legend="Sub-activity category"
+        description="Select one or both categories."
+        value={categoryFilter}
+        onChange={onCategoryFilterChange}
         options={[
-          ["USER", "User"],
-          ["SPV", "SPV"],
-          ["MANAGER", "Manager"],
+          ["ISSUE", "ISSUE"],
+          ["REPORT", "REPORT"],
         ]}
         multiple
         variant="chips"
       />
       <FilterChoiceGroup
-        legend="Informasi akses"
+        legend="Description"
         value={descriptionFilter}
         onChange={onDescriptionFilterChange}
         options={[
-          ["all", "Semua"],
-          ["available", "Sudah diatur"],
-          ["empty", "Belum diatur"],
+          ["all", "All"],
+          ["available", "Has description"],
+          ["empty", "No description"],
         ]}
         variant="chips"
       />
@@ -281,44 +293,49 @@ export default function ActivityListSection({
   const [expandedIds, setExpandedIds] = useState(() => new Set())
   const [sort, setSort] = useState("default")
   const [childFilter, setChildFilter] = useState("all")
-  const [scopeFilter, setScopeFilter] = useState("all")
-  const [roleFilter, setRoleFilter] = useState([])
+  const [assignmentFilter, setAssignmentFilter] = useState("all")
+  const [categoryFilter, setCategoryFilter] = useState([])
   const [descriptionFilter, setDescriptionFilter] = useState("all")
   const allExpanded = activities.data.length > 0 && activities.data.every((activity) => expandedIds.has(activity.id))
   const sortedActivities = useMemo(
     () =>
       activities.data
         .filter((activity) => childFilter === "all" || (childFilter === "available" ? activity.children_count > 0 : activity.children_count === 0))
-        .filter((activity) => scopeFilter === "all" || (scopeFilter === "global" ? /Area:\s*All/i.test(activity.description || "") : !/Area:\s*All/i.test(activity.description || "")))
-        .filter((activity) => roleFilter.length === 0 || roleFilter.some((role) => new RegExp(`User Role:[^|]*\\b${role}\\b`, "i").test(activity.description || "")))
+        .filter((activity) => {
+          const hasReviewer = activity.managers.length > 0
+          const hasCloser = activity.children.some((child) => child.supervisors.length > 0)
+          return assignmentFilter === "all" || (assignmentFilter === "reviewer" ? hasReviewer : assignmentFilter === "closer" ? hasCloser : !hasReviewer && !hasCloser)
+        })
+        .filter((activity) => categoryFilter.length === 0 || activity.children.some((child) => categoryFilter.includes(child.category)))
         .filter((activity) => descriptionFilter === "all" || (descriptionFilter === "available" ? Boolean(activity.description?.trim()) : !activity.description?.trim()))
         .sort((left, right) => {
           if (sort === "name-asc") return left.name.localeCompare(right.name, "id")
           if (sort === "name-desc") return right.name.localeCompare(left.name, "id")
           if (sort === "children-desc") return right.children_count - left.children_count || left.name.localeCompare(right.name, "id")
           if (sort === "children-asc") return left.children_count - right.children_count || left.name.localeCompare(right.name, "id")
+          if (sort === "reports-desc") return right.usage_count - left.usage_count || left.name.localeCompare(right.name, "id")
           return 0
         }),
-    [activities.data, childFilter, descriptionFilter, roleFilter, scopeFilter, sort],
+    [activities.data, childFilter, descriptionFilter, categoryFilter, assignmentFilter, sort],
   )
-  const resultText = `${sortedActivities.length}${sortedActivities.length !== activities.data.length ? ` dari ${activities.meta?.total ?? activities.data.length}` : ""} aktivitas`
+  const resultText = `${sortedActivities.length}${sortedActivities.length !== activities.data.length ? ` of ${activities.meta?.total ?? activities.data.length}` : ""} activities`
   const filterProps = {
     sort,
     onSortChange: setSort,
     childFilter,
     onChildFilterChange: setChildFilter,
-    scopeFilter,
-    onScopeFilterChange: setScopeFilter,
-    roleFilter,
-    onRoleFilterChange: setRoleFilter,
+    assignmentFilter,
+    onAssignmentFilterChange: setAssignmentFilter,
+    categoryFilter,
+    onCategoryFilterChange: setCategoryFilter,
     descriptionFilter,
     onDescriptionFilterChange: setDescriptionFilter,
   }
   const resetFilter = () => {
     setSort("default")
     setChildFilter("all")
-    setScopeFilter("all")
-    setRoleFilter([])
+    setAssignmentFilter("all")
+    setCategoryFilter([])
     setDescriptionFilter("all")
   }
 
@@ -344,14 +361,15 @@ export default function ActivityListSection({
         perPage={perPage}
         onPerPageChange={onPerPageChange}
         resultText={resultText}
-        searchPlaceholder="Cari aktivitas atau sub-aktivitas..."
+        searchPlaceholder="Search activities or sub-activities..."
+        language="en"
         filterContent={<ActivitySortOptions {...filterProps} />}
-        mobileFilterActive={sort !== "default" || childFilter !== "all" || scopeFilter !== "all" || roleFilter.length > 0 || descriptionFilter !== "all"}
+        mobileFilterActive={sort !== "default" || childFilter !== "all" || assignmentFilter !== "all" || categoryFilter.length > 0 || descriptionFilter !== "all"}
         onResetFilter={resetFilter}
         sheetActions={
           activities.data.length > 0 ? (
             <BtnDefault outline size="sm" onClick={handleToggleAll}>
-              {allExpanded ? "Tutup semua" : "Buka semua"}
+              {allExpanded ? "Collapse all" : "Expand all"}
             </BtnDefault>
           ) : null
         }
@@ -364,6 +382,7 @@ export default function ActivityListSection({
         </>
       )}
       <ServerPagination
+        language="en"
         links={activities.links}
         from={activities.meta?.from}
         to={activities.meta?.to}

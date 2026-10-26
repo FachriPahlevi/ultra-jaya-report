@@ -1,9 +1,10 @@
 import { router } from "@inertiajs/react"
 import { useCallback, useEffect, useMemo, useState, type ChangeEvent } from "react"
-import { HiOutlineMinus, HiOutlineX } from "react-icons/hi"
+import { HiOutlineMinus } from "react-icons/hi"
 import BtnDefault from "@/Components/Button/BtnDefault"
 import { useStatusModal } from "@/Components/Context/StatusModalContext"
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
+import { ModalBody, ModalFooter, ModalHeader, ModalPanel } from "@/Components/Modal/ModalLayout"
 import { useRolePermissions } from "@/Pages/settings/hooks/useRolePermissions"
 import { groupPermissions, togglePermissions } from "@/Pages/settings/utils/permissions"
 import { getRequestErrorMessage } from "@/lib/errorMessages"
@@ -165,19 +166,9 @@ export default function PermissionEditorModal({ isOpen, onClose, role, permissio
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
-      <section aria-labelledby="permission-title" className="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-t-xl border border-border bg-card shadow-lg sm:mx-auto sm:rounded-xl">
-        <header className="flex items-center justify-between border-b border-border px-5 py-4 sm:px-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">Pengaturan akses</p>
-            <h2 id="permission-title" className="mt-1 text-lg font-semibold text-foreground">
-              Permission untuk {role.name}
-            </h2>
-          </div>
-          <button aria-label="Tutup" className="rounded-xl border border-border p-2 text-muted-foreground hover:text-foreground" type="button" onClick={onClose}>
-            <HiOutlineX className="h-5 w-5" />
-          </button>
-        </header>
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6">
+      <ModalPanel width="wide">
+        <ModalHeader title={`Permissions for ${role.name}`} description="Choose what users with this role can access and manage." onClose={onClose} />
+        <ModalBody>
           {!canManagePermissions && (
             <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Anda tidak memiliki izin untuk mengubah permission role ini.</p>
           )}
@@ -206,16 +197,16 @@ export default function PermissionEditorModal({ isOpen, onClose, role, permissio
               <PermissionGroup key={group} group={group} permissions={groupItems} selectedPermissions={selectedPermissions} isDisabled={!canManagePermissions} onChange={updateSelection} />
             ))}
           </div>
-        </div>
-        <footer className="flex flex-col-reverse gap-2 border-t border-border px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
-          <BtnDefault variant="outline" onClick={onClose}>
+        </ModalBody>
+        <ModalFooter>
+          <BtnDefault variant="outline" onClick={onClose} className="w-full">
             Batal
           </BtnDefault>
-          <BtnDefault disabled={!canManagePermissions} loading={isSaving} onClick={handleSave}>
+          <BtnDefault disabled={!canManagePermissions} loading={isSaving} onClick={handleSave} className="w-full">
             Simpan permission
           </BtnDefault>
-        </footer>
-      </section>
+        </ModalFooter>
+      </ModalPanel>
     </ModalOverlay>
   )
 }

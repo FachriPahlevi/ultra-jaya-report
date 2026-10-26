@@ -18,7 +18,9 @@ export default function DataTableToolbar({
   onResetFilter = null,
   onMobileFilter = null,
   mobileFilterActive = false,
+  language = "id",
 }) {
+  const english = language === "en"
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false)
   const [draftPerPage, setDraftPerPage] = useState(Number(perPage))
 
@@ -43,7 +45,7 @@ export default function DataTableToolbar({
         <button
           type="button"
           onClick={() => (onMobileFilter ? onMobileFilter() : setIsMobileSheetOpen(true))}
-          aria-label="Buka filter dan urutan"
+          aria-label={english ? "Open filters and sorting" : "Buka filter dan urutan"}
           className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border bg-card outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary ${mobileFilterActive ? "border-primary text-primary" : "border-border text-muted-foreground"}`}
         >
           <SlidersHorizontal className="h-4 w-4" />
@@ -63,7 +65,7 @@ export default function DataTableToolbar({
             className={`relative inline-flex min-h-11 items-center gap-2 rounded-lg border px-3.5 text-sm font-semibold outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary ${mobileFilterActive ? "border-primary bg-blue-50 text-primary" : "border-border bg-card text-foreground"}`}
           >
             <SlidersHorizontal className="h-4 w-4" />
-            Filter{mobileFilterActive && <span className="h-2 w-2 rounded-full bg-primary" aria-label="Filter aktif" />}
+            Filter{mobileFilterActive && <span className="h-2 w-2 rounded-full bg-primary" aria-label={english ? "Filters active" : "Filter aktif"} />}
           </button>
           {actions && <div className="flex min-w-0 flex-wrap items-center gap-2 max-sm:w-full max-sm:[&>*]:flex-1">{actions}</div>}
         </div>
@@ -79,14 +81,14 @@ export default function DataTableToolbar({
           <header className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
             <div>
               <h2 id="table-toolbar-sheet-title" className="text-lg font-bold tracking-tight text-foreground">
-                Atur tampilan
+                {english ? "Display options" : "Atur tampilan"}
               </h2>
-              {resultText && <p className="mt-1 text-xs text-muted-foreground">Saat ini ada {resultText}</p>}
+              {resultText && <p className="mt-1 text-xs text-muted-foreground">{english ? `Currently showing ${resultText}` : `Saat ini ada ${resultText}`}</p>}
             </div>
             <button
               type="button"
               onClick={() => setIsMobileSheetOpen(false)}
-              aria-label="Tutup pengaturan tampilan"
+              aria-label={english ? "Close display options" : "Tutup pengaturan tampilan"}
               className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
             >
               <X className="h-5 w-5" />
@@ -96,11 +98,11 @@ export default function DataTableToolbar({
             {filterContent}
             {filterContent && <div className="border-t border-border" />}
             <FilterSelectField
-              label="Baris per halaman"
-              description="Pilih banyaknya data dalam satu halaman."
+              label={english ? "Rows per page" : "Baris per halaman"}
+              description={english ? "Choose how many rows to show on each page." : "Pilih banyaknya data dalam satu halaman."}
               value={String(draftPerPage)}
               onChange={(value) => setDraftPerPage(Number(value))}
-              options={PAGE_SIZE_OPTIONS}
+              options={english ? PAGE_SIZE_OPTIONS.map((option) => (option.value === "-1" ? { ...option, label: "All" } : option)) : PAGE_SIZE_OPTIONS}
             />
             {sheetActions && <div className="border-t border-border pt-5">{sheetActions}</div>}
           </div>
@@ -126,7 +128,7 @@ export default function DataTableToolbar({
               }}
               className="min-h-12 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm outline-none transition-colors hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
-              Tampilkan hasil
+              {english ? "Show results" : "Tampilkan hasil"}
             </button>
           </footer>
         </section>

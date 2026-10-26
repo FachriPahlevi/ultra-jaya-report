@@ -26,21 +26,7 @@ class DashboardController extends Controller
         [$dateFrom, $dateTo] = $this->resolvePeriod($period, $validated['date_from'] ?? null, $validated['date_to'] ?? null);
         $user = Auth::user();
         $userId = $user->id;
-        $query = Report::query();
-
-        if (! $user->can('reports.view.all')) {
-            if ($user->can('reports.review.area')) {
-                $query->whereHas('area.managers', fn (Builder $managers) => $managers->whereKey($userId));
-            } elseif ($user->can('reports.view.own') && $user->can('reports.solve.own.area')) {
-                $query->where(fn (Builder $visible) => $visible
-                    ->where('author_id', $userId)
-                    ->orWhereHas('subArea.supervisors', fn (Builder $supervisors) => $supervisors->whereKey($userId)));
-            } elseif ($user->can('reports.solve.own.area')) {
-                $query->whereHas('subArea.supervisors', fn (Builder $supervisors) => $supervisors->whereKey($userId));
-            } else {
-                $query->where('author_id', $userId);
-            }
-        }
+        $query = Report::query()->visibleTo($user);
 
         if ($dateFrom) {
             $query->where('created_at', '>=', $dateFrom);

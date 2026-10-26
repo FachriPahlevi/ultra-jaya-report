@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 
 <head>
   <meta charset="utf-8">
-  <title>Laporan Issue Report</title>
+  <title>Reports</title>
   <style>
     * {
       margin: 0;
@@ -154,8 +154,8 @@
         </td>
         <td style="width:125px;text-align:right;vertical-align:top;padding-top:2px">
           <span style="background:white;color:black;font-size:6pt;font-weight:bold;letter-spacing:1px;padding:2px 6px;border-radius:2px;border:1px solid #000000">Issue Report</span>
-          <div style="font-size:7.5pt;color:#333333;margin-top:4px">No. Dok: IR/{{ now()->format('Y/m') }}</div>
-          <div style="font-size:7.5pt;color:#333333;margin-top:2px">{{ now()->translatedFormat('d F Y') }}</div>
+          <div style="font-size:7.5pt;color:#333333;margin-top:4px">Document No.: IR/{{ now()->format('Y/m') }}</div>
+          <div style="font-size:7.5pt;color:#333333;margin-top:2px">{{ now()->locale('en')->translatedFormat('d F Y') }}</div>
         </td>
       </tr>
     </table>
@@ -164,14 +164,13 @@
 
     {{-- TITLE --}}
     <div style="text-align:center;padding:7px 0 6px;border-bottom:1px solid #cccccc;margin-bottom:10px">
-      <div style="font-size:12pt;font-weight:bold;letter-spacing:3px;text-transform:uppercase">Laporan Issue Report</div>
-      <div style="font-size:8pt;color:#555555;margin-top:2px">Periode: {{ $reports->min('created_at') ? $reports->min('created_at')->translatedFormat('d F Y') : '-' }} - {{ $reports->max('created_at') ? $reports->max('created_at')->translatedFormat('d F Y') : '-' }}</div>
+      <div style="font-size:12pt;font-weight:bold;letter-spacing:3px;text-transform:uppercase">Reports</div>
+      <div style="font-size:8pt;color:#555555;margin-top:2px">Period: {{ $reports->min('created_at') ? $reports->min('created_at')->locale('en')->translatedFormat('d F Y') : '-' }} - {{ $reports->max('created_at') ? $reports->max('created_at')->locale('en')->translatedFormat('d F Y') : '-' }}</div>
     </div>
 
     @php
-    $total=$reports->count(); $closed=$reports->where('status','closed')->count();
-    $open=$reports->where('status','open')->count(); $withPhoto=$reports->whereNotNull('photo_before')->count();
-    $pct=$total>0?number_format(($closed/$total)*100,1):'0.0';
+    $total=$reports->count(); $closed=$reports->where('category_snapshot','ISSUE')->where('status','closed')->count();
+    $open=$reports->where('category_snapshot','ISSUE')->where('status','open')->count(); $reportCount=$reports->where('category_snapshot','REPORT')->count();
     @endphp
 
 
@@ -180,31 +179,31 @@
     <table style="width:100%;margin-bottom:12px">
       <tr>
         <td class="sum-cell">
-          <div style="font-size:6.5pt;text-transform:uppercase;color:#555555;letter-spacing:.8px">Total Laporan</div>
+          <div style="font-size:6.5pt;text-transform:uppercase;color:#555555;letter-spacing:.8px">Total Reports</div>
           <div style="font-size:16pt;font-weight:bold;color:#000000;line-height:1">{{ $total }}</div>
-          <div style="font-size:6.5pt;color:#666666;margin-top:1px">Keseluruhan</div>
+          <div style="font-size:6.5pt;color:#666666;margin-top:1px">All reports</div>
         </td>
         <td class="sum-cell">
           <div style="font-size:6.5pt;text-transform:uppercase;color:#555555;letter-spacing:.8px">Closed</div>
           <div style="font-size:16pt;font-weight:bold;color:#000000;line-height:1">{{ $closed }}</div>
-          <div style="font-size:6.5pt;color:#666666;margin-top:1px">Telah ditutup</div>
+          <div style="font-size:6.5pt;color:#666666;margin-top:1px">Resolved issues</div>
         </td>
         <td class="sum-cell">
           <div style="font-size:6.5pt;text-transform:uppercase;color:#555555;letter-spacing:.8px">Open</div>
           <div style="font-size:16pt;font-weight:bold;color:#000000;line-height:1">{{ $open }}</div>
-          <div style="font-size:6.5pt;color:#666666;margin-top:1px">Masih menunggu tindak lanjut</div>
+          <div style="font-size:6.5pt;color:#666666;margin-top:1px">Awaiting follow-up</div>
         </td>
         <td class="sum-cell">
-          <div style="font-size:6.5pt;text-transform:uppercase;color:#555555;letter-spacing:.8px">Dengan Foto</div>
-          <div style="font-size:16pt;font-weight:bold;color:#000000;line-height:1">{{ $withPhoto }}</div>
-          <div style="font-size:6.5pt;color:#666666;margin-top:1px">Memiliki dokumentasi</div>
+          <div style="font-size:6.5pt;text-transform:uppercase;color:#555555;letter-spacing:.8px">Report</div>
+          <div style="font-size:16pt;font-weight:bold;color:#000000;line-height:1">{{ $reportCount }}</div>
+          <div style="font-size:6.5pt;color:#666666;margin-top:1px">Observations</div>
         </td>
       </tr>
     </table>
 
     {{-- SECTION HEADING --}}
     <div style="border-bottom:1px solid #000000;padding-bottom:3px;margin-bottom:8px">
-      <span style="font-size:7.5pt;letter-spacing:2px;text-transform:uppercase;font-weight:bold;color:#000000"> Detail Laporan</span>
+      <span style="font-size:7.5pt;letter-spacing:2px;text-transform:uppercase;font-weight:bold;color:#000000"> Report Details</span>
     </div>
 
     {{-- CARDS --}}
@@ -221,7 +220,7 @@
     <div class="card">
       <table style="width:100%;padding:6px 10px">
         <tr>
-          <td style="font-size:9pt;font-weight:bold;color:black;letter-spacing:1.5px;vertical-align:middle">LAPORAN &nbsp;#{{ sprintf('%04d',$report->id) }}</td>
+          <td style="font-size:9pt;font-weight:bold;color:black;letter-spacing:1.5px;vertical-align:middle">REPORT &nbsp;#{{ sprintf('%04d',$report->id) }}</td>
         </tr>
       </table>
 
@@ -230,7 +229,7 @@
           <td style="vertical-align:top">
             <table class="dt" style="width:100%">
               <tr>
-                <td class="l">Pelapor</td>
+                <td class="l">Reporter</td>
                 <td class="c">:</td>
                 <td class="v">{{ $report->author?->name ?? '-' }}</td>
               </tr>
@@ -240,30 +239,32 @@
                 <td class="v">{{ $report->area?->area ?? '-' }}</td>
               </tr>
               <tr>
-                <td class="l">Jenis Aktivitas</td>
+                <td class="l">Activity Type</td>
                 <td class="c">:</td>
                 <td class="v">{{ $report->subActivity?->name ?? $report->activityType?->name ?? '-' }}</td>
               </tr>
               <tr>
-                <td class="l">Aktivitas</td>
+                <td class="l">Activity Notes</td>
                 <td class="c">:</td>
                 <td class="v">{{ $report->activity ?? '-' }}</td>
               </tr>
               <tr>
-                <td class="l">Tanggal Lapor</td>
+                <td class="l">Reported At</td>
                 <td class="c">:</td>
-                <td class="v">{{ $report->created_at?->translatedFormat('d F Y, H:i') ?? '-' }} WIB</td>
+                <td class="v">{{ $report->created_at?->locale('en')->translatedFormat('d F Y, H:i') ?? '-' }} WIB</td>
               </tr>
               <tr>
-                <td class="l">Deskripsi Issue</td>
+                <td class="l">{{ $report->category_snapshot === 'REPORT' ? 'Observation' : 'Finding' }}</td>
                 <td class="c">:</td>
                 <td class="v">{{ $report->issue ?? '-' }}</td>
               </tr>
               <tr>
                 <td class="l">Status</td>
                 <td class="c">:</td>
-                @if($done)
-                <td class="v" style="color:#000000">Closed - {{ $report->closed_at?->translatedFormat('d F Y, H:i') ?? '-' }} WIB</td>
+                @if($report->category_snapshot === 'REPORT')
+                <td class="v" style="color:#000000">Report</td>
+                @elseif($done)
+                <td class="v" style="color:#000000">Closed - {{ $report->closed_at?->locale('en')->translatedFormat('d F Y, H:i') ?? '-' }} WIB</td>
                 @else
                 <td class="v" style="color:#000000">Open</td>
                 @endif
@@ -274,19 +275,19 @@
             <table style="width:100%">
               <tr>
                 <td style="width:50%;text-align:center;padding-right:4px">
-                  <div style="font-size:6.5pt;text-transform:uppercase;color:#555555;font-weight:bold;letter-spacing:.8px;margin-bottom:3px">Foto Awal</div>
+                  <div style="font-size:6.5pt;text-transform:uppercase;color:#555555;font-weight:bold;letter-spacing:.8px;margin-bottom:3px">Before Photo</div>
                   @if($photoBefore)
                   <img src="{{ $photoBefore }}" style="width:88px;height:75px;object-fit:cover;border:1px solid #999999;border-radius:2px;display:block;margin:0 auto;filter:grayscale(100%)">
                   @else
-                  <div class="photo-box">Tidak Ada<br>Foto</div>
+                  <div class="photo-box">No<br>Photo</div>
                   @endif
                 </td>
                 <td style="width:50%;text-align:center;padding-left:4px">
-                  <div style="font-size:6.5pt;text-transform:uppercase;color:#555555;font-weight:bold;letter-spacing:.8px;margin-bottom:3px">Foto Akhir</div>
+                  <div style="font-size:6.5pt;text-transform:uppercase;color:#555555;font-weight:bold;letter-spacing:.8px;margin-bottom:3px">After Photo</div>
                   @if($photoAfter)
                   <img src="{{ $photoAfter }}" style="width:88px;height:75px;object-fit:cover;border:1px solid #999999;border-radius:2px;display:block;margin:0 auto;filter:grayscale(100%)">
                   @else
-                  <div class="photo-box">Tidak Ada<br>Foto</div>
+                  <div class="photo-box">No<br>Photo</div>
                   @endif
                 </td>
               </tr>
@@ -302,12 +303,12 @@
       <tr>
         <td></td>
         <td style="width:160px;text-align:center">
-          <div style="font-size:8.5pt;color:#000000;margin-bottom:40px">Dibuat oleh,</div>
+          <div style="font-size:8.5pt;color:#000000;margin-bottom:40px">Prepared by</div>
           <div style="font-size:8pt;font-weight:bold">(&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;)</div>
-          <div style="font-size:7pt;color:#555555">Petugas Laporan</div>
+          <div style="font-size:7pt;color:#555555">Reporting Officer</div>
         </td>
         <td style="width:160px;text-align:center">
-          <div style="font-size:8.5pt;color:#000000;margin-bottom:40px">Diketahui oleh,</div>
+          <div style="font-size:8.5pt;color:#000000;margin-bottom:40px">Reviewed by</div>
           <div style="font-size:8pt;font-weight:bold">(&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;)</div>
           <div style="font-size:7pt;color:#555555">Supervisor / Manager</div>
         </td>
@@ -318,12 +319,12 @@
     <table style="width:100%;border-top:2px solid #000000;padding-top:7px;margin-top:14px">
       <tr>
         <td style="font-size:7.5pt;color:#555555;line-height:1.6;vertical-align:bottom">
-          Dokumen ini digenerate secara otomatis oleh Sistem Report PT Ultra Jaya Milk.<br>
-          Dokumen ini merupakan bukti resmi laporan issue yang telah tercatat dalam sistem.<br>
-          Dicetak pada: {{ now()->translatedFormat('d F Y, H:i:s') }} WIB
+          This document was generated automatically by the PT Ultra Jaya Milk reporting system.<br>
+          This document summarizes reports recorded in the system.<br>
+          Printed at: {{ now()->locale('en')->translatedFormat('d F Y, H:i:s') }} WIB
         </td>
         <td style="text-align:right;vertical-align:bottom">
-          <div style="font-size:7.5pt;color:#666666;margin-top:2px">Halaman 1</div>
+          <div style="font-size:7.5pt;color:#666666;margin-top:2px">Page 1</div>
         </td>
       </tr>
     </table>

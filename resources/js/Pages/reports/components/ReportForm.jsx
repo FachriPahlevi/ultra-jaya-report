@@ -3,11 +3,12 @@ import { useState, useEffect, useRef } from "react"
 import InputDropdown from "@/Components/Input/InputDropdown"
 import BtnDefault from "@/Components/Button/BtnDefault"
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
+import { ModalBody, ModalFooter, ModalHeader, ModalPanel } from "@/Components/Modal/ModalLayout"
 import ExpandableImage from "@/Components/UI/ExpandableImage"
 import PhotoEditorModal from "./PhotoEditorModal"
 import CameraCaptureModal from "./CameraCaptureModal"
 import { useStatusModal } from "@/Components/Context/StatusModalContext"
-import { HiOutlinePhotograph, HiOutlineX } from "react-icons/hi"
+import { HiOutlinePhotograph } from "react-icons/hi"
 import { Camera, FileImage, ImagePlus } from "lucide-react"
 import { createEmptyReportForm, createReportForm, createReportSelections } from "@/Pages/reports/utils/reportForm"
 
@@ -25,7 +26,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
   const galleryInputRef = useRef(null)
   const permissions = new Set(currentUser?.permissions ?? [])
   const canSubmit = report ? report.can?.update === true : permissions.has("reports.create")
-  const hasGlobalScope = permissions.has("reports.view.all") || permissions.has("reports.solve.all")
+  const hasGlobalScope = ["reports.view.all", "reports.solve.all", "reports.edit.all", "reports.delete.all"].some((permission) => permissions.has(permission))
   const hasManagerScope = !hasGlobalScope && permissions.has("reports.review.area")
   const hasSupervisorScope = !hasGlobalScope && permissions.has("reports.solve.own.area")
 
@@ -72,7 +73,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
 
     const maxSizeBytes = 15 * 1024 * 1024
     if (file.size > maxSizeBytes) {
-      showStatusModal("error", "File Terlalu Besar", "Ukuran foto awal maksimal 15 MB. Foto akan dikompres otomatis setelah diedit.")
+      showStatusModal("error", "File too large", "The original photo must be 15 MB or smaller. It will be compressed after editing.")
       e.currentTarget.value = ""
       return
     }
@@ -146,7 +147,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
     e.preventDefault()
 
     if (!canSubmit) {
-      showStatusModal("error", "Akses ditolak", "Anda tidak memiliki izin untuk menyimpan laporan ini.")
+      showStatusModal("error", "Access denied", "You do not have permission to save this report.")
       return
     }
 
@@ -159,14 +160,14 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
           return
         }
         if (!page?.props?.flash?.success) {
-          showStatusModal("success", "Berhasil", report ? "Laporan berhasil diperbarui" : "Laporan berhasil dibuat")
+          showStatusModal("success", "Success", report ? "Report updated successfully" : "Report created successfully")
         }
         resetForm()
         onClose()
       },
       onError: (error) => {
         const firstErr = Object.values(error || {})[0]
-        showStatusModal("error", "Gagal Menyimpan", firstErr || (report ? "Gagal memperbarui laporan" : "Gagal membuat laporan"))
+        showStatusModal("error", "Unable to save", firstErr || (report ? "Unable to update the report" : "Unable to create the report"))
       },
     })
   }
@@ -178,16 +179,21 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
       : activities
   const selectedParentActivity = scopedActivities.find((activity) => String(activity.id) === String(data.type_activity))
   const selectedAreaData = scopedAreas.find((area) => String(area.id) === String(data.area_activity))
-  const availableSubAreas = hasSupervisorScope && !report ? selectedAreaData?.sub_areas?.filter((subArea) => subArea.is_in_current_user_scope) : selectedAreaData?.sub_areas
+  const canReviewSelection = hasManagerScope && selectedAreaData?.is_in_review_scope && selectedParentActivity?.is_in_current_user_scope
+  const availableSubAreas =
+    hasSupervisorScope && !report && !selectedAreaData?.is_in_review_scope ? selectedAreaData?.sub_areas?.filter((subArea) => subArea.is_in_current_user_scope) : selectedAreaData?.sub_areas
   const subAreaOptions = availableSubAreas?.map((subArea) => ({ label: subArea.name, value: subArea.id })) ?? []
   const availableSubActivities =
-    hasSupervisorScope && !report ? selectedParentActivity?.sub_activities?.filter((activity) => activity.is_in_current_user_scope) : selectedParentActivity?.sub_activities
+    hasSupervisorScope && !report && !canReviewSelection ? selectedParentActivity?.sub_activities?.filter((activity) => activity.is_in_current_user_scope) : selectedParentActivity?.sub_activities
   const subActivityOptions =
     availableSubActivities?.map((activity) => ({
       label: `${activity.name}${activity.category ? ` · ${activity.category}` : ""}`,
       value: activity.id,
     })) ?? []
-  const selectedCategory = availableSubActivities?.find((activity) => String(activity.id) === String(data.sub_activity_id))?.category ?? "ISSUE"
+  const selectedCategory =
+    report && String(report.sub_activity_id) === String(data.sub_activity_id)
+      ? report.category_snapshot
+      : (availableSubActivities?.find((activity) => String(activity.id) === String(data.sub_activity_id))?.category ?? "ISSUE")
   const reporterName = report?.author?.name ?? currentUser?.name ?? "-"
   const reporterRole = report?.author?.role ?? currentUser?.roles?.[0] ?? "USER"
   const photoFileName = data.photo?.name ?? ""
@@ -200,27 +206,13 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={handleCancel}>
-      <div className="mx-auto flex h-[100dvh] w-full max-w-3xl flex-col overflow-hidden border border-border bg-card shadow-2xl sm:h-auto sm:max-h-[92dvh] sm:rounded-2xl">
-        <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-4 sm:px-6">
-          <div>
-            <h2 className="text-lg font-bold tracking-tight text-foreground sm:text-xl">{report ? "Perbarui laporan" : "Buat laporan baru"}</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Lengkapi lokasi, aktivitas, dan dokumentasi kejadian.</p>
-          </div>
-          <button
-            type="button"
-            onClick={handleCancel}
-            aria-label="Tutup form laporan"
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <HiOutlineX className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto bg-card p-4 sm:p-6">
+      <ModalPanel width="xl" className="h-[100dvh] sm:h-auto">
+        <ModalHeader title={report ? "Edit report" : "Create report"} description="Add the location, activity, and supporting documentation." onClose={handleCancel} />
+        <ModalBody>
           <form id="report-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
             <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-3.5 py-3">
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Pelapor</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Reporter</p>
                 <p className="mt-1 truncate text-sm font-semibold text-foreground">{reporterName}</p>
               </div>
               <span className="shrink-0 rounded-md bg-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-700">{String(reporterRole).replaceAll("_", " ")}</span>
@@ -231,7 +223,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
                 id="area_activity"
                 label="Area"
                 itemList={scopedAreas.map((area) => ({ label: area.area, value: area.id }))}
-                placeholder="Pilih area"
+                placeholder="Select an area"
                 required
                 setObject={handleAreaActivityChange}
                 object={selectedArea}
@@ -242,7 +234,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
                 id="sub_area_id"
                 label="Sub-area"
                 itemList={subAreaOptions}
-                placeholder={selectedAreaData ? "Pilih sub-area" : "Pilih area terlebih dahulu"}
+                placeholder={selectedAreaData ? "Select a sub-area" : "Select an area first"}
                 required
                 setObject={handleSubAreaChange}
                 object={selectedSubArea}
@@ -254,9 +246,9 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
             <div className="grid gap-4 sm:grid-cols-2">
               <InputDropdown
                 id="type_activity"
-                label="Aktivitas"
+                label="Activity"
                 itemList={scopedActivities.map((act) => ({ label: act.name, value: act.id }))}
-                placeholder="Pilih aktivitas"
+                placeholder="Select an activity"
                 required
                 setObject={handleTypeActivityChange}
                 object={selectedActivity}
@@ -265,9 +257,10 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
 
               <InputDropdown
                 id="sub_activity_id"
-                label="Sub-aktivitas"
+                label="Sub-activity"
+                required
                 itemList={subActivityOptions}
-                placeholder={selectedParentActivity ? "Pilih sub-aktivitas" : "Pilih aktivitas terlebih dahulu"}
+                placeholder={selectedParentActivity ? "Select a sub-activity" : "Select an activity first"}
                 setObject={handleSubActivityChange}
                 object={selectedSubActivity}
                 disabled={!selectedParentActivity || subActivityOptions.length === 0}
@@ -277,14 +270,14 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
 
             <div>
               <label htmlFor="issue" className="text-[13px] font-semibold text-foreground mb-1.5 block">
-                {selectedCategory === "REPORT" ? "Keterangan laporan" : "Kendala"} <span className="text-destructive">*</span>
+                {selectedCategory === "REPORT" ? "Observation" : "Finding"} <span className="text-destructive">*</span>
               </label>
               <textarea
                 id="issue"
                 value={data.issue}
                 onChange={handleIssueChange}
                 placeholder={
-                  selectedCategory === "REPORT" ? "Tuliskan kondisi, hasil pemeriksaan, atau informasi yang dilaporkan..." : "Jelaskan kendala yang ditemukan, lokasi spesifik, dan dampaknya..."
+                  selectedCategory === "REPORT" ? "Describe the condition or inspection result..." : "Describe the issue, its location, and its impact..."
                 }
                 className="min-h-[112px] w-full resize-y rounded-xl border border-border bg-background px-3.5 py-3 text-sm text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/15"
               />
@@ -293,13 +286,13 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
 
             <div>
               <label htmlFor="activity" className="mb-1.5 block text-[13px] font-semibold text-foreground">
-                Catatan tambahan
+                Additional notes
               </label>
               <textarea
                 id="activity"
                 value={data.activity}
                 onChange={handleActivityChange}
-                placeholder="Tambahkan informasi pendukung bila diperlukan"
+                placeholder="Add supporting details if needed"
                 className="min-h-[92px] w-full resize-y rounded-xl border border-border bg-background px-3.5 py-3 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/15"
               />
               {errors.activity && <p className="mt-1 text-xs text-destructive">{errors.activity}</p>}
@@ -309,9 +302,9 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
                 <div>
                   <p className="text-[13px] font-semibold text-foreground">
-                    Dokumentasi foto <span className="text-[11px] text-muted-foreground font-normal">(opsional)</span>
+                    Photo documentation <span className="text-[11px] text-muted-foreground font-normal">(optional)</span>
                   </p>
-                  <p className="text-[11px] text-muted-foreground">JPG atau PNG · otomatis dikompresi sebelum disimpan</p>
+                  <p className="text-[11px] text-muted-foreground">JPG or PNG · compressed automatically before saving</p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:flex">
                   <button
@@ -320,7 +313,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
                     className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                   >
                     <Camera className="h-4 w-4" />
-                    Ambil foto
+                    Take photo
                   </button>
                   <button
                     type="button"
@@ -328,22 +321,22 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
                     className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background px-3 text-xs font-semibold text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <ImagePlus className="h-4 w-4" />
-                    Pilih file
+                    Choose file
                   </button>
                 </div>
-                <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png,image/jpg" onChange={handlePhotoChange} className="hidden" aria-label="Pilih foto dari perangkat" />
+                <input ref={galleryInputRef} type="file" accept="image/jpeg,image/png,image/jpg" onChange={handlePhotoChange} className="hidden" aria-label="Choose a photo from your device" />
               </div>
 
               {photoPreview ? (
                 <div className="overflow-hidden rounded-xl border border-primary/40 bg-muted/20">
                   <div className="relative mx-auto w-fit max-w-full">
-                    <ExpandableImage src={photoPreview} alt={photoFileName || "Pratinjau foto laporan"} className="block h-auto max-h-[360px] max-w-full w-auto object-contain" />
+                    <ExpandableImage src={photoPreview} alt={photoFileName || "Report photo preview"} className="block h-auto max-h-[360px] max-w-full w-auto object-contain" />
                     <button
                       type="button"
                       onClick={removePhoto}
                       className="absolute right-2 top-2 min-h-8 rounded-lg bg-black/65 px-2.5 text-xs font-medium text-white outline-none transition-colors hover:bg-black focus-visible:ring-2 focus-visible:ring-white"
                     >
-                      Hapus foto
+                      Remove photo
                     </button>
                   </div>
                   <div className="flex min-w-0 items-center gap-3 border-t border-border bg-card px-3 py-2.5">
@@ -354,38 +347,38 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
                       <p className="truncate text-xs font-semibold text-foreground" title={photoFileName}>
                         {photoFileName}
                       </p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">JPEG terkompresi · {formatFileSize(photoFileSize)}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">Compressed JPEG · {formatFileSize(photoFileSize)}</p>
                     </div>
                   </div>
                 </div>
               ) : report?.photo_before ? (
                 <div className="overflow-hidden rounded-xl border border-border bg-muted/20">
                   <div className="mx-auto w-fit max-w-full">
-                    <ExpandableImage src={`/storage/${report.photo_before}`} alt="Dokumentasi laporan" className="block h-auto max-h-[360px] max-w-full w-auto object-contain" />
+                    <ExpandableImage src={`/storage/${report.photo_before}`} alt="Report documentation" className="block h-auto max-h-[360px] max-w-full w-auto object-contain" />
                   </div>
                 </div>
               ) : (
                 <div className="flex min-h-[140px] items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/50">
                   <div className="py-6 text-center text-muted-foreground">
                     <HiOutlinePhotograph className="mx-auto mb-2 h-9 w-9 opacity-40" />
-                    <span className="text-[13px] font-semibold text-foreground">Belum ada dokumentasi</span>
-                    <span className="mt-1 block text-[11px] text-muted-foreground/80">Ambil foto langsung atau pilih dari perangkat</span>
+                    <span className="text-[13px] font-semibold text-foreground">No photo added</span>
+                    <span className="mt-1 block text-[11px] text-muted-foreground/80">Take a photo or choose one from your device</span>
                   </div>
                 </div>
               )}
               {errors.photo && <p className="text-xs text-destructive mt-1">{errors.photo}</p>}
             </div>
           </form>
-        </div>
-        <footer className="grid shrink-0 grid-cols-1 gap-2 border-t border-border bg-card px-4 py-3 sm:grid-cols-2 sm:px-6" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
+        </ModalBody>
+        <ModalFooter>
           <BtnDefault type="button" outline fullWidth onClick={handleCancel} className="min-h-12">
-            Batal
+            Cancel
           </BtnDefault>
           <BtnDefault form="report-form" type="submit" fullWidth loading={processing} disabled={!canSubmit} className="min-h-12">
-            {processing ? "Menyimpan..." : report ? "Simpan perubahan" : "Kirim laporan"}
+            {processing ? "Saving..." : report ? "Save changes" : "Submit report"}
           </BtnDefault>
-        </footer>
-      </div>
+        </ModalFooter>
+      </ModalPanel>
       <CameraCaptureModal isOpen={isCameraOpen} onClose={() => setIsCameraOpen(false)} onCapture={setPhotoToEdit} />
       <PhotoEditorModal file={photoToEdit} onClose={() => setPhotoToEdit(null)} onSave={handleEditedPhoto} />
     </ModalOverlay>

@@ -80,7 +80,7 @@ const CompletionCard = ({ stats, topArea, completionPct }) => (
       <div className="flex flex-1 flex-col items-center justify-center bg-white py-1.5">
         <CompletionRing percentage={completionPct} />
         <div className="text-[10.5px] font-medium text-[#9aa1ae]">
-          {stats.closed} dari {stats.total} tiket selesai
+          {stats.closed} of {stats.total} tickets closed
         </div>
       </div>
       <div className="flex-[1.3] border-l border-[#eaecf3] pl-3.5">
@@ -215,15 +215,15 @@ export default function PublicDisplay({ stats = { total: 0, open: 0, closed: 0, 
               <div className="mb-2 inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-[#9aa1ae]">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#1f9d6b]" />· Live Monitoring
               </div>
-              <h1 className="mb-1.5 text-[23px] font-bold tracking-[-0.02em] text-[#13151c]">Dashboard Monitoring</h1>
+              <h1 className="mb-1.5 text-[23px] font-bold tracking-[-0.02em] text-[#13151c]">Live Dashboard</h1>
               <p className="m-0 max-w-[680px] text-[12.5px] leading-normal text-[#6b7280]">
-                Pantauan tiket operasional secara real-time untuk membantu tim melihat progres, prioritas tindak lanjut, dan area yang membutuhkan perhatian.
+                Track operational tickets in real time, including progress, follow-up priorities, and areas that need attention.
               </p>
             </div>
 
             <div className="shrink-0 rounded-[10px] border border-[#eaecf3] bg-white px-3.5 py-2 text-right text-[12.5px] font-semibold text-[#13151c] max-[860px]:w-full max-[860px]:text-left">
               {formatDate(now)}
-              <span className="mt-0.5 block text-[10px] font-medium text-[#9aa1ae]">{formatTime(now)} · WIB</span>
+              <span className="mt-0.5 block text-[10px] font-medium text-[#9aa1ae]">{formatTime(now)} · UTC+7</span>
             </div>
           </div>
 

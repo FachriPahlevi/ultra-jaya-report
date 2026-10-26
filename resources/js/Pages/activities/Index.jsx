@@ -16,7 +16,7 @@ const INITIAL_FORM = {
   name: "",
   description: "",
   is_active: true,
-  parent_id: "",
+  activity_id: "",
   category: "ISSUE",
   sub_activities: [{ name: "", description: "", category: "ISSUE" }],
 }
@@ -48,7 +48,7 @@ export default function Index({
   const [isBulkSubMode, setIsBulkSubMode] = useState(false)
   const [listSearch, setListSearch] = useState(filters.search ?? "")
 
-  const parentOptions = parentActivities.filter((item) => !editTarget || item.id !== editTarget.id).map((item) => ({ label: item.name, value: String(item.id) }))
+  const parentOptions = parentActivities.map((item) => ({ label: item.name, value: String(item.id) }))
   const perPage = Number(filters.per_page ?? 10)
 
   useEffect(() => {
@@ -83,19 +83,19 @@ export default function Index({
     if (error.response?.status === 422) {
       const payloadErrors = error.response.data.errors || {}
       setErrors(payloadErrors)
-      showStatusModal("error", "Validasi Gagal", getRequestErrorMessage(error))
+      showStatusModal("error", "Validation failed", getRequestErrorMessage(error))
       return
     }
 
     const errorMessage = getRequestErrorMessage(error)
-    showStatusModal("error", "Terjadi Kesalahan", errorMessage)
+    showStatusModal("error", "Something went wrong", errorMessage)
   }
 
   const openAdd = (parentActivity = null) => {
     setEditTarget(null)
     setForm({
       ...INITIAL_FORM,
-      parent_id: parentActivity ? String(parentActivity.id) : "",
+      activity_id: parentActivity ? String(parentActivity.id) : "",
       is_active: true,
       category: "ISSUE",
       sub_activities: [{ name: "", description: "", category: "ISSUE" }],
@@ -111,7 +111,7 @@ export default function Index({
       name: activity.name,
       description: activity.description ?? "",
       is_active: activity.is_active ?? true,
-      parent_id: activity.parent_id ? String(activity.parent_id) : "",
+      activity_id: activity.activity_id ? String(activity.activity_id) : "",
       category: activity.category ?? "ISSUE",
       sub_activities: [{ name: "", description: "", category: "ISSUE" }],
     })
@@ -130,7 +130,7 @@ export default function Index({
 
   const openAssignment = (activity) => {
     setAssignmentTarget(activity)
-    setAssignmentValues((activity.parent_id ? activity.supervisors : activity.managers).map((user) => String(user.id)))
+    setAssignmentValues((activity.activity_id ? activity.supervisors : activity.managers).map((user) => String(user.id)))
   }
 
   const closeAssignment = () => {
@@ -144,12 +144,13 @@ export default function Index({
     if (!assignmentTarget || assignmentProcessing) return
 
     setAssignmentProcessing(true)
-    const isSubActivity = Boolean(assignmentTarget.parent_id)
+    const isSubActivity = Boolean(assignmentTarget.activity_id)
     try {
-      await http.put(`/activities/${assignmentTarget.id}/assignees`, {
+      const assignmentUrl = isSubActivity ? `/activities/${assignmentTarget.activity_id}/sub-activities/${assignmentTarget.id}/assignees` : `/activities/${assignmentTarget.id}/assignees`
+      await http.put(assignmentUrl, {
         ...(isSubActivity ? { supervisor_ids: assignmentValues.map(Number) } : { manager_ids: assignmentValues.map(Number) }),
       })
-      showStatusModal("success", "Berhasil", `Pengguna untuk aktivitas “${assignmentTarget.name}” berhasil diperbarui.`)
+      showStatusModal("success", "Success", `Assignees for “${assignmentTarget.name}” updated successfully.`)
       reloadActivities()
       setAssignmentTarget(null)
       setAssignmentValues([])
@@ -203,8 +204,7 @@ export default function Index({
       name: form.name,
       description: form.description || null,
       is_active: form.is_active,
-      parent_id: form.parent_id || null,
-      ...(canManageActivityCategory && form.parent_id ? { category: form.category } : {}),
+      ...(canManageActivityCategory && form.activity_id ? { category: form.category } : {}),
       sub_activities: isBulkSubMode
         ? form.sub_activities.map((item) => ({
             name: item.name,
@@ -216,11 +216,12 @@ export default function Index({
 
     try {
       if (editTarget) {
-        await http.put(`/activities/${editTarget.id}`, submitData)
-        showStatusModal("success", "Berhasil", `Aktivitas “${form.name}” berhasil diperbarui.`)
+        const editUrl = editTarget.activity_id ? `/activities/${editTarget.activity_id}/sub-activities/${editTarget.id}` : `/activities/${editTarget.id}`
+        await http.put(editUrl, submitData)
+        showStatusModal("success", "Success", `Activity “${form.name}” updated successfully.`)
       } else {
-        await http.post("/activities", submitData)
-        showStatusModal("success", "Berhasil", `Aktivitas “${form.name}” berhasil dibuat.`)
+        await http.post(isBulkSubMode ? `/activities/${form.activity_id}/sub-activities` : "/activities", submitData)
+        showStatusModal("success", "Success", `Activity “${form.name}” created successfully.`)
       }
 
       reloadActivities()
@@ -236,18 +237,18 @@ export default function Index({
     setStatusModalProps({
       isOpen: true,
       type: "warning",
-      title: "Hapus Aktivitas",
+      title: "Delete activity",
       message:
         activity.children_count > 0
-          ? `Aktivitas “${activity.name}” masih memiliki ${activity.children_count} sub-aktivitas. Hapus atau pindahkan sub-aktivitas terlebih dahulu.`
-          : `Aktivitas “${activity.name}” akan dihapus dari daftar.`,
+          ? `Activity “${activity.name}” still has ${activity.children_count} sub-activities. Delete or move them first.`
+          : `Activity “${activity.name}” will be removed from the list.`,
       button1: {
-        text: "Hapus",
+        text: "Delete",
         variant: "danger",
         onClick: () => {
-          router.delete(`/activities/${activity.id}`, {
+          router.delete(activity.activity_id ? `/activities/${activity.activity_id}/sub-activities/${activity.id}` : `/activities/${activity.id}`, {
             onSuccess: () => {
-              showStatusModal("success", "Berhasil", `Aktivitas “${activity.name}” berhasil dihapus.`)
+              showStatusModal("success", "Success", `Activity “${activity.name}” deleted successfully.`)
               reloadActivities()
             },
             onError: (error) => {
@@ -256,20 +257,20 @@ export default function Index({
           })
         },
       },
-      button2: { text: "Batal" },
+      button2: { text: "Cancel" },
     })
   }
 
   if (!activities || !activities.data) {
     return (
-      <AppLayout title="Aktivitas">
+      <AppLayout title="Activities">
         <Head>
-          <title>Aktivitas</title>
+          <title>Activities</title>
         </Head>
         <div className="flex h-64 items-center justify-center">
           <div className="text-center">
             <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-primary"></div>
-            <p className="mt-4 text-muted-foreground">Memuat...</p>
+            <p className="mt-4 text-muted-foreground">Loading...</p>
           </div>
         </div>
       </AppLayout>
@@ -277,20 +278,20 @@ export default function Index({
   }
 
   return (
-    <AppLayout title="Aktivitas">
+    <AppLayout title="Activities">
       <Head>
-        <title>Aktivitas</title>
+        <title>Activities</title>
       </Head>
 
       <div className="flex flex-col gap-5">
         <PageHeader
-          title="Aktivitas"
+          title="Activities"
           mobileAction={
             canAdd ? (
               <button
                 type="button"
                 onClick={() => openAdd()}
-                aria-label="Tambah aktivitas"
+                aria-label="Add activity"
                 className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm outline-none transition-colors hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
                 <HiOutlinePlus className="h-5 w-5" />
@@ -301,7 +302,7 @@ export default function Index({
             canAdd ? (
               <BtnDefault onClick={() => openAdd()} size="md" className="w-full gap-2 sm:w-fit sm:min-w-[148px]">
                 <HiOutlinePlus className="h-5 w-5" />
-                Tambah Aktivitas
+                Add activity
               </BtnDefault>
             ) : null
           }
@@ -344,7 +345,7 @@ export default function Index({
         isOpen={Boolean(assignmentTarget)}
         activity={assignmentTarget}
         values={assignmentValues}
-        options={(assignmentTarget?.parent_id ? supervisorOptions : managerOptions).map((user) => ({ value: String(user.id), label: user.name }))}
+        options={(assignmentTarget?.activity_id ? supervisorOptions : managerOptions).map((user) => ({ value: String(user.id), label: user.name }))}
         processing={assignmentProcessing}
         onChange={setAssignmentValues}
         onClose={closeAssignment}

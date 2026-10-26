@@ -8,8 +8,9 @@ import InputDropdown from "@/Components/Input/InputDropdown"
 import MultiSelectChecklist from "@/Components/Input/MultiSelectChecklist"
 import BtnDefault from "@/Components/Button/BtnDefault"
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
+import { ModalBody, ModalFooter, ModalHeader, ModalPanel } from "@/Components/Modal/ModalLayout"
 import { useStatusModal } from "@/Components/Context/StatusModalContext"
-import { HiOutlineX } from "react-icons/hi"
+import { useAuthorization } from "@/hooks/useAuthorization"
 
 const emptyUserForm = () => ({ name: "", email: "", role: "", password: "", area_ids: [], sub_area_ids: [] })
 
@@ -25,9 +26,14 @@ function userToForm(user) {
 }
 
 export default function UserForm({ isOpen, onClose, user, roles, areas, isSuperadmin }) {
+  const { can } = useAuthorization()
   const { setStatusModalProps } = useStatusModal()
   const [processing, setProcessing] = useState(false)
   const [form, setForm] = useState(emptyUserForm)
+  const selectedRole = roles.find((role) => role.name === form.role)
+  const selectedPermissions = new Set([...(selectedRole?.permissions?.map((permission) => permission.name) ?? []), ...(user?.direct_permissions ?? [])])
+  const canReview = selectedPermissions.has("reports.review.area")
+  const canCloseAssigned = selectedPermissions.has("reports.solve.own.area")
 
   const roleOptions = useMemo(
     () =>
@@ -86,8 +92,7 @@ export default function UserForm({ isOpen, onClose, user, roles, areas, isSupera
       name: form.name,
       email: form.email,
       role: form.role,
-      area_ids: form.area_ids.map(Number),
-      sub_area_ids: form.sub_area_ids.map(Number),
+      ...(can("users.assign.area") ? { area_ids: form.area_ids.map(Number), sub_area_ids: form.sub_area_ids.map(Number) } : {}),
     }
 
     if (form.password) {
@@ -115,49 +120,42 @@ export default function UserForm({ isOpen, onClose, user, roles, areas, isSupera
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
-      <div className="max-h-[90vh] w-full max-w-[520px] overflow-y-auto rounded-t-xl border border-border bg-card shadow-lg sm:rounded-xl">
-        <div className="sticky top-0 flex items-center justify-between border-b border-border bg-card px-6 py-5 rounded-t-[28px]">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{user ? "Update User" : "Create User"}</p>
-            <h2 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-foreground">{user ? "Edit User" : "Add New User"}</h2>
-            <p className="mt-1 text-[12.5px] leading-5 text-muted-foreground">{user ? `Editing ${user.name}` : "Fill in the user details and assign the proper role."}</p>
-          </div>
-          <button onClick={onClose} className="rounded-xl border border-border p-2 text-muted-foreground transition-colors hover:text-foreground">
-            <HiOutlineX className="w-5 h-5" />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+      <ModalPanel>
+        <ModalHeader title={user ? "Edit user" : "Create user"} description={user ? `Update ${user.name}'s details and assignments.` : "Enter user details and assign a role."} onClose={onClose} />
+        <ModalBody>
+        <form id="user-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
           <InputText label="Full Name" placeholder="Enter full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
           <InputText label="Email Address" type="email" placeholder="Enter email address" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
           <InputDropdown
             id="user_role"
             label="Role"
+            disabled={Boolean(user) && !can("users.promote")}
             placeholder="Select a role"
             object={roleOptions.find((role) => role.value === form.role) ?? null}
             setObject={(role) => setForm((currentForm) => ({ ...currentForm, role: role.value }))}
             itemList={roleOptions}
             required
           />
-          {form.role === "MANAGER" && (
+          {can("users.assign.area") && canReview && (
             <MultiSelectChecklist
-              label="Area review Manager"
+              label="Area penugasan reviewer"
               values={form.area_ids}
               options={areaOptions}
               onChange={(areaIds) => setForm((currentForm) => ({ ...currentForm, area_ids: areaIds }))}
-              helperText="Manager hanya dapat melihat dan mereview laporan pada area yang dipilih."
+              helperText="Tetapkan lokasi pengguna. Akses review laporan ditentukan oleh penugasan reviewer di halaman Aktivitas."
               searchPlaceholder="Cari area..."
               emptyText="Area tidak ditemukan."
               selectionLabel="Area terpilih"
               emptySelectionText="Belum ada area dipilih."
             />
           )}
-          {form.role === "SUPERVISOR" && (
+          {can("users.assign.area") && canCloseAssigned && (
             <MultiSelectChecklist
-              label="Sub-area tanggung jawab SPV"
+              label="Sub-area penugasan penutup tiket"
               values={form.sub_area_ids}
               options={subAreaOptions}
               onChange={(subAreaIds) => setForm((currentForm) => ({ ...currentForm, sub_area_ids: subAreaIds }))}
-              helperText="SPV dapat melihat dan menutup laporan pada sub-area yang dipilih."
+              helperText="Untuk menutup ISSUE, pengguna juga harus ditugaskan pada Sub-aktivitas laporan."
               searchPlaceholder="Cari area atau sub-area..."
               emptyText="Sub-area tidak ditemukan."
               selectionLabel="Sub-area terpilih"
@@ -171,16 +169,13 @@ export default function UserForm({ isOpen, onClose, user, roles, areas, isSupera
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
           />
-          <div className="flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:justify-end">
-            <BtnDefault variant="outline" onClick={onClose} className="w-full rounded-xl sm:w-auto sm:min-w-[116px]">
-              Cancel
-            </BtnDefault>
-            <BtnDefault type="submit" loading={processing} className="w-full rounded-xl sm:w-auto sm:min-w-[156px]">
-              {user ? "Update User" : "Create User"}
-            </BtnDefault>
-          </div>
         </form>
-      </div>
+        </ModalBody>
+        <ModalFooter>
+          <BtnDefault variant="outline" onClick={onClose} className="w-full rounded-xl">Cancel</BtnDefault>
+          <BtnDefault form="user-form" type="submit" loading={processing} className="w-full rounded-xl">{user ? "Update User" : "Create User"}</BtnDefault>
+        </ModalFooter>
+      </ModalPanel>
     </ModalOverlay>
   )
 }

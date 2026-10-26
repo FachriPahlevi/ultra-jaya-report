@@ -3,13 +3,13 @@ import { ArrowUpRight, Check, Circle, Crop, Focus, LineChart, Pencil, RotateCw, 
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
 
 const EDITOR_TOOLS = [
-  { id: "draw", label: "Gambar", icon: Pencil },
-  { id: "line", label: "Garis", icon: LineChart },
-  { id: "arrow", label: "Panah", icon: ArrowUpRight },
-  { id: "rectangle", label: "Kotak", icon: Square },
-  { id: "circle", label: "Lingkaran", icon: Circle },
-  { id: "text", label: "Teks", icon: Type },
-  { id: "crop", label: "Pangkas", icon: Crop },
+  { id: "draw", label: "Draw", icon: Pencil },
+  { id: "line", label: "Line", icon: LineChart },
+  { id: "arrow", label: "Arrow", icon: ArrowUpRight },
+  { id: "rectangle", label: "Rectangle", icon: Square },
+  { id: "circle", label: "Circle", icon: Circle },
+  { id: "text", label: "Text", icon: Type },
+  { id: "crop", label: "Crop", icon: Crop },
   { id: "blur", label: "Blur", icon: Focus },
 ]
 
@@ -235,18 +235,18 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
     <ModalOverlay isOpen={Boolean(file)} onClose={onClose} layer="statusModal">
       <section className="flex h-[100dvh] w-full max-w-5xl flex-col overflow-hidden bg-[#101114] text-white shadow-2xl sm:h-[min(820px,calc(100dvh-2rem))] sm:rounded-2xl sm:border sm:border-slate-700">
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-3 sm:px-5">
-          <button type="button" onClick={onClose} aria-label="Batalkan edit foto" className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-white/10">
+          <button type="button" onClick={onClose} aria-label="Cancel photo editing" className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-white/10">
             <X className="h-5 w-5" />
           </button>
           <div className="text-center">
-            <p className="text-sm font-semibold">Editor foto</p>
-            <p className="mt-0.5 text-[10px] text-white/50">Beri penanda pada bagian penting</p>
+            <p className="text-sm font-semibold">Photo editor</p>
+            <p className="mt-0.5 text-[10px] text-white/50">Highlight the details that matter</p>
           </div>
           <button
             type="button"
             onClick={undo}
             disabled={historyCount <= 1}
-            aria-label="Batalkan perubahan terakhir"
+            aria-label="Undo last change"
             className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-white/10 disabled:opacity-30"
           >
             <Undo2 className="h-5 w-5" />
@@ -268,7 +268,7 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
             <input
               value={text}
               onChange={(event) => setText(event.target.value)}
-              placeholder="Tulis teks, lalu ketuk foto"
+              placeholder="Write text, then tap the photo"
               className="mb-3 h-10 w-full rounded-xl border border-white/15 bg-white/10 px-3 text-sm text-white outline-none placeholder:text-white/45 focus:border-white/50"
             />
           )}
@@ -287,13 +287,13 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
               </button>
             ))}
             <span className="mx-1 h-7 w-px bg-white/15" />
-            <button type="button" title="Putar foto" aria-label="Putar foto" onClick={rotate} className="grid h-11 min-w-11 place-items-center rounded-full bg-white/10 transition hover:bg-white/20">
+            <button type="button" title="Rotate photo" aria-label="Rotate photo" onClick={rotate} className="grid h-11 min-w-11 place-items-center rounded-full bg-white/10 transition hover:bg-white/20">
               <RotateCw className="h-5 w-5" />
             </button>
             <button
               type="button"
-              title="Kembalikan ke foto awal"
-              aria-label="Kembalikan ke foto awal"
+              title="Restore original photo"
+              aria-label="Restore original photo"
               onClick={reset}
               className="h-11 shrink-0 rounded-full bg-white/10 px-4 text-xs font-semibold transition hover:bg-white/20"
             >
@@ -306,14 +306,14 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
                 <button
                   key={item}
                   type="button"
-                  aria-label={`Pilih warna ${item}`}
+                  aria-label={`Choose color ${item}`}
                   onClick={() => setColor(item)}
                   className={`h-7 w-7 shrink-0 rounded-full border-2 ${color === item ? "scale-110 border-blue-500" : "border-white/30"}`}
                   style={{ backgroundColor: item }}
                 />
               ))}
               <input
-                aria-label="Pilih warna lain"
+                aria-label="Choose another color"
                 type="color"
                 value={color}
                 onChange={(event) => setColor(event.target.value)}
@@ -325,16 +325,16 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
                 type="button"
                 onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))}
                 className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-lg text-white/80 hover:bg-white/20 hover:text-white"
-                aria-label="Perkecil foto"
+                aria-label="Zoom out"
               >
                 −
               </button>
-              <input aria-label="Ukuran garis" type="range" min="2" max="20" value={size} onChange={(event) => setSize(Number(event.target.value))} className="w-full min-w-20 accent-blue-600" />
+              <input aria-label="Stroke width" type="range" min="2" max="20" value={size} onChange={(event) => setSize(Number(event.target.value))} className="w-full min-w-20 accent-blue-600" />
               <button
                 type="button"
                 onClick={() => setZoom((value) => Math.min(2, value + 0.25))}
                 className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-lg text-white/80 hover:bg-white/20 hover:text-white"
-                aria-label="Perbesar foto"
+                aria-label="Zoom in"
               >
                 +
               </button>
@@ -343,10 +343,10 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
               type="button"
               onClick={save}
               className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500 sm:w-auto"
-              aria-label="Gunakan foto ini"
+              aria-label="Use this photo"
             >
               <Check className="h-6 w-6 stroke-[3]" />
-              <span>Gunakan foto</span>
+              <span>Use photo</span>
             </button>
           </div>
         </footer>

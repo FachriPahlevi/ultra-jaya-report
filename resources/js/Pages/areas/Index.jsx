@@ -164,14 +164,14 @@ export default function Index({ areas = { data: [], links: [], meta: {} }, filte
   const confirmDelete = (area) => {
     openConfirmModal({
       type: "warning",
-      title: "Hapus Area",
-      message: `Area "${area.area}" akan dihapus dan dapat dipulihkan kembali bila diperlukan.`,
-      confirmText: "Hapus",
+      title: "Archive area",
+      message: `Area "${area.area}" will be archived and can be restored later.`,
+      confirmText: "Archive",
       confirmVariant: "danger",
       onConfirm: () => {
         router.delete(`/areas/${area.id}`, {
           onSuccess: () => {
-            showStatusModal("success", "Berhasil", `Area "${area.area}" berhasil dihapus`)
+            showStatusModal("success", "Success", `Area "${area.area}" has been archived`)
             reloadPage()
           },
           onError: (error) => {
@@ -207,10 +207,10 @@ export default function Index({ areas = { data: [], links: [], meta: {} }, filte
     try {
       if (subAreaTarget) {
         await http.put(`/areas/${subAreaArea.id}/sub-areas/${subAreaTarget.id}`, payload)
-        showStatusModal("success", "Berhasil", "Sub-area berhasil diperbarui.")
+        showStatusModal("success", "Success", "Sub-area updated successfully.")
       } else {
         await http.post(`/areas/${subAreaArea.id}/sub-areas`, payload)
-        showStatusModal("success", "Berhasil", "Sub-area berhasil ditambahkan.")
+        showStatusModal("success", "Success", "Sub-area created successfully.")
       }
       router.reload()
       closeSubAreaModal()
@@ -223,14 +223,14 @@ export default function Index({ areas = { data: [], links: [], meta: {} }, filte
 
   const confirmDeleteSubArea = (area, subArea) => {
     openConfirmModal({
-      title: "Hapus Sub-area",
-      message: `Sub-area "${subArea.name}" akan dihapus.`,
-      confirmText: "Hapus",
+      title: "Delete sub-area",
+      message: `Sub-area "${subArea.name}" will be deleted.`,
+      confirmText: "Delete",
       confirmVariant: "danger",
       onConfirm: async () => {
         try {
           await http.delete(`/areas/${area.id}/sub-areas/${subArea.id}`)
-          showStatusModal("success", "Berhasil", "Sub-area berhasil dihapus.")
+          showStatusModal("success", "Success", "Sub-area deleted successfully.")
           router.reload()
         } catch (error) {
           showRequestError(error)
@@ -278,9 +278,9 @@ export default function Index({ areas = { data: [], links: [], meta: {} }, filte
 
   if (!areas || !areas.data) {
     return (
-      <AppLayout title="Master Area">
+      <AppLayout title="Area">
         <Head>
-          <title>Master Area</title>
+          <title>Area</title>
         </Head>
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
@@ -293,9 +293,9 @@ export default function Index({ areas = { data: [], links: [], meta: {} }, filte
   }
 
   return (
-    <AppLayout title="Master Area">
+    <AppLayout title="Area">
       <Head>
-        <title>Master Area</title>
+        <title>Area</title>
       </Head>
       <div className="flex flex-col gap-5">
         <PageHeader
@@ -305,7 +305,7 @@ export default function Index({ areas = { data: [], links: [], meta: {} }, filte
               <button
                 type="button"
                 onClick={openAdd}
-                aria-label="Tambah area"
+                aria-label="Add area"
                 className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm outline-none transition-colors hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               >
                 <HiOutlinePlus className="h-5 w-5" />
@@ -316,7 +316,7 @@ export default function Index({ areas = { data: [], links: [], meta: {} }, filte
             canAdd ? (
               <BtnDefault onClick={openAdd} size="md" className="w-full gap-2 sm:w-fit sm:min-w-[140px]">
                 <HiOutlinePlus className="h-4 w-4" />
-                Tambah Area
+                Add area
               </BtnDefault>
             ) : null
           }
