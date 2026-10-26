@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -18,6 +19,7 @@ class Activity extends Model
         'description',
         'is_active',
         'parent_id',
+        'category',
     ];
 
     protected function casts(): array
@@ -35,6 +37,21 @@ class Activity extends Model
     public function children(): HasMany
     {
         return $this->hasMany(Activity::class, 'parent_id');
+    }
+
+    public function assignees(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class)->withTimestamps();
+    }
+
+    public function managers(): BelongsToMany
+    {
+        return $this->assignees()->whereHas('roles', fn ($query) => $query->where('name', 'MANAGER'));
+    }
+
+    public function supervisors(): BelongsToMany
+    {
+        return $this->assignees()->whereHas('roles', fn ($query) => $query->where('name', 'SUPERVISOR'));
     }
 
     public function reports(): HasMany

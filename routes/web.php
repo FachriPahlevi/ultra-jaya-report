@@ -88,6 +88,10 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
             ->name('update')
             ->middleware('can:activities.edit');
 
+        Route::put('/{activity}/assignees', [ActivityController::class, 'updateAssignees'])
+            ->name('assignees.update')
+            ->middleware('can:activities.view');
+
         Route::patch('/{activity}/status', [ActivityController::class, 'updateStatus'])
             ->name('status')
             ->middleware('can:activities.edit');

@@ -51,6 +51,7 @@ class TestScenarioSeeder extends Seeder
 
         $manager->managedAreas()->sync([$area->id]);
         $supervisor->supervisedSubAreas()->sync([$subArea->id]);
+        $activity->assignees()->sync([$manager->id, $supervisor->id]);
 
         $this->createReport($user, $area, $subArea, $activity, 'Laporan milik user uji');
         $this->createReport($admin, $area, $subArea, $activity, 'Laporan area supervisor uji');

@@ -71,7 +71,7 @@ class ActivitySeeder extends Seeder
         ];
 
         $allValidNames = collect($activityMap)
-            ->flatMap(fn($act) => array_merge([$act['name']], array_column($act['children'], 'name')))
+            ->flatMap(fn ($act) => array_merge([$act['name']], array_column($act['children'], 'name')))
             ->all();
 
         // Delete children first, then parents that are not in the valid activities list
@@ -85,6 +85,7 @@ class ActivitySeeder extends Seeder
                     'description' => $activityData['description'],
                     'is_active' => true,
                     'parent_id' => null,
+                    'category' => 'ISSUE',
                     'deleted_at' => null,
                 ]
             );
@@ -96,6 +97,7 @@ class ActivitySeeder extends Seeder
                         'description' => $childData['description'],
                         'is_active' => true,
                         'parent_id' => $parent->id,
+                        'category' => $childData['category'] ?? 'ISSUE',
                         'deleted_at' => null,
                     ]
                 );
@@ -103,6 +105,6 @@ class ActivitySeeder extends Seeder
         }
 
         $totalSub = count($allValidNames) - count($activityMap);
-        $this->command->info(count($activityMap) . " main activities and {$totalSub} sub-activities seeded successfully.");
+        $this->command->info(count($activityMap)." main activities and {$totalSub} sub-activities seeded successfully.");
     }
 }
