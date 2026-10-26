@@ -1,9 +1,10 @@
-import { Fragment, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { router } from "@inertiajs/react"
 import { HiChevronDown, HiChevronRight, HiOutlinePencil, HiOutlinePlus, HiOutlineTrash } from "react-icons/hi"
-import { Building2, RotateCcw, Search, SlidersHorizontal, Trash2, X } from "lucide-react"
+import { Building2, RotateCcw, Trash2, X } from "lucide-react"
 import ServerPagination from "@/Components/Navigation/ServerPagination"
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
+import DataTableToolbar from "@/Components/Table/DataTableToolbar"
 import FilterChoiceGroup from "@/Components/Table/FilterChoiceGroup"
 import FilterSelectField from "@/Components/Table/FilterSelectField"
 
@@ -42,14 +43,14 @@ function initials(name = "") {
     .toUpperCase()
 }
 
-function ExpandButton({ expanded, onClick, label }) {
+function ExpandButton({ expanded, onClick, label, emphasized = false }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-expanded={expanded}
       aria-label={`${expanded ? "Tutup" : "Buka"} detail ${label}`}
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1"
+      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${emphasized ? "text-slate-500 hover:bg-slate-100 xl:bg-blue-50 xl:text-blue-600 xl:hover:bg-blue-100" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}
     >
       {expanded ? <HiChevronDown className="h-5 w-5" /> : <HiChevronRight className="h-5 w-5" />}
     </button>
@@ -130,147 +131,96 @@ function SubActions({ area, subArea, canEdit, onEditSubArea, onDeleteSubArea }) 
   )
 }
 
-function ParentRow({ area, expanded, onToggle, ...actions }) {
+function AreaTree({ areas, expandedIds, onToggle, onAddSubArea, ...actions }) {
   return (
-    <tr className={expanded ? "bg-blue-50/30" : "bg-white"}>
-      <td>
-        <div className="flex min-w-[260px] items-start gap-2">
-          <ExpandButton expanded={expanded} onClick={onToggle} label={area.area} />
-          <div className="min-w-0 pt-1.5">
-            <p className="text-[15px] font-semibold leading-5 text-slate-900">{area.area}</p>
-            <p className="mt-1 text-xs font-medium text-slate-500">{area.sub_areas.length} sub-area</p>
-          </div>
-        </div>
-      </td>
-      <td>
-        <People people={area.managers} emptyText="Belum ada manager" />
-      </td>
-      <td>
-        <div className="flex justify-end">
-          <AreaActions area={area} {...actions} />
-        </div>
-      </td>
-    </tr>
-  )
-}
-
-function ChildRow({ area, subArea, ...actions }) {
-  return (
-    <tr className="bg-slate-50/70">
-      <td>
-        <div className="flex min-w-[260px] items-start gap-3 pl-[52px]">
-          <span className="mt-2 h-2 w-2 shrink-0 rounded-full border-2 border-white bg-slate-400 ring-1 ring-slate-300" />
-          <div>
-            <p className="text-sm font-semibold text-slate-800">{subArea.name}</p>
-            <p className="mt-1 text-xs text-slate-500">Sub-area</p>
-          </div>
-        </div>
-      </td>
-      <td>
-        <People people={subArea.supervisors} emptyText="Belum ada supervisor" compact />
-      </td>
-      <td>
-        <div className="flex justify-end">
-          <SubActions area={area} subArea={subArea} {...actions} />
-        </div>
-      </td>
-    </tr>
-  )
-}
-
-function DesktopList({ areas, expandedIds, onToggle, onAddSubArea, ...actions }) {
-  return (
-    <div className="hidden overflow-x-auto xl:block">
-      <table className="ui-table min-w-[900px]">
-        <thead>
-          <tr>
-            <th className="w-[42%]">Area &amp; Sub-area</th>
-            <th>Penanggung Jawab</th>
-            <th>
-              <span className="sr-only">Aksi</span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {areas.map((area) => (
-            <Fragment key={area.id}>
-              <ParentRow area={area} expanded={expandedIds.has(area.id)} onToggle={() => onToggle(area.id)} {...actions} />
-              {expandedIds.has(area.id) && (
-                <>
-                  {area.sub_areas.map((subArea) => (
-                    <ChildRow key={subArea.id} area={area} subArea={subArea} {...actions} />
-                  ))}
-                  {!area.sub_areas.length && (
-                    <tr className="bg-slate-50/70">
-                      <td colSpan="3" className="pl-[76px] text-sm text-slate-500">
-                        Belum ada sub-area.
-                      </td>
-                    </tr>
+    <div>
+      <div className="hidden grid-cols-[minmax(320px,45%)_minmax(240px,1fr)_auto] border-b border-slate-200 bg-slate-50/80 px-6 py-3 xl:grid">
+        <p className="text-xs font-semibold text-slate-600">Area</p>
+        <p className="text-xs font-semibold text-slate-600">Penanggung Jawab</p>
+        <span className="sr-only">Aksi</span>
+      </div>
+      <div className="divide-y divide-slate-200">
+        {areas.map((area) => {
+          const expanded = expandedIds.has(area.id)
+          return (
+            <article key={area.id} className={expanded ? "bg-white xl:bg-slate-50/80" : "bg-white hover:bg-blue-50/30"}>
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start px-2 py-2 sm:px-4 xl:grid-cols-[minmax(320px,45%)_minmax(240px,1fr)_auto] xl:items-center xl:px-6 xl:py-2">
+                <div className="flex min-w-0 items-start gap-1 sm:gap-2">
+                  <ExpandButton expanded={expanded} onClick={() => onToggle(area.id)} label={area.area} emphasized />
+                  <div className="min-w-0 pt-1.5 pr-1">
+                    <h3 className="text-[15px] font-semibold leading-5 text-slate-900">{area.area}</h3>
+                    <p className="mt-1 text-xs font-medium text-slate-500">{area.sub_areas.length} sub-area</p>
+                  </div>
+                </div>
+                <div className="hidden xl:block">
+                  <People people={area.managers} emptyText="-" />
+                </div>
+                <div className="flex justify-end">
+                  <AreaActions area={area} {...actions} />
+                </div>
+              </div>
+              {expanded && (
+                <section aria-label={`Sub-area ${area.area}`} className="border-t border-slate-200 bg-slate-50/60">
+                  <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-200 px-4 py-2.5 text-xs text-slate-600 sm:px-6 xl:hidden">
+                    <span className="shrink-0">Manager</span>
+                    <People people={area.managers} emptyText="-" compact />
+                  </div>
+                  {!area.sub_areas.length ? (
+                    <p className="px-6 py-4 text-sm text-slate-500">Belum ada sub-area.</p>
+                  ) : (
+                    area.sub_areas.map((subArea, index) => {
+                      const isLast = index === area.sub_areas.length - 1
+                      return (
+                        <div
+                          key={subArea.id}
+                          className="grid grid-cols-[minmax(0,1fr)_auto] items-stretch px-2 sm:px-4 xl:grid-cols-[minmax(320px,45%)_minmax(240px,1fr)_auto] xl:items-center xl:px-6"
+                        >
+                          <div className="relative flex min-h-[72px] min-w-0 items-start pl-[4.5rem] sm:min-h-[68px] sm:pl-20 xl:min-h-[52px] xl:items-center xl:pl-[110px]">
+                            <span
+                              className={`absolute left-5 top-0 border-l border-dashed border-slate-300 xl:left-10 ${isLast ? "bottom-[calc(100%-21px)] xl:bottom-1/2" : "bottom-0"}`}
+                              aria-hidden="true"
+                            />
+                            <span className="absolute left-5 top-[21px] w-6 border-t border-dashed border-slate-300 xl:left-10 xl:top-1/2 xl:w-11" aria-hidden="true" />
+                            <span
+                              className="absolute left-[42px] top-[21px] h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-white bg-slate-400 ring-1 ring-slate-300 xl:left-[81px] xl:top-1/2"
+                              aria-hidden="true"
+                            />
+                            <div className="min-w-0 py-2.5">
+                              <p className="break-words text-sm font-semibold leading-5 text-slate-800">{subArea.name}</p>
+                              <div className="mt-1 xl:hidden">
+                                <People people={subArea.supervisors} emptyText="-" compact />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="hidden xl:block">
+                            <People people={subArea.supervisors} emptyText="-" compact />
+                          </div>
+                          <div className="flex items-center justify-end">
+                            <SubActions area={area} subArea={subArea} {...actions} />
+                          </div>
+                        </div>
+                      )
+                    })
                   )}
                   {actions.canEdit && !area.deleted_at && (
-                    <tr className="bg-slate-50/70">
-                      <td colSpan="3" className="pl-[76px]">
-                        <button type="button" onClick={() => onAddSubArea(area)} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary">
-                          <HiOutlinePlus />
-                          Tambah sub-area
-                        </button>
-                      </td>
-                    </tr>
-                  )}
-                </>
-              )}
-            </Fragment>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function MobileArea({ area, expanded, onToggle, onAddSubArea, ...actions }) {
-  return (
-    <article className={expanded ? "bg-slate-50/80" : "bg-white"}>
-      <div className="flex items-start gap-1 px-3 py-3 sm:px-5">
-        <ExpandButton expanded={expanded} onClick={onToggle} label={area.area} />
-        <div className="min-w-0 flex-1 py-1.5">
-          <h3 className="text-[15px] font-semibold text-slate-900">{area.area}</h3>
-          <p className="mt-1.5 text-xs text-slate-500">
-            {area.sub_areas.length} sub-area · {area.managers.length} manager
-          </p>
-        </div>
-        <AreaActions area={area} {...actions} />
-      </div>
-      {expanded && (
-        <div className="border-t border-slate-200 bg-slate-50/80 px-3 py-4 sm:px-6">
-          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Manager Area</p>
-          <People people={area.managers} emptyText="Belum ada manager" />
-          <div className="mt-5 border-t border-slate-200 pt-2">
-            {!area.sub_areas.length ? (
-              <p className="py-3 pl-6 text-sm text-slate-500">Belum ada sub-area.</p>
-            ) : (
-              area.sub_areas.map((subArea) => (
-                <div key={subArea.id} className="flex items-start gap-2 py-2.5">
-                  <span className="w-4 text-slate-400">↳</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-slate-800">{subArea.name}</p>
-                    <div className="mt-1">
-                      <People people={subArea.supervisors} emptyText="Belum ada supervisor" compact />
+                    <div className="px-4 py-1 sm:px-6 xl:pl-[106px]">
+                      <button
+                        type="button"
+                        onClick={() => onAddSubArea(area)}
+                        className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      >
+                        <HiOutlinePlus className="h-4 w-4" />
+                        Tambah sub-area
+                      </button>
                     </div>
-                  </div>
-                  <SubActions area={area} subArea={subArea} {...actions} />
-                </div>
-              ))
-            )}
-            {actions.canEdit && !area.deleted_at && (
-              <button type="button" onClick={() => onAddSubArea(area)} className="ml-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary">
-                <HiOutlinePlus />
-                Tambah sub-area
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-    </article>
+                  )}
+                </section>
+              )}
+            </article>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
@@ -321,30 +271,6 @@ function FilterSheet({ open, onClose, active, onApply, canViewArchived, allExpan
         </footer>
       </section>
     </ModalOverlay>
-  )
-}
-
-function Toolbar({ search, onSearchChange, resultText, onOpenFilter, active }) {
-  return (
-    <div className="border-b border-border p-3 sm:p-4 lg:px-6">
-      <div className="flex items-center gap-2">
-        <div className="relative min-w-0 flex-1 lg:max-w-md">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input type="search" value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Cari area atau sub-area..." className="ui-field rounded-full pl-10" />
-        </div>
-        <p className="ml-auto hidden text-sm text-muted-foreground sm:block">{resultText}</p>
-        <button
-          type="button"
-          onClick={onOpenFilter}
-          className={`flex h-11 items-center gap-2 rounded-full border px-3.5 text-sm font-semibold sm:rounded-lg ${active ? "border-primary text-primary" : "border-border"}`}
-        >
-          <SlidersHorizontal className="h-4 w-4" />
-          <span className="hidden sm:inline">Filter</span>
-          {active && <span className="h-2 w-2 rounded-full bg-primary" />}
-        </button>
-      </div>
-      <p className="mt-2 text-xs text-muted-foreground sm:hidden">{resultText}</p>
-    </div>
   )
 }
 
@@ -404,12 +330,15 @@ export default function AreaListSection(props) {
   }
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-      <Toolbar
+      <DataTableToolbar
         search={props.search}
         onSearchChange={props.onSearchChange}
+        searchPlaceholder="Cari area atau sub-area..."
+        perPage={props.perPage}
+        onPerPageChange={props.onPerPageChange}
         resultText={`${areas.length}${active ? ` dari ${props.areas.data.length}` : ""} area`}
-        onOpenFilter={() => setFilterOpen(true)}
-        active={active}
+        onMobileFilter={() => setFilterOpen(true)}
+        mobileFilterActive={active}
       />
       {!areas.length ? (
         <div className="px-6 py-16 text-center">
@@ -417,14 +346,7 @@ export default function AreaListSection(props) {
           <p className="mt-3 font-semibold">Area tidak ditemukan</p>
         </div>
       ) : (
-        <>
-          <DesktopList areas={areas} expandedIds={expandedIds} onToggle={toggle} onAddSubArea={props.onAddSubArea} {...actions} />
-          <div className="divide-y divide-slate-200 xl:hidden">
-            {areas.map((area) => (
-              <MobileArea key={area.id} area={area} expanded={expandedIds.has(area.id)} onToggle={() => toggle(area.id)} onAddSubArea={props.onAddSubArea} {...actions} />
-            ))}
-          </div>
-        </>
+        <AreaTree areas={areas} expandedIds={expandedIds} onToggle={toggle} onAddSubArea={props.onAddSubArea} {...actions} />
       )}
       <ServerPagination
         links={props.areas.links}

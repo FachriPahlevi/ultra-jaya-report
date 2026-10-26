@@ -1,9 +1,8 @@
 import { Head, Link, router, usePage } from "@inertiajs/react"
 import AppLayout from "@/Layouts/AppLayout"
-import BtnDefault from "@/Components/Button/BtnDefault"
-import { useAuthorization } from "@/hooks/useAuthorization"
-import { HiArrowRight, HiOutlineCheckCircle, HiOutlineClock, HiOutlineDocumentReport, HiOutlineInbox, HiOutlineLocationMarker, HiOutlinePlus } from "react-icons/hi"
-import { CalendarDays } from "lucide-react"
+import ModalOverlay from "@/Components/Modal/ModalOverlay"
+import { HiArrowRight, HiOutlineCheckCircle, HiOutlineClock, HiOutlineDocumentReport, HiOutlineInbox, HiOutlineLocationMarker } from "react-icons/hi"
+import { CalendarDays, ChevronDown, X } from "lucide-react"
 import { useEffect, useState } from "react"
 
 const PERIOD_OPTIONS = [
@@ -11,8 +10,6 @@ const PERIOD_OPTIONS = [
   ["last_7_days", "7 hari terakhir"],
   ["this_month", "Bulan ini"],
   ["last_month", "Bulan lalu"],
-  ["last_90_days", "90 hari terakhir"],
-  ["custom", "Rentang kustom"],
   ["all", "Semua waktu"],
 ]
 
@@ -91,7 +88,7 @@ function TicketRow({ report }) {
   )
 }
 
-function EmptyTickets({ canCreate }) {
+function EmptyTickets() {
   return (
     <div className="flex min-h-64 flex-col items-center justify-center px-6 py-10 text-center">
       <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
@@ -99,12 +96,6 @@ function EmptyTickets({ canCreate }) {
       </span>
       <p className="text-sm font-semibold text-foreground">Belum ada laporan</p>
       <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">Laporan operasional yang dibuat akan muncul di bagian ini.</p>
-      {canCreate && (
-        <BtnDefault href="/reports" size="sm" className="mt-4 gap-2">
-          <HiOutlinePlus className="h-4 w-4" />
-          Buat Laporan
-        </BtnDefault>
-      )}
     </div>
   )
 }
@@ -186,121 +177,158 @@ function DashboardPeriod({ filters, areas }) {
   const [period, setPeriod] = useState(filters.period || "this_month")
   const [dateFrom, setDateFrom] = useState(filters.date_from || "")
   const [dateTo, setDateTo] = useState(filters.date_to || "")
-  const [status, setStatus] = useState(filters.status || "")
   const [areaId, setAreaId] = useState(filters.area_id ? String(filters.area_id) : "")
+  const [isOpen, setIsOpen] = useState(false)
+  const [draft, setDraft] = useState({ period, dateFrom, dateTo, areaId })
 
   useEffect(() => {
     setPeriod(filters.period || "this_month")
     setDateFrom(filters.date_from || "")
     setDateTo(filters.date_to || "")
-    setStatus(filters.status || "")
     setAreaId(filters.area_id ? String(filters.area_id) : "")
-  }, [filters.area_id, filters.date_from, filters.date_to, filters.period, filters.status])
+  }, [filters.area_id, filters.date_from, filters.date_to, filters.period])
 
-  const apply = (nextPeriod = period) => {
-    router.get(
-      route("dashboard"),
-      { period: nextPeriod, status: status || undefined, area_id: areaId || undefined, ...(nextPeriod === "custom" ? { date_from: dateFrom || undefined, date_to: dateTo || undefined } : {}) },
-      { preserveState: true, preserveScroll: true, replace: true },
-    )
+  const open = () => {
+    setDraft({ period, dateFrom, dateTo, areaId })
+    setIsOpen(true)
   }
 
+  const apply = () => {
+    router.get(
+      route("dashboard"),
+      {
+        period: draft.period,
+        area_id: draft.areaId || undefined,
+        ...(draft.period === "custom" ? { date_from: draft.dateFrom || undefined, date_to: draft.dateTo || undefined } : {}),
+      },
+      { preserveState: true, preserveScroll: true, replace: true },
+    )
+    setIsOpen(false)
+  }
+
+  const selectedLabel = period === "custom" ? "Rentang tanggal" : (PERIOD_OPTIONS.find(([value]) => value === period)?.[1] ?? "Pilih periode")
+
   return (
-    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
-      <div className="relative min-w-0">
-        <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <select
-          value={period}
-          onChange={(event) => {
-            setPeriod(event.target.value)
-            if (event.target.value !== "custom") setTimeout(() => apply(event.target.value), 0)
-          }}
-          aria-label="Pilih periode dashboard"
-          className="ui-field min-h-11 w-full appearance-none pl-9 pr-8 text-sm font-semibold sm:w-44"
-        >
-          {PERIOD_OPTIONS.map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </div>
-      <select
-        value={status}
-        onChange={(event) => {
-          setStatus(event.target.value)
-          setTimeout(
-            () =>
-              router.get(
-                route("dashboard"),
-                { period, status: event.target.value || undefined, area_id: areaId || undefined, ...(period === "custom" ? { date_from: dateFrom || undefined, date_to: dateTo || undefined } : {}) },
-                { preserveState: true, preserveScroll: true, replace: true },
-              ),
-            0,
-          )
-        }}
-        aria-label="Filter status tiket"
-        className="ui-field min-h-11 w-full text-sm sm:w-36"
+    <>
+      <button
+        type="button"
+        onClick={open}
+        className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-semibold text-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
       >
-        <option value="">Semua status</option>
-        <option value="open">Terbuka</option>
-        <option value="closed">Selesai</option>
-      </select>
-      {areas.length > 0 && (
-        <select
-          value={areaId}
-          onChange={(event) => {
-            setAreaId(event.target.value)
-            setTimeout(
-              () =>
-                router.get(
-                  route("dashboard"),
-                  { period, status: status || undefined, area_id: event.target.value || undefined, ...(period === "custom" ? { date_from: dateFrom || undefined, date_to: dateTo || undefined } : {}) },
-                  { preserveState: true, preserveScroll: true, replace: true },
-                ),
-              0,
-            )
-          }}
-          aria-label="Filter area"
-          className="ui-field min-h-11 w-full text-sm sm:w-44"
+        <CalendarDays className="h-4 w-4 text-muted-foreground" />
+        <span>{selectedLabel}</span>
+        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+      </button>
+      <ModalOverlay id="dashboard-period-filter" isOpen={isOpen} onClose={() => setIsOpen(false)}>
+        <section
+          aria-labelledby="dashboard-period-title"
+          className="flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-3xl border-t border-border bg-card shadow-2xl sm:max-w-lg sm:rounded-2xl sm:border"
         >
-          <option value="">Semua area</option>
-          {areas.map((area) => (
-            <option key={area.id} value={area.id}>
-              {area.area}
-            </option>
-          ))}
-        </select>
-      )}
-      {period === "custom" && (
-        <>
-          <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} aria-label="Tanggal mulai" className="ui-field min-h-11 w-full text-sm sm:w-36" />
-          <input
-            type="date"
-            value={dateTo}
-            min={dateFrom || undefined}
-            onChange={(event) => setDateTo(event.target.value)}
-            aria-label="Tanggal akhir"
-            className="ui-field min-h-11 w-full text-sm sm:w-36"
-          />
-          <button
-            type="button"
-            onClick={() => apply("custom")}
-            className="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground outline-none hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          <div className="px-4 pt-2 sm:hidden">
+            <div className="mx-auto h-1 w-12 rounded-full bg-slate-300" />
+          </div>
+          <header className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
+            <div>
+              <h2 id="dashboard-period-title" className="text-lg font-bold tracking-tight text-foreground">
+                Atur periode dashboard
+              </h2>
+              <p className="mt-1 text-xs text-muted-foreground">Pilih periode data yang ingin ditampilkan.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              aria-label="Tutup pengaturan periode"
+              className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </header>
+          <div className="flex-1 space-y-5 overflow-y-auto bg-slate-50/50 px-4 py-5 sm:px-5">
+            <fieldset>
+              <legend className="text-sm font-semibold text-foreground">Periode</legend>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {PERIOD_OPTIONS.map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setDraft((current) => ({ ...current, period: value, dateFrom: "", dateTo: "" }))}
+                    className={`min-h-11 rounded-lg border px-3 text-left text-sm font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary ${draft.period === value ? "border-primary bg-blue-50 text-primary" : "border-border bg-card text-foreground hover:bg-muted"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+            <fieldset className="grid grid-cols-1 gap-3 border-t border-border pt-5 sm:grid-cols-2">
+              <legend className="col-span-full text-sm font-semibold text-foreground">Atau pilih rentang tanggal</legend>
+              <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                Tanggal mulai
+                <input
+                  type="date"
+                  value={draft.dateFrom}
+                  onChange={(event) => setDraft((current) => ({ ...current, period: "custom", dateFrom: event.target.value }))}
+                  className="ui-field min-h-11 text-sm"
+                />
+              </label>
+              <label className="grid gap-1.5 text-sm font-semibold text-foreground">
+                Tanggal akhir
+                <input
+                  type="date"
+                  value={draft.dateTo}
+                  min={draft.dateFrom || undefined}
+                  onChange={(event) => setDraft((current) => ({ ...current, period: "custom", dateTo: event.target.value }))}
+                  className="ui-field min-h-11 text-sm"
+                />
+              </label>
+            </fieldset>
+            {areas.length > 0 && (
+              <label className="grid gap-1.5 border-t border-border pt-5 text-sm font-semibold text-foreground">
+                Area
+                <select value={draft.areaId} onChange={(event) => setDraft((current) => ({ ...current, areaId: event.target.value }))} className="ui-field min-h-11 text-sm">
+                  <option value="">Semua area</option>
+                  {areas.map((area) => (
+                    <option key={area.id} value={area.id}>
+                      {area.area}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+          <footer
+            className="grid grid-cols-2 gap-2 border-t border-border bg-card px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.04)] sm:px-5"
+            style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
           >
-            Terapkan
-          </button>
-        </>
-      )}
-    </div>
+            <button
+              type="button"
+              onClick={() => setDraft({ period: "this_month", dateFrom: "", dateTo: "", areaId: "" })}
+              className="min-h-12 rounded-xl border border-border bg-card text-sm font-semibold text-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              Atur ulang
+            </button>
+            <button
+              type="button"
+              onClick={apply}
+              disabled={draft.period === "custom" && (!draft.dateFrom || !draft.dateTo)}
+              className="min-h-12 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm outline-none transition-colors hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+            >
+              Terapkan
+            </button>
+          </footer>
+        </section>
+      </ModalOverlay>
+    </>
   )
 }
 
 export default function Dashboard({ stats = { total: 0, open: 0, closed: 0, myReports: 0 }, recentReports = [], topArea = null, oldestOpenTicket = null, filters = {}, filterAreas = [] }) {
   const { auth } = usePage().props
-  const { can } = useAuthorization()
-  const canCreate = can("reports.create")
-  const firstName = auth?.user?.name?.split(" ")[0] || "User"
+  const userName = auth?.user?.name || "User"
+  const roleName = (auth?.user?.roles?.[0] || "PENGGUNA")
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ")
   const completionPct = stats.total > 0 ? Math.round((stats.closed / stats.total) * 100) : 0
   const isLowData = recentReports.length > 0 && recentReports.length <= 3
 
@@ -311,32 +339,19 @@ export default function Dashboard({ stats = { total: 0, open: 0, closed: 0, myRe
       </Head>
       <div className="flex flex-col gap-5 lg:gap-6">
         <header className="border-b border-border pb-3 sm:pb-5">
-          <div className="flex min-h-12 items-center justify-between gap-3">
+          <div className="flex min-h-12 flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <h1 className="text-[22px] font-bold tracking-tight text-foreground sm:text-[26px]">Dashboard</h1>
-              <p className="mt-0.5 text-xs text-muted-foreground sm:mt-1 sm:text-[13px]">Selamat datang, {firstName}.</p>
+              <p className="mt-0.5 text-xs text-muted-foreground sm:mt-1 sm:text-[13px]">
+                Selamat datang, {roleName} {userName}.
+              </p>
             </div>
-            {canCreate && (
-              <Link
-                href="/reports"
-                aria-label="Buat laporan"
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 md:hidden"
-              >
-                <HiOutlinePlus className="h-5 w-5" />
-              </Link>
-            )}
-          </div>
-          <div className="mt-4 flex w-full flex-col gap-2 md:flex-row md:items-center md:justify-end">
-            <DashboardPeriod filters={filters} areas={filterAreas} />
-            <span className="inline-flex min-h-11 items-center rounded-lg border border-border bg-card px-4 text-xs font-medium text-muted-foreground">
-              {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
-            </span>
-            {canCreate && (
-              <BtnDefault href="/reports" className="w-full gap-2 sm:w-fit">
-                <HiOutlinePlus className="h-4 w-4" />
-                Buat Laporan
-              </BtnDefault>
-            )}
+            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+              <DashboardPeriod filters={filters} areas={filterAreas} />
+              <span className="inline-flex min-h-10 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground">
+                {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+              </span>
+            </div>
           </div>
         </header>
 
@@ -366,7 +381,7 @@ export default function Dashboard({ stats = { total: 0, open: 0, closed: 0, myRe
               </Link>
             </div>
             {recentReports.length === 0 ? (
-              <EmptyTickets canCreate={canCreate} />
+              <EmptyTickets />
             ) : (
               <div className="divide-y divide-border">
                 {recentReports.map((report) => (
