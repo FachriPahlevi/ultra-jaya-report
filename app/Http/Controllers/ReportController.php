@@ -10,13 +10,13 @@ use App\Models\Area;
 use App\Models\Report;
 use App\Models\SubArea;
 use App\Models\User;
+use App\Services\ReportPhotoService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -29,11 +29,15 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
+    public function __construct(private readonly ReportPhotoService $reportPhotos) {}
+
     public function index(): Response
     {
         $user = Auth::user();
         $managedAreaIds = $user->managedAreas()->pluck('areas.id')->all();
         $supervisedSubAreaIds = $user->supervisedSubAreas()->pluck('sub_areas.id')->all();
+        $managedActivityIds = $user->assignedActivities()->whereNull('parent_id')->pluck('activities.id')->all();
+        $supervisedActivityIds = $user->assignedActivities()->whereNotNull('parent_id')->pluck('activities.id')->all();
 
         $query = $this->visibleReportsFor($user)
             ->with(['author.roles', 'area', 'subArea', 'activityType.parent', 'subActivity', 'closer.roles']);
@@ -106,7 +110,11 @@ class ReportController extends Controller
                     'managers' => $area->managers->map(fn (User $manager) => ['id' => $manager->id, 'name' => $manager->name])->values(),
                     'is_in_current_user_scope' => in_array($area->id, $managedAreaIds, true)
                         || $area->subAreas->contains(fn ($subArea) => in_array($subArea->id, $supervisedSubAreaIds, true)),
-                    'sub_areas' => $area->subAreas->map(fn ($subArea) => ['id' => $subArea->id, 'name' => $subArea->name])->values(),
+                    'sub_areas' => $area->subAreas->map(fn ($subArea) => [
+                        'id' => $subArea->id,
+                        'name' => $subArea->name,
+                        'is_in_current_user_scope' => in_array($subArea->id, $supervisedSubAreaIds, true),
+                    ])->values(),
                 ];
             }),
             'activities' => Activity::with([
@@ -118,12 +126,13 @@ class ReportController extends Controller
                 ->whereNull('parent_id')
                 ->orderBy('name')
                 ->get()
-                ->map(function (Activity $activity) {
+                ->map(function (Activity $activity) use ($managedActivityIds, $supervisedActivityIds) {
                     return [
                         'id' => $activity->id,
                         'name' => $activity->name,
                         'description' => $activity->description,
                         'is_active' => $activity->is_active,
+                        'is_in_current_user_scope' => in_array($activity->id, $managedActivityIds, true),
                         'sub_activities' => $activity->children->map(fn ($child) => [
                             'id' => $child->id,
                             'name' => $child->name,
@@ -131,6 +140,7 @@ class ReportController extends Controller
                             'category' => $child->category,
                             'parent_id' => $child->parent_id,
                             'is_active' => $child->is_active,
+                            'is_in_current_user_scope' => in_array($child->id, $supervisedActivityIds, true),
                         ])->values(),
                     ];
                 }),
@@ -162,7 +172,7 @@ class ReportController extends Controller
             }
         }
 
-        Report::create([
+        $report = Report::create([
             'author_id' => $user->id,
             'activity_id' => $validated['type_activity'],
             'sub_activity_id' => $validated['sub_activity_id'] ?? null,
@@ -171,10 +181,12 @@ class ReportController extends Controller
             'activity' => $validated['activity'] ?? null,
             'issue' => $validated['issue'],
             'status' => 'open',
-            'photo_before' => $request->hasFile('photo')
-                ? $request->file('photo')->store('reports/photos', 'public')
-                : null,
+            'photo_before' => null,
         ]);
+
+        if ($request->hasFile('photo')) {
+            $report->update(['photo_before' => $this->reportPhotos->store($request->file('photo'), $report, 'before')]);
+        }
 
         return back()->with('success', 'Laporan berhasil dibuat');
     }
@@ -225,10 +237,7 @@ class ReportController extends Controller
         }
 
         if ($request->hasFile('photo')) {
-            if ($report->photo_before) {
-                Storage::disk('public')->delete($report->photo_before);
-            }
-            $data['photo_before'] = $request->file('photo')->store('reports/photos', 'public');
+            $data['photo_before'] = $this->reportPhotos->replace($request->file('photo'), $report, 'before', $report->photo_before);
         }
 
         $report->update($data);
@@ -245,7 +254,7 @@ class ReportController extends Controller
 
         $validated = $request->validate([
             'close_comment' => ['required', 'string'],
-            'photo_after' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:3072'],
+            'photo_after' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:'.config('reports.photos.max_upload_kb', 3072)],
         ]);
 
         $data = [
@@ -256,7 +265,7 @@ class ReportController extends Controller
         ];
 
         if ($request->hasFile('photo_after')) {
-            $data['photo_after'] = $request->file('photo_after')->store('reports/photos-after', 'public');
+            $data['photo_after'] = $this->reportPhotos->replace($request->file('photo_after'), $report, 'after', $report->photo_after);
         }
 
         $report->update($data);
@@ -268,12 +277,8 @@ class ReportController extends Controller
     {
         Gate::authorize('delete', $report);
 
-        if ($report->photo_before) {
-            Storage::disk('public')->delete($report->photo_before);
-        }
-        if ($report->photo_after) {
-            Storage::disk('public')->delete($report->photo_after);
-        }
+        $this->reportPhotos->delete($report->photo_before);
+        $this->reportPhotos->delete($report->photo_after);
 
         $report->delete();
 
@@ -401,7 +406,7 @@ class ReportController extends Controller
             'sub_area_id' => ['required', $this->activeSubAreaRule()],
             'activity' => ['nullable', 'string', 'max:255'],
             'issue' => ['required', 'string'],
-            'photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:3072'],
+            'photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:'.config('reports.photos.max_upload_kb', 3072)],
         ];
     }
 
@@ -414,7 +419,7 @@ class ReportController extends Controller
             'sub_area_id' => ['sometimes', $this->activeSubAreaRule()],
             'activity' => ['nullable', 'string', 'max:255'],
             'issue' => ['sometimes', 'string'],
-            'photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:3072'],
+            'photo' => ['nullable', 'image', 'mimes:jpeg,png,jpg', 'max:'.config('reports.photos.max_upload_kb', 3072)],
         ];
     }
 
