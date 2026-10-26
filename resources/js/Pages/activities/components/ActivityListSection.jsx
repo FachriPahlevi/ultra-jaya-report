@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { router } from "@inertiajs/react"
-import { HiChevronDown, HiChevronRight } from "react-icons/hi"
+import { HiChevronDown, HiChevronRight, HiOutlinePlus } from "react-icons/hi"
 import { FileText } from "lucide-react"
 import { ActivityActions, EmptyState } from "./ActivityShared"
 import DataTableToolbar from "@/Components/Table/DataTableToolbar"
@@ -179,6 +179,18 @@ function ActivityTree({ activities, expandedIds, onToggle, canEdit, canDelete, c
                         </div>
                       )
                     })
+                  )}
+                  {canEdit && activity.is_active && (
+                    <div className="px-4 py-1 sm:px-6 xl:pl-[106px]">
+                      <button
+                        type="button"
+                        onClick={() => onAddSub(activity)}
+                        className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary outline-none transition-colors hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                      >
+                        <HiOutlinePlus className="h-4 w-4" />
+                        Tambah sub-aktivitas
+                      </button>
+                    </div>
                   )}
                 </section>
               )}
