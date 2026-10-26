@@ -8,7 +8,7 @@ export default function SubAreaFormModal({ isOpen, onClose, onSubmit, area, subA
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
-      <form onSubmit={onSubmit} className="w-full max-w-[480px] rounded-[28px] border border-border bg-card shadow-xl">
+      <form onSubmit={onSubmit} className="max-h-[90vh] w-full max-w-[480px] overflow-y-auto rounded-t-xl border border-border bg-card shadow-lg sm:rounded-xl">
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-5">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{isEditing ? "Ubah Sub-area" : "Tambah Sub-area"}</p>

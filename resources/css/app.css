@@ -54,10 +54,28 @@
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }
+
+    button,
+    a,
+    input,
+    select,
+    textarea {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
+
+    ::selection {
+        background: color-mix(in srgb, var(--primary) 18%, transparent);
+        color: var(--foreground);
+    }
 }
 
 :root {
-    --background: hsl(220 25% 96%);
+    --background: hsl(216 28% 97%);
     --foreground: hsl(222 47% 10%);
 
     --card: hsl(0 0% 100%);
@@ -76,7 +94,7 @@
     --tertiary-foreground: hsl(221 83% 35%);
 
     --muted: hsl(220 20% 94%);
-    --muted-foreground: hsl(220 10% 52%);
+    --muted-foreground: hsl(217 12% 43%);
 
     --accent: hsl(221 83% 96%);
     --accent-foreground: hsl(221 83% 40%);
@@ -84,8 +102,8 @@
     --destructive: hsl(0 84% 60%);
     --destructive-foreground: hsl(0 0% 98%);
 
-    --border: hsl(220 20% 90%);
-    --input: hsl(220 20% 90%);
+    --border: hsl(215 24% 89%);
+    --input: hsl(215 24% 86%);
     --ring: hsl(221 83% 53%);
     --radius: 0.75rem;
 
@@ -95,10 +113,75 @@
     --sidebar-primary-foreground: hsl(0 0% 100%);
     --sidebar-accent: hsl(221 83% 95%);
     --sidebar-accent-foreground: hsl(221 83% 40%);
-    --sidebar-border: hsl(220 20% 92%);
-    --sidebar-muted: hsl(220 15% 96%);
-
-    .overflow-y-auto {
-    overflow-y: auto !important;
+    --sidebar-border: hsl(215 24% 91%);
+    --sidebar-muted: hsl(216 28% 96%);
 }
+
+@layer utilities {
+    .surface-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 0.75rem;
+        box-shadow: 0 1px 2px hsl(222 47% 11% / 0.025);
+    }
+
+    .text-balance {
+        text-wrap: balance;
+    }
+
+    .tabular-nums {
+        font-variant-numeric: tabular-nums;
+    }
+}
+
+@layer components {
+    .ui-panel {
+        @apply rounded-xl border border-border bg-card shadow-sm;
+    }
+
+    .ui-field {
+        @apply h-11 w-full rounded-lg border border-input bg-card px-3.5 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground;
+        @apply hover:border-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/15;
+        @apply disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-70;
+    }
+
+    .ui-label {
+        @apply text-[13px] font-semibold text-foreground;
+    }
+
+    .ui-help {
+        @apply text-xs leading-relaxed text-muted-foreground;
+    }
+
+    .ui-error {
+        @apply text-xs leading-relaxed text-destructive;
+    }
+
+    .ui-table {
+        @apply w-full border-collapse;
+    }
+
+    .ui-table thead {
+        @apply border-b border-border bg-background;
+    }
+
+    .ui-table th {
+        @apply whitespace-nowrap px-5 py-3.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em] text-muted-foreground;
+        padding-inline: 1.25rem !important;
+        padding-block: 0.875rem !important;
+    }
+
+    .ui-table tbody {
+        @apply divide-y divide-border;
+    }
+
+    .ui-table tbody > tr {
+        @apply transition-colors hover:bg-muted/40;
+    }
+
+    .ui-table td {
+        @apply px-5 py-4;
+        padding-inline: 1.25rem !important;
+        padding-block: 1rem !important;
+    }
 }

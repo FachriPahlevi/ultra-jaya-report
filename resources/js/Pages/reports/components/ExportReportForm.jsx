@@ -133,7 +133,7 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
-      <div className="bg-card rounded-2xl border border-border shadow-xl w-full max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <div className="max-h-[90vh] w-full max-w-[600px] overflow-y-auto rounded-t-xl border border-border bg-card shadow-lg sm:rounded-xl">
         <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between rounded-t-2xl">
           <h2 className="text-xl font-bold text-foreground">Export Report</h2>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground p-1">
@@ -144,7 +144,7 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
         <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
           <InputDropdown label="Export Type" value={form.type} setObject={(item) => setForm({ ...form, type: item.value })} itemList={typeOptions} required />
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <InputText label="Start Date" type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
             <InputText label="End Date" type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
           </div>

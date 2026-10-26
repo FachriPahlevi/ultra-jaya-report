@@ -131,7 +131,7 @@ class ReportController extends Controller
                         ])->values(),
                     ];
                 }),
-            'users' => User::select('id', 'name')->get(),
+            'users' => $user->can('reports.view.all') ? User::select('id', 'name')->orderBy('name')->get() : collect(),
         ]);
     }
 

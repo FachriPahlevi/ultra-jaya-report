@@ -25,7 +25,7 @@ class SettingController extends Controller
     public function index(Request $request): Response
     {
         $usersPerPage = (int) $request->integer('users_per_page', 10);
-        if (! in_array($usersPerPage, [10, 25, 50, 100], true)) {
+        if (! in_array($usersPerPage, [10, 25, 50, 100, -1], true)) {
             $usersPerPage = 10;
         }
 
@@ -35,13 +35,18 @@ class SettingController extends Controller
         }
 
         $user = $request->user();
+        $userSearch = trim($request->string('user_search')->toString());
         $canViewUsers = $user->can('users.view');
         $canViewRoles = $user->can('roles.view');
 
         $users = User::with(['roles', 'managedAreas:id,area', 'supervisedSubAreas:id,area_id,name', 'supervisedSubAreas.area:id,area'])
             ->when(! $canViewUsers, fn ($query) => $query->whereRaw('1 = 0'))
+            ->when($userSearch !== '', fn ($query) => $query->where(function ($nestedQuery) use ($userSearch) {
+                $nestedQuery->where('name', 'like', "%{$userSearch}%")
+                    ->orWhere('email', 'like', "%{$userSearch}%");
+            }))
             ->latest()
-            ->paginate($usersPerPage)
+            ->paginate($usersPerPage === -1 ? 2147483647 : $usersPerPage)
             ->withQueryString();
 
         $roles = $canViewRoles || $user->can('users.create') || $user->can('users.edit')
@@ -58,6 +63,7 @@ class SettingController extends Controller
             'filters' => [
                 'users_per_page' => $usersPerPage,
                 'active_tab' => $activeTab,
+                'user_search' => $userSearch,
             ],
         ]);
     }

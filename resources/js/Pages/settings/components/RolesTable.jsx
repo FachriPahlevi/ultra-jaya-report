@@ -1,178 +1,231 @@
-import BtnDefault from "@/Components/Button/BtnDefault";
-import InputSelect from "@/Components/Input/InputSelect";
-import { HiOutlinePlus, HiOutlinePencil, HiOutlineTrash, HiOutlineShieldCheck } from "react-icons/hi";
-import { FileText } from "lucide-react";
-import Can from "@/Components/Authorization/Can";
+import { HiOutlinePencil, HiOutlineTrash, HiOutlineShieldCheck } from "react-icons/hi"
+import Can from "@/Components/Authorization/Can"
+import DataTableToolbar from "@/Components/Table/DataTableToolbar"
+import { useState } from "react"
+import FilterChoiceGroup from "@/Components/Table/FilterChoiceGroup"
+import FilterSelectField from "@/Components/Table/FilterSelectField"
 
 function RoleActionButton({ children, tone = "subtle", className = "", ...props }) {
-    const tones = {
-        subtle: "border-transparent bg-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-        danger: "border-transparent bg-transparent text-red-600 hover:bg-red-50 hover:text-red-700",
-    };
+  const tones = {
+    subtle: "border-transparent bg-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+    danger: "border-transparent bg-transparent text-red-600 hover:bg-red-50 hover:text-red-700",
+  }
 
-    return (
-        <button {...props} className={`inline-flex h-8 items-center justify-center rounded-lg border px-2.5 text-[12px] font-medium transition-colors ${tones[tone]} ${className}`}>
-            {children}
-        </button>
-    );
+  return (
+    <button {...props} className={`inline-flex min-h-10 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition-colors ${tones[tone]} ${className}`}>
+      {children}
+    </button>
+  )
 }
 
-const getVisibleRoles = (roles, isSuperadmin) => roles.filter((role) => isSuperadmin || role.name !== "SUPER_ADMIN");
+const getVisibleRoles = (roles, isSuperadmin) => roles.filter((role) => isSuperadmin || role.name !== "SUPER_ADMIN")
 
 function PermissionPreview({ permissions = [] }) {
-    return (
-        <div className="flex flex-wrap items-center gap-1.5">
-            {permissions.slice(0, 3).map((permission) => (
-                <span key={permission.id} className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground">
-                    {permission.name.split(".")[0]}
-                </span>
-            ))}
-            {permissions.length > 3 && <span className="text-[11px] text-muted-foreground">+{permissions.length - 3}</span>}
-        </div>
-    );
-}
-
-function TableHeader({ totalRoles, onAdd }) {
-    return (
-        <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-5">
-            <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border text-muted-foreground">
-                    <FileText className="h-4 w-4" />
-                </div>
-                <h2 className="text-[15px] font-bold text-foreground">Roles</h2>
-            </div>
-            <div className="flex items-center gap-3">
-                <span className="hidden text-[12px] font-medium text-muted-foreground sm:inline">{totalRoles} records</span>
-                <Can permission="roles.create">
-                    <BtnDefault onClick={onAdd} size="md" className="h-10 gap-2 rounded-2xl px-4 shadow-none">
-                        <HiOutlinePlus className="h-4 w-4" />
-                        Add Role
-                    </BtnDefault>
-                </Can>
-            </div>
-        </div>
-    );
+  const modules = [...new Set(permissions.map((permission) => permission.name.split(".")[0]))]
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {modules.slice(0, 3).map((module) => (
+        <span key={module} className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground">
+          {module}
+        </span>
+      ))}
+      {modules.length > 3 && <span className="text-xs text-muted-foreground">+{modules.length - 3}</span>}
+    </div>
+  )
 }
 
 function DesktopTable({ roles, onEdit, onDelete, onManagePermissions, systemRoles }) {
-    return (
-        <div className="hidden overflow-x-auto sm:block">
-            <table className="w-full border-collapse">
-                <thead>
-                    <tr className="border-b border-border text-left">
-                        <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Role</th>
-                        <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Permissions</th>
-                        <th className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Actions</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                    {roles.length === 0 ? (
-                        <tr>
-                            <td colSpan="3" className="py-16 text-center text-[13px] text-muted-foreground">
-                                No roles found
-                            </td>
-                        </tr>
-                    ) : (
-                        roles.map((role) => (
-                            <tr key={role.id} className="transition-colors hover:bg-muted/10">
-                                <td className="px-6 py-5">
-                                    <div>
-                                        <p className="text-[14px] font-semibold text-foreground">{role.name}</p>
-                                        <p className="mt-1 text-[12px] text-muted-foreground">{role.permissions.length} permissions assigned</p>
-                                    </div>
-                                </td>
-                                <td className="px-6 py-5">
-                                    <PermissionPreview permissions={role.permissions} />
-                                </td>
-                                <td className="px-6 py-5">
-                                    <div className="flex flex-wrap items-center gap-1.5">
-                                        <Can permission="permissions.manage">
-                                            <RoleActionButton onClick={() => onManagePermissions(role)} title="Manage Permissions">
-                                                <HiOutlineShieldCheck className="mr-1.5 h-4 w-4" />
-                                                Permissions
-                                            </RoleActionButton>
-                                        </Can>
-                                        {!systemRoles.includes(role.name) && (
-                                            <>
-                                                <Can permission="roles.edit"><RoleActionButton onClick={() => onEdit(role)} title="Edit Role"><HiOutlinePencil className="mr-1.5 h-4 w-4" />Edit</RoleActionButton></Can>
-                                                <Can permission="roles.delete"><RoleActionButton onClick={() => onDelete(role)} tone="danger" title="Delete Role"><HiOutlineTrash className="mr-1.5 h-4 w-4" />Delete</RoleActionButton></Can>
-                                            </>
-                                        )}
-                                    </div>
-                                </td>
-                            </tr>
-                        ))
+  return (
+    <div className="hidden overflow-x-auto xl:block">
+      <table className="ui-table">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Hak akses</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border/60">
+          {roles.length === 0 ? (
+            <tr>
+              <td colSpan="3" className="py-16 text-center text-[13px] text-muted-foreground">
+                Role tidak ditemukan
+              </td>
+            </tr>
+          ) : (
+            roles.map((role) => (
+              <tr key={role.id} className="transition-colors hover:bg-muted/10">
+                <td className="px-6 py-5">
+                  <div>
+                    <p className="text-[14px] font-semibold text-foreground">{role.name}</p>
+                    <p className="mt-1 text-[12px] text-muted-foreground">{role.permissions.length} permissions assigned</p>
+                  </div>
+                </td>
+                <td className="px-6 py-5">
+                  <PermissionPreview permissions={role.permissions} />
+                </td>
+                <td className="px-6 py-5">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <Can permission="permissions.manage">
+                      <RoleActionButton onClick={() => onManagePermissions(role)} title="Manage Permissions">
+                        <HiOutlineShieldCheck className="mr-1.5 h-4 w-4" />
+                        Permissions
+                      </RoleActionButton>
+                    </Can>
+                    {!systemRoles.includes(role.name) && (
+                      <>
+                        <Can permission="roles.edit">
+                          <RoleActionButton onClick={() => onEdit(role)} title="Edit Role">
+                            <HiOutlinePencil className="mr-1.5 h-4 w-4" />
+                            Edit
+                          </RoleActionButton>
+                        </Can>
+                        <Can permission="roles.delete">
+                          <RoleActionButton onClick={() => onDelete(role)} tone="danger" title="Delete Role">
+                            <HiOutlineTrash className="mr-1.5 h-4 w-4" />
+                            Delete
+                          </RoleActionButton>
+                        </Can>
+                      </>
                     )}
-                </tbody>
-            </table>
-        </div>
-    );
+                  </div>
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
 }
 
 function MobileList({ roles, onEdit, onDelete, onManagePermissions, systemRoles }) {
-    return (
-        <div className="flex flex-col gap-3 p-4 sm:hidden">
-            {roles.length === 0 ? (
-                <div className="rounded-2xl border border-border bg-background px-4 py-8 text-center text-[13px] text-muted-foreground">No roles found</div>
-            ) : (
-                roles.map((role) => (
-                    <div key={role.id} className="rounded-[22px] border border-border bg-background p-4">
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <h3 className="text-[15px] font-semibold text-foreground">{role.name}</h3>
-                                <p className="mt-1 text-[12px] text-muted-foreground">{role.permissions.length} permissions assigned</p>
-                            </div>
-                        </div>
+  return (
+    <div className="grid grid-cols-1 divide-y divide-border xl:hidden">
+      {roles.length === 0 ? (
+        <div className="rounded-2xl border border-border bg-background px-4 py-8 text-center text-[13px] text-muted-foreground">No roles found</div>
+      ) : (
+        roles.map((role) => (
+          <div key={role.id} className="min-w-0 p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-[15px] font-semibold text-foreground">{role.name}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{role.permissions.length} hak akses diberikan</p>
+              </div>
+            </div>
 
-                        <div className="mt-3">
-                            <PermissionPreview permissions={role.permissions} />
-                        </div>
+            <div className="mt-3">
+              <PermissionPreview permissions={role.permissions} />
+            </div>
 
-                        <div className="mt-4 flex flex-wrap justify-end gap-1.5 border-t border-border pt-4">
-                            <Can permission="permissions.manage"><RoleActionButton onClick={() => onManagePermissions(role)} title="Manage Permissions"><HiOutlineShieldCheck className="mr-1.5 h-4 w-4" />Permissions</RoleActionButton></Can>
-                            {!systemRoles.includes(role.name) && (
-                                <>
-                                    <Can permission="roles.edit"><RoleActionButton onClick={() => onEdit(role)} title="Edit Role"><HiOutlinePencil className="mr-1.5 h-4 w-4" />Edit</RoleActionButton></Can>
-                                    <Can permission="roles.delete"><RoleActionButton onClick={() => onDelete(role)} tone="danger" title="Delete Role"><HiOutlineTrash className="mr-1.5 h-4 w-4" />Delete</RoleActionButton></Can>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                ))
-            )}
-        </div>
-    );
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-4 max-sm:[&>button]:flex-1">
+              <Can permission="permissions.manage">
+                <RoleActionButton onClick={() => onManagePermissions(role)} title="Manage Permissions">
+                  <HiOutlineShieldCheck className="mr-1.5 h-4 w-4" />
+                  Permissions
+                </RoleActionButton>
+              </Can>
+              {!systemRoles.includes(role.name) && (
+                <>
+                  <Can permission="roles.edit">
+                    <RoleActionButton onClick={() => onEdit(role)} title="Edit Role">
+                      <HiOutlinePencil className="mr-1.5 h-4 w-4" />
+                      Edit
+                    </RoleActionButton>
+                  </Can>
+                  <Can permission="roles.delete">
+                    <RoleActionButton onClick={() => onDelete(role)} tone="danger" title="Delete Role">
+                      <HiOutlineTrash className="mr-1.5 h-4 w-4" />
+                      Delete
+                    </RoleActionButton>
+                  </Can>
+                </>
+              )}
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  )
 }
 
-export default function RolesTable({ roles, onAdd, onEdit, onDelete, onManagePermissions, isSuperadmin, systemRoles, displayCount, onDisplayCountChange }) {
-    const visibleRoles = getVisibleRoles(roles, isSuperadmin);
-    const displayedRoles = displayCount === -1 ? visibleRoles : visibleRoles.slice(0, displayCount);
+export default function RolesTable({ roles, onEdit, onDelete, onManagePermissions, isSuperadmin, systemRoles, displayCount, onDisplayCountChange }) {
+  const visibleRoles = getVisibleRoles(roles, isSuperadmin)
+  const [search, setSearch] = useState("")
+  const [sort, setSort] = useState("name-asc")
+  const [roleType, setRoleType] = useState("all")
+  const [accessFilter, setAccessFilter] = useState("all")
+  const filteredRoles = visibleRoles
+    .filter((role) => role.name.toLowerCase().includes(search.toLowerCase()))
+    .filter((role) => roleType === "all" || (roleType === "system" ? systemRoles.includes(role.name) : !systemRoles.includes(role.name)))
+    .filter((role) => accessFilter === "all" || (accessFilter === "available" ? role.permissions.length > 0 : role.permissions.length === 0))
+    .sort((left, right) =>
+      sort === "name-desc"
+        ? right.name.localeCompare(left.name, "id")
+        : sort === "permissions-desc"
+          ? right.permissions.length - left.permissions.length || left.name.localeCompare(right.name, "id")
+          : sort === "permissions-asc"
+            ? left.permissions.length - right.permissions.length || left.name.localeCompare(right.name, "id")
+            : left.name.localeCompare(right.name, "id"),
+    )
+  const displayedRoles = displayCount === -1 ? filteredRoles : filteredRoles.slice(0, displayCount)
+  const filterContent = (
+    <div className="space-y-5">
+      <FilterSelectField
+        label="Susun peran"
+        value={sort}
+        onChange={setSort}
+        options={[
+          ["name-asc", "Nama A–Z"],
+          ["name-desc", "Nama Z–A"],
+          ["permissions-desc", "Akses terbanyak"],
+          ["permissions-asc", "Akses tersedikit"],
+        ]}
+      />
+      <FilterChoiceGroup
+        legend="Sumber peran"
+        value={roleType}
+        onChange={setRoleType}
+        options={[
+          ["all", "Semua"],
+          ["system", "Bawaan sistem"],
+          ["custom", "Dibuat pengguna"],
+        ]}
+        variant="chips"
+      />
+      <FilterChoiceGroup
+        legend="Konfigurasi akses"
+        value={accessFilter}
+        onChange={setAccessFilter}
+        options={[
+          ["all", "Semua"],
+          ["available", "Sudah diatur"],
+          ["empty", "Belum diatur"],
+        ]}
+        variant="chips"
+      />
+    </div>
+  )
 
-    return (
-        <section className="overflow-hidden rounded-[24px] border border-border bg-card">
-            <TableHeader totalRoles={visibleRoles.length} onAdd={onAdd} />
-            <div className="border-b border-border px-4 py-3 sm:px-6">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-[12px] text-muted-foreground">
-                        Showing {displayedRoles.length} of {visibleRoles.length} roles
-                    </p>
-                    <InputSelect
-                        id="roles_display_count"
-                        value={String(displayCount)}
-                        onChange={onDisplayCountChange}
-                        options={[
-                            { value: "10", label: "10 records" },
-                            { value: "25", label: "25 records" },
-                            { value: "50", label: "50 records" },
-                            { value: "-1", label: "All records" },
-                        ]}
-                        wrapperClassName="w-full sm:w-[150px]"
-                        selectClassName="h-9 rounded-xl text-[12px]"
-                    />
-                </div>
-            </div>
-            <DesktopTable roles={displayedRoles} onEdit={onEdit} onDelete={onDelete} onManagePermissions={onManagePermissions} systemRoles={systemRoles} />
-            <MobileList roles={displayedRoles} onEdit={onEdit} onDelete={onDelete} onManagePermissions={onManagePermissions} systemRoles={systemRoles} />
-        </section>
-    );
+  return (
+    <section className="ui-panel overflow-hidden">
+      <DataTableToolbar
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Cari role..."
+        perPage={displayCount}
+        onPerPageChange={onDisplayCountChange}
+        resultText={`${filteredRoles.length} hasil`}
+        filterContent={filterContent}
+        mobileFilterActive={sort !== "name-asc" || roleType !== "all" || accessFilter !== "all"}
+        onResetFilter={() => {
+          setSort("name-asc")
+          setRoleType("all")
+          setAccessFilter("all")
+        }}
+      />
+      <DesktopTable roles={displayedRoles} onEdit={onEdit} onDelete={onDelete} onManagePermissions={onManagePermissions} systemRoles={systemRoles} />
+      <MobileList roles={displayedRoles} onEdit={onEdit} onDelete={onDelete} onManagePermissions={onManagePermissions} systemRoles={systemRoles} />
+    </section>
+  )
 }

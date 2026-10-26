@@ -1,34 +1,52 @@
-export default function Pagination({ page, totalPages, onChange, center = false }) {
-    if (totalPages <= 1) return null;
+import { HiChevronLeft, HiChevronRight } from "react-icons/hi"
 
-    const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+export default function Pagination({ page, totalPages, onChange, center = false, total = null, perPage = null }) {
+  if (totalPages <= 1) return null
 
-    return (
-        <div className={`px-4 sm:px-6 py-3 sm:py-4 border-t border-border flex gap-1 flex-wrap ${center ? "justify-center" : ""}`}>
-            <button
-                disabled={page === 1}
-                onClick={() => onChange(page - 1)}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all bg-card border-border text-muted-foreground hover:border-primary/50 hover:text-foreground ${page === 1 ? "opacity-40 cursor-default" : "cursor-pointer"}`}
-                dangerouslySetInnerHTML={{ __html: "&laquo;" }}
-            />
-            {pages.map((p) => (
-                <button
-                    key={p}
-                    onClick={() => onChange(p)}
-                    className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all
-                        ${p === page
-                            ? "bg-primary border-primary text-primary-foreground shadow-sm"
-                            : "bg-card border-border text-muted-foreground hover:border-primary/50 hover:text-foreground cursor-pointer"}`}
-                >
-                    {p}
-                </button>
-            ))}
-            <button
-                disabled={page === totalPages}
-                onClick={() => onChange(page + 1)}
-                className={`px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-all bg-card border-border text-muted-foreground hover:border-primary/50 hover:text-foreground ${page === totalPages ? "opacity-40 cursor-default" : "cursor-pointer"}`}
-                dangerouslySetInnerHTML={{ __html: "&raquo;" }}
-            />
-        </div>
-    );
+  const pages = Array.from({ length: totalPages }, (_, i) => i + 1).filter((number) => number === 1 || number === totalPages || Math.abs(number - page) <= 1)
+
+  return (
+    <div className={`flex flex-col gap-3 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:px-6 ${center ? "sm:justify-center" : "sm:justify-between"}`}>
+      {typeof total === "number" && typeof perPage === "number" && (
+        <p className="text-xs text-muted-foreground">
+          Menampilkan {total === 0 ? 0 : (page - 1) * perPage + 1}–{Math.min(page * perPage, total)} dari {total} data
+        </p>
+      )}
+      <nav aria-label="Paginasi" className="flex max-w-full gap-1.5 overflow-x-auto pb-0.5">
+        <button
+          type="button"
+          aria-label="Halaman sebelumnya"
+          disabled={page === 1}
+          onClick={() => onChange(page - 1)}
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:border-slate-400 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+        >
+          <HiChevronLeft className="h-4 w-4" />
+        </button>
+        {pages.map((p) => (
+          <button
+            key={p}
+            type="button"
+            onClick={() => onChange(p)}
+            aria-label={`Halaman ${p}`}
+            aria-current={p === page ? "page" : undefined}
+            className={`h-10 min-w-10 rounded-lg border px-3 text-xs font-semibold transition-colors
+                        ${
+                          p === page ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:border-slate-400 hover:bg-muted hover:text-foreground"
+                        }`}
+          >
+            {p}
+          </button>
+        ))}
+        <button
+          type="button"
+          aria-label="Halaman berikutnya"
+          disabled={page === totalPages}
+          onClick={() => onChange(page + 1)}
+          className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:border-slate-400 hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+        >
+          <HiChevronRight className="h-4 w-4" />
+        </button>
+      </nav>
+    </div>
+  )
 }

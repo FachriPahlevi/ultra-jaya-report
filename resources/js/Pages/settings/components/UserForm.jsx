@@ -115,7 +115,7 @@ export default function UserForm({ isOpen, onClose, user, roles, areas, isSupera
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
-      <div className="w-full max-w-[520px] rounded-[28px] border border-border bg-card shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-[520px] overflow-y-auto rounded-t-xl border border-border bg-card shadow-lg sm:rounded-xl">
         <div className="sticky top-0 flex items-center justify-between border-b border-border bg-card px-6 py-5 rounded-t-[28px]">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{user ? "Update User" : "Create User"}</p>
