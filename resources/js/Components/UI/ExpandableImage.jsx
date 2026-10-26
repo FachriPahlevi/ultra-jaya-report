@@ -65,7 +65,7 @@ const ExpandableImage = ({ src, alt, className, style, onClick, ...props }) => {
 
   return (
     <>
-      <button type="button" aria-label={`Perbesar ${alt || "gambar"}`} className="block" onClick={handleClick}>
+      <button type="button" aria-label={`Perbesar ${alt || "gambar"}`} className="block rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" onClick={handleClick}>
         <img src={src} alt={alt || "Image"} className={`cursor-pointer ${className || ""}`} style={{ ...style }} {...props} />
       </button>
 
@@ -98,8 +98,13 @@ const ExpandableImage = ({ src, alt, className, style, onClick, ...props }) => {
               />
             </div>
 
-            <button onClick={handleClose} className="absolute top-4 left-4 text-white hover:opacity-80 transition-opacity">
-              <HiOutlineX className="w-6 h-6 md:w-10 md:h-10" />
+            <button
+              type="button"
+              onClick={handleClose}
+              aria-label="Tutup pratinjau gambar"
+              className="absolute left-4 top-4 flex h-11 w-11 items-center justify-center rounded-lg border border-white/30 bg-black/70 text-white transition-colors hover:bg-black"
+            >
+              <HiOutlineX className="h-6 w-6" />
             </button>
           </div>
         </ModalOverlay>

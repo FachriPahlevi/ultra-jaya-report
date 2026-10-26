@@ -81,7 +81,7 @@ export default function CloseTicketForm({ isOpen, onClose, report }) {
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
-      <div className="mx-auto w-full max-w-[560px] rounded-2xl border border-border bg-card shadow-xl">
+      <div className="mx-auto max-h-[90vh] w-full max-w-[560px] overflow-y-auto rounded-t-xl border border-border bg-card shadow-lg sm:rounded-xl">
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div>
             <h2 className="m-0 text-lg font-semibold tracking-[-0.02em] text-foreground">Close Ticket {reportId ? `#${reportId}` : ""}</h2>

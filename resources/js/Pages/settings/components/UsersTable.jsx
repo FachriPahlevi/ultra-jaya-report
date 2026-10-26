@@ -1,9 +1,12 @@
 import { router } from "@inertiajs/react"
-import BtnDefault from "@/Components/Button/BtnDefault"
-import InputSelect from "@/Components/Input/InputSelect"
 import { HiOutlinePencil, HiOutlineTrash } from "react-icons/hi"
-import { FileText, Plus } from "lucide-react"
+import DataTableToolbar from "@/Components/Table/DataTableToolbar"
+import ServerPagination from "@/Components/Navigation/ServerPagination"
 import Can from "@/Components/Authorization/Can"
+import { useMemo, useState } from "react"
+import FilterChoiceGroup from "@/Components/Table/FilterChoiceGroup"
+import FilterMultiSelect from "@/Components/Table/FilterMultiSelect"
+import FilterSelectField from "@/Components/Table/FilterSelectField"
 
 const USER_TABLE_COLUMNS = ["No", "User", "Email", "Role", "Actions"]
 
@@ -51,7 +54,7 @@ function UserActionButton({ children, tone = "subtle", className = "", ...props 
   }
 
   return (
-    <button {...props} className={`inline-flex h-8 items-center justify-center rounded-lg border px-2.5 text-[12px] font-medium transition-colors ${tones[tone]} ${className}`}>
+    <button {...props} className={`inline-flex min-h-10 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition-colors ${tones[tone]} ${className}`}>
       {children}
     </button>
   )
@@ -72,40 +75,17 @@ function visitWithActiveTab(url, activeTab) {
   })
 }
 
-function TableHeader({ onAdd }) {
-  return (
-    <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-5">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-muted/30 text-muted-foreground">
-          <FileText className="h-4 w-4" />
-        </div>
-        <h2 className="text-[15px] font-bold text-foreground">System Users</h2>
-      </div>
-      <div className="flex items-center gap-3">
-        <Can permission="users.create">
-          <BtnDefault onClick={onAdd} size="md" className="h-10 gap-2 rounded-2xl px-4 shadow-none">
-            <Plus className="h-4 w-4" />
-            Add User
-          </BtnDefault>
-        </Can>
-      </div>
-    </div>
-  )
-}
-
 function DesktopTable({ users, auth, onEdit, onDelete }) {
   const visibleUsers = getVisibleUsers(users, auth)
   const startNumber = users.meta?.from ?? 1
 
   return (
-    <div className="hidden overflow-x-auto sm:block">
-      <table className="w-full border-collapse">
+    <div className="hidden overflow-x-auto xl:block">
+      <table className="ui-table">
         <thead>
-          <tr className="border-b border-border text-left">
+          <tr>
             {USER_TABLE_COLUMNS.map((column) => (
-              <th key={column} className="whitespace-nowrap px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-                {column}
-              </th>
+              <th key={column}>{column}</th>
             ))}
           </tr>
         </thead>
@@ -113,7 +93,7 @@ function DesktopTable({ users, auth, onEdit, onDelete }) {
           {visibleUsers.length === 0 ? (
             <tr>
               <td colSpan="5" className="py-16 text-center text-[13px] text-muted-foreground">
-                No users found
+                Pengguna tidak ditemukan
               </td>
             </tr>
           ) : (
@@ -167,29 +147,29 @@ function MobileList({ users, auth, onEdit, onDelete }) {
   const startNumber = users.meta?.from ?? 1
 
   return (
-    <div className="flex flex-col gap-3 p-4 sm:hidden">
+    <div className="grid grid-cols-1 divide-y divide-border xl:hidden">
       {visibleUsers.length === 0 ? (
         <div className="rounded-2xl border border-border bg-background px-4 py-8 text-center text-[13px] text-muted-foreground">No users found</div>
       ) : (
         visibleUsers.map((user, index) => (
-          <div key={user.id} className="rounded-[22px] border border-border bg-background p-4">
+          <div key={user.id} className="min-w-0 p-4 sm:p-5">
             <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-[12px] font-semibold text-primary">{getInitials(user.name)}</div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">#{startNumber + index}</p>
-                  <h3 className="text-[15px] font-semibold text-foreground">{user.name}</h3>
+                  <h3 className="truncate text-[15px] font-semibold text-foreground">{user.name}</h3>
                 </div>
               </div>
-              <span className="inline-flex items-center rounded-full border border-border bg-card px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-foreground">
+              <span className="inline-flex max-w-[42%] shrink-0 truncate rounded-full border border-border bg-card px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground">
                 {user.roles[0]?.name || "No role"}
               </span>
             </div>
 
-            <p className="mt-3 text-[12.5px] text-muted-foreground">{user.email}</p>
+            <p className="mt-3 break-all text-sm text-muted-foreground">{user.email}</p>
             <AreaAssignmentChips user={user} />
 
-            <div className="mt-4 flex justify-end gap-1.5 border-t border-border pt-4">
+            <div className="mt-4 flex gap-2 border-t border-border pt-4 max-sm:[&>button]:flex-1">
               <Can permission="users.edit">
                 <UserActionButton onClick={() => onEdit(user)} title="Edit User">
                   <HiOutlinePencil className="mr-1.5 h-4 w-4" />
@@ -212,46 +192,102 @@ function MobileList({ users, auth, onEdit, onDelete }) {
   )
 }
 
-export default function UsersTable({ users, onEdit, onDelete, onAdd, auth, usersPerPage, onUsersPerPageChange, activeTab = "users" }) {
+export default function UsersTable({ users, onEdit, onDelete, auth, usersPerPage, onUsersPerPageChange, activeTab = "users", search, onSearchChange }) {
+  const [sort, setSort] = useState("name-asc")
+  const [role, setRole] = useState([])
+  const [status, setStatus] = useState("all")
+  const [scope, setScope] = useState("all")
+  const availableRoles = useMemo(
+    () =>
+      [
+        ...new Set(
+          getVisibleUsers(users, auth)
+            .map((user) => user.roles[0]?.name)
+            .filter(Boolean),
+        ),
+      ].sort(),
+    [users, auth],
+  )
+  const filteredUsers = useMemo(
+    () =>
+      getVisibleUsers(users, auth)
+        .filter((user) => role.length === 0 || role.includes(user.roles[0]?.name))
+        .filter((user) => status === "all" || (status === "active" ? user.is_active !== false : user.is_active === false))
+        .filter(
+          (user) => scope === "all" || (scope === "assigned" ? user.managed_areas?.length || user.supervised_sub_areas?.length : !(user.managed_areas?.length || user.supervised_sub_areas?.length)),
+        )
+        .sort((left, right) =>
+          sort === "name-desc"
+            ? right.name.localeCompare(left.name, "id")
+            : sort === "latest"
+              ? new Date(right.created_at || 0) - new Date(left.created_at || 0)
+              : sort === "oldest"
+                ? new Date(left.created_at || 0) - new Date(right.created_at || 0)
+                : left.name.localeCompare(right.name, "id"),
+        ),
+    [users, auth, role, scope, sort, status],
+  )
+  const displayUsers = { ...users, data: filteredUsers }
+  const filterContent = (
+    <div className="space-y-5">
+      <FilterSelectField
+        label="Susun pengguna"
+        value={sort}
+        onChange={setSort}
+        options={[
+          ["name-asc", "Nama A–Z"],
+          ["name-desc", "Nama Z–A"],
+          ["latest", "Terbaru ditambahkan"],
+          ["oldest", "Paling lama ditambahkan"],
+        ]}
+      />
+      <FilterMultiSelect label="Peran pengguna" values={role} onChange={setRole} options={availableRoles.map((item) => ({ value: item, label: item }))} placeholder="Semua peran" searchable={false} />
+      <FilterChoiceGroup
+        legend="Status akun"
+        value={status}
+        onChange={setStatus}
+        options={[
+          ["all", "Semua"],
+          ["active", "Aktif"],
+          ["inactive", "Nonaktif"],
+        ]}
+        variant="chips"
+      />
+      <FilterChoiceGroup
+        legend="Penugasan wilayah"
+        value={scope}
+        onChange={setScope}
+        options={[
+          ["all", "Semua"],
+          ["assigned", "Sudah ditugaskan"],
+          ["empty", "Belum ditugaskan"],
+        ]}
+        variant="chips"
+      />
+    </div>
+  )
+
   return (
-    <section className="overflow-hidden rounded-[24px] border border-border bg-card">
-      <TableHeader onAdd={onAdd} />
-      <div className="border-b border-border px-4 py-3 sm:px-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-[12px] text-muted-foreground">Showing {users.data.length} records</p>
-          <InputSelect
-            id="users_per_page"
-            value={usersPerPage}
-            onChange={onUsersPerPageChange}
-            options={[
-              { value: "10", label: "10 records" },
-              { value: "25", label: "25 records" },
-              { value: "50", label: "50 records" },
-              { value: "100", label: "100 records" },
-            ]}
-            wrapperClassName="w-full sm:w-[150px]"
-            selectClassName="h-9 rounded-xl text-[12px]"
-          />
-        </div>
-      </div>
-      <DesktopTable users={users} auth={auth} onEdit={onEdit} onDelete={onDelete} />
-      <MobileList users={users} auth={auth} onEdit={onEdit} onDelete={onDelete} />
-      {users.links?.length > 3 && (
-        <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-4 sm:px-6">
-          {users.links.map((link, index) => (
-            <BtnDefault
-              key={index}
-              size="sm"
-              variant={link.active ? "primary" : "outline"}
-              disabled={!link.url}
-              onClick={() => visitWithActiveTab(link.url, activeTab)}
-              className="min-w-[36px] rounded-xl px-2.5"
-            >
-              <span dangerouslySetInnerHTML={{ __html: link.label }} />
-            </BtnDefault>
-          ))}
-        </div>
-      )}
+    <section className="ui-panel overflow-hidden">
+      <DataTableToolbar
+        search={search}
+        onSearchChange={onSearchChange}
+        searchPlaceholder="Cari nama atau email..."
+        perPage={Number(usersPerPage)}
+        onPerPageChange={onUsersPerPageChange}
+        resultText={`${role.length === 0 ? (users.meta?.total ?? users.data.length) : filteredUsers.length} hasil`}
+        filterContent={filterContent}
+        mobileFilterActive={sort !== "name-asc" || role.length > 0 || status !== "all" || scope !== "all"}
+        onResetFilter={() => {
+          setSort("name-asc")
+          setRole([])
+          setStatus("all")
+          setScope("all")
+        }}
+      />
+      <DesktopTable users={displayUsers} auth={auth} onEdit={onEdit} onDelete={onDelete} />
+      <MobileList users={displayUsers} auth={auth} onEdit={onEdit} onDelete={onDelete} />
+      <ServerPagination links={users.links} from={users.meta?.from} to={users.meta?.to} total={users.meta?.total ?? 0} onNavigate={(url) => visitWithActiveTab(url, activeTab)} />
     </section>
   )
 }

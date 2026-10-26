@@ -16,8 +16,14 @@ use Inertia\Response;
 
 class ActivityController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $perPage = (int) $request->integer('per_page', 10);
+        if (! in_array($perPage, [10, 25, 50, 100, -1], true)) {
+            $perPage = 10;
+        }
+        $search = trim($request->string('search')->toString());
+
         $activities = Activity::with([
             'children' => fn ($query) => $query
                 ->withCount(['reportsAsType', 'reportsAsSubType'])
@@ -25,8 +31,17 @@ class ActivityController extends Controller
         ])
             ->withCount(['children', 'reportsAsType', 'reportsAsSubType'])
             ->whereNull('parent_id')
+            ->when($search !== '', fn ($query) => $query->where(function ($nestedQuery) use ($search) {
+                $nestedQuery->where('name', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHas('children', function ($childQuery) use ($search) {
+                        $childQuery->where('name', 'like', "%{$search}%")
+                            ->orWhere('description', 'like', "%{$search}%");
+                    });
+            }))
             ->orderBy('name')
-            ->paginate(10);
+            ->paginate($perPage === -1 ? 2147483647 : $perPage)
+            ->withQueryString();
 
         $activities->through(function (Activity $activity) {
             return [
@@ -68,6 +83,7 @@ class ActivityController extends Controller
                 'sub' => Activity::whereNotNull('parent_id')->count(),
                 'active' => Activity::where('is_active', true)->count(),
             ],
+            'filters' => ['search' => $search, 'per_page' => $perPage],
         ]);
     }
 

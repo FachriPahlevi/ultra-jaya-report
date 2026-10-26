@@ -219,12 +219,15 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
 
   return (
     <ModalOverlay isOpen={Boolean(file)} onClose={onClose} layer="statusModal">
-      <section className="flex h-[min(760px,calc(100vh-2rem))] w-full max-w-5xl flex-col overflow-hidden rounded-[28px] bg-[#101114] text-white shadow-2xl">
+      <section className="flex h-[min(760px,calc(100vh-2rem))] w-full max-w-5xl flex-col overflow-hidden rounded-t-xl border border-slate-700 bg-[#101114] text-white shadow-lg sm:rounded-xl">
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-3 sm:px-5">
           <button type="button" onClick={onClose} aria-label="Batalkan edit foto" className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-white/10">
             <X className="h-5 w-5" />
           </button>
-          <p className="text-sm font-semibold">Edit foto</p>
+          <div className="text-center">
+            <p className="text-sm font-semibold">Editor foto</p>
+            <p className="mt-0.5 text-[10px] text-white/50">Beri penanda pada bagian penting</p>
+          </div>
           <button
             type="button"
             onClick={undo}
@@ -263,9 +266,10 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
                 title={label}
                 aria-label={label}
                 onClick={() => setTool(id)}
-                className={`grid h-11 min-w-11 place-items-center rounded-full transition ${tool === id ? "bg-[#25D366] text-[#0b2817]" : "bg-white/10 text-white hover:bg-white/20"}`}
+                className={`flex h-14 min-w-[58px] flex-col items-center justify-center gap-1 rounded-xl px-2 transition ${tool === id ? "bg-blue-600 text-white" : "bg-white/10 text-white hover:bg-white/20"}`}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="h-4 w-4" />
+                <span className="text-[9px] font-semibold">{label}</span>
               </button>
             ))}
             <span className="mx-1 h-7 w-px bg-white/15" />
@@ -290,7 +294,7 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
                   type="button"
                   aria-label={`Pilih warna ${item}`}
                   onClick={() => setColor(item)}
-                  className={`h-6 w-6 shrink-0 rounded-full border-2 ${color === item ? "scale-110 border-[#25D366]" : "border-white/30"}`}
+                  className={`h-7 w-7 shrink-0 rounded-full border-2 ${color === item ? "scale-110 border-blue-500" : "border-white/30"}`}
                   style={{ backgroundColor: item }}
                 />
               ))}
@@ -306,17 +310,12 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
               <button type="button" onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))} className="text-lg text-white/80 hover:text-white" aria-label="Perkecil foto">
                 −
               </button>
-              <input aria-label="Ukuran garis" type="range" min="2" max="20" value={size} onChange={(event) => setSize(Number(event.target.value))} className="w-20 accent-[#25D366]" />
+              <input aria-label="Ukuran garis" type="range" min="2" max="20" value={size} onChange={(event) => setSize(Number(event.target.value))} className="w-20 accent-blue-600" />
               <button type="button" onClick={() => setZoom((value) => Math.min(2, value + 0.25))} className="text-lg text-white/80 hover:text-white" aria-label="Perbesar foto">
                 +
               </button>
             </div>
-            <button
-              type="button"
-              onClick={save}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#25D366] text-[#0b2817] transition hover:bg-[#20bd5a]"
-              aria-label="Gunakan foto ini"
-            >
+            <button type="button" onClick={save} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-blue-600 text-white transition hover:bg-blue-500" aria-label="Gunakan foto ini">
               <Check className="h-6 w-6 stroke-[3]" />
             </button>
           </div>

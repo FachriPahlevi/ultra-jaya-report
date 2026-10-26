@@ -9,10 +9,10 @@ export default function MultiSelectChecklist({
   onChange,
   error,
   helperText,
-  searchPlaceholder = "Search options...",
-  emptyText = "No options available.",
-  selectionLabel = "Selected",
-  emptySelectionText = "No selection yet.",
+  searchPlaceholder = "Cari pilihan...",
+  emptyText = "Pilihan tidak tersedia.",
+  selectionLabel = "Dipilih",
+  emptySelectionText = "Belum ada pilihan.",
 }) {
   const [search, setSearch] = useState("")
 
@@ -48,21 +48,15 @@ export default function MultiSelectChecklist({
 
   return (
     <div className="flex flex-col gap-2.5">
-      {label && <label className="text-[12.5px] font-semibold text-foreground">{label}</label>}
+      {label && <span className="ui-label">{label}</span>}
 
-      <div className="rounded-2xl border border-border bg-background p-3">
+      <div className="rounded-xl border border-border bg-background p-3">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder={searchPlaceholder}
-            className="h-10 w-full rounded-xl border border-border bg-card pl-9 pr-3 text-[13px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
-          />
+          <input type="text" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={searchPlaceholder} className="ui-field pl-9" />
         </div>
 
-        <div className="mt-3 rounded-xl border border-border bg-card p-3">
+        <div className="mt-3 rounded-lg border border-border bg-card p-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground">
@@ -70,7 +64,7 @@ export default function MultiSelectChecklist({
               </div>
               <div>
                 <p className="text-[12px] font-semibold text-foreground">{selectionLabel}</p>
-                <p className="text-[11px] text-muted-foreground">{selectedOptions.length} selected</p>
+                <p className="text-[11px] text-muted-foreground">{selectedOptions.length} dipilih</p>
               </div>
             </div>
           </div>
@@ -84,7 +78,8 @@ export default function MultiSelectChecklist({
                   key={option.value}
                   type="button"
                   onClick={() => removeValue(option.value)}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[12px] font-medium text-slate-700 transition-colors hover:bg-slate-100"
+                  className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-border bg-muted px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:border-slate-400"
+                  aria-label={`Hapus ${option.label}`}
                 >
                   <span>{option.label}</span>
                   <HiOutlineX className="h-3.5 w-3.5" />
@@ -104,7 +99,7 @@ export default function MultiSelectChecklist({
               return (
                 <label
                   key={option.value}
-                  className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-colors ${
+                  className={`flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 transition-colors ${
                     option.disabled ? "cursor-not-allowed border-border bg-muted/30 opacity-70" : checked ? "border-primary/30 bg-primary/5" : "border-border bg-card hover:bg-muted/40"
                   }`}
                 >
@@ -126,7 +121,13 @@ export default function MultiSelectChecklist({
         </div>
       </div>
 
-      {error ? <p className="text-[11.5px] text-destructive">{error}</p> : helperText ? <p className="text-[11.5px] text-muted-foreground">{helperText}</p> : null}
+      {error ? (
+        <p className="ui-error" role="alert">
+          {error}
+        </p>
+      ) : helperText ? (
+        <p className="ui-help">{helperText}</p>
+      ) : null}
     </div>
   )
 }

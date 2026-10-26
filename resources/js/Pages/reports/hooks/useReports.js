@@ -33,10 +33,14 @@ export function useReports(reports = []) {
   const isReportDeletable = (report) => report?.can?.delete === true
 
   const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState("")
-  const [typeFilter, setTypeFilter] = useState("")
-  const [areaFilter, setAreaFilter] = useState("")
-  const [roleFilter, setRoleFilter] = useState("")
+  const [statusFilter, setStatusFilter] = useState([])
+  const [typeFilter, setTypeFilter] = useState([])
+  const [areaFilter, setAreaFilter] = useState([])
+  const [roleFilter, setRoleFilter] = useState([])
+  const [authorFilter, setAuthorFilter] = useState([])
+  const [subAreaFilter, setSubAreaFilter] = useState([])
+  const [photoFilter, setPhotoFilter] = useState("")
+  const [sortBy, setSortBy] = useState("latest")
   const [dateFrom, setDateFrom] = useState("")
   const [dateTo, setDateTo] = useState("")
   const [myReportsOnly, setMyReportsOnly] = useState(false)
@@ -52,46 +56,80 @@ export function useReports(reports = []) {
   const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false)
   const [ticketToClose, setTicketToClose] = useState(null)
 
-  const [tempStatus, setTempStatus] = useState("")
-  const [tempType, setTempType] = useState("")
-  const [tempArea, setTempArea] = useState("")
-  const [tempRole, setTempRole] = useState("")
+  const [tempStatus, setTempStatus] = useState([])
+  const [tempType, setTempType] = useState([])
+  const [tempArea, setTempArea] = useState([])
+  const [tempRole, setTempRole] = useState([])
+  const [tempAuthor, setTempAuthor] = useState([])
+  const [tempSubArea, setTempSubArea] = useState([])
+  const [tempPhoto, setTempPhoto] = useState("")
+  const [tempSort, setTempSort] = useState("latest")
   const [tempDateFrom, setTempDateFrom] = useState("")
   const [tempDateTo, setTempDateTo] = useState("")
   const [tempMyReportsOnly, setTempMyReportsOnly] = useState(false)
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
-    return reports.filter((r) => {
-      if (myReportsOnly && r.author_id !== auth?.id) return false
-      if (statusFilter && r.status !== statusFilter) return false
-      if (typeFilter && String(r.activity_id) !== String(typeFilter)) return false
-      if (areaFilter && String(r.area_id) !== String(areaFilter)) return false
-      if (roleFilter && r.author?.role !== roleFilter) return false
-      if (dateFrom && new Date(r.created_at) < new Date(dateFrom)) return false
-      if (dateTo && new Date(r.created_at) > new Date(dateTo + "T23:59:59")) return false
-      if (q) {
-        const searchable = [r.issue, r.activity, r.author?.name, r.activity_type?.name, r.activity_type?.description, r.sub_activity?.name, r.sub_activity?.description]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-        if (!searchable.includes(q)) return false
-      }
-      return true
-    })
-  }, [reports, search, statusFilter, typeFilter, areaFilter, roleFilter, dateFrom, dateTo, myReportsOnly, auth?.id])
+    return reports
+      .filter((r) => {
+        if (myReportsOnly && r.author_id !== auth?.id) return false
+        if (statusFilter.length && !statusFilter.includes(String(r.status))) return false
+        if (typeFilter.length && !typeFilter.includes(String(r.activity_id))) return false
+        if (areaFilter.length && !areaFilter.includes(String(r.area_id))) return false
+        if (roleFilter.length && !roleFilter.includes(String(r.author?.role))) return false
+        if (authorFilter.length && !authorFilter.includes(String(r.author_id))) return false
+        if (subAreaFilter.length && !subAreaFilter.includes(String(r.sub_area_id))) return false
+        if (photoFilter === "before" && !r.photo_before) return false
+        if (photoFilter === "after" && !r.photo_after) return false
+        if (photoFilter === "complete" && (!r.photo_before || !r.photo_after)) return false
+        if (dateFrom && new Date(r.created_at) < new Date(dateFrom)) return false
+        if (dateTo && new Date(r.created_at) > new Date(dateTo + "T23:59:59")) return false
+        if (q) {
+          const searchable = [r.issue, r.activity, r.author?.name, r.activity_type?.name, r.activity_type?.description, r.sub_activity?.name, r.sub_activity?.description]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase()
+          if (!searchable.includes(q)) return false
+        }
+        return true
+      })
+      .sort((left, right) => {
+        if (sortBy === "oldest") return new Date(left.created_at) - new Date(right.created_at)
+        if (sortBy === "area-asc") return (left.area?.area || "").localeCompare(right.area?.area || "", "id")
+        if (sortBy === "activity-asc") return (left.sub_activity?.name || left.activity_type?.name || "").localeCompare(right.sub_activity?.name || right.activity_type?.name || "", "id")
+        if (sortBy === "reporter-asc") return (left.author?.name || "").localeCompare(right.author?.name || "", "id")
+        return new Date(right.created_at) - new Date(left.created_at)
+      })
+  }, [reports, search, statusFilter, typeFilter, areaFilter, roleFilter, authorFilter, subAreaFilter, photoFilter, sortBy, dateFrom, dateTo, myReportsOnly, auth?.id])
 
-  const totalPages = Math.ceil(filtered.length / perPage) || 1
+  const effectivePerPage = perPage === -1 ? Math.max(filtered.length, 1) : perPage
+  const totalPages = Math.ceil(filtered.length / effectivePerPage) || 1
   const safePage = Math.min(page, totalPages)
-  const paginated = filtered.slice((safePage - 1) * perPage, safePage * perPage)
+  const paginated = filtered.slice((safePage - 1) * effectivePerPage, safePage * effectivePerPage)
 
-  const hasActiveFilter = !!(statusFilter || typeFilter || areaFilter || roleFilter || dateFrom || dateTo || myReportsOnly)
+  const hasActiveFilter = !!(
+    statusFilter.length ||
+    typeFilter.length ||
+    areaFilter.length ||
+    roleFilter.length ||
+    authorFilter.length ||
+    subAreaFilter.length ||
+    photoFilter ||
+    sortBy !== "latest" ||
+    dateFrom ||
+    dateTo ||
+    myReportsOnly
+  )
 
   const openFilterModal = () => {
     setTempStatus(statusFilter)
     setTempType(typeFilter)
     setTempArea(areaFilter)
     setTempRole(roleFilter)
+    setTempAuthor(authorFilter)
+    setTempSubArea(subAreaFilter)
+    setTempPhoto(photoFilter)
+    setTempSort(sortBy)
     setTempDateFrom(dateFrom)
     setTempDateTo(dateTo)
     setTempMyReportsOnly(myReportsOnly)
@@ -103,6 +141,10 @@ export function useReports(reports = []) {
     setTempType(typeFilter)
     setTempArea(areaFilter)
     setTempRole(roleFilter)
+    setTempAuthor(authorFilter)
+    setTempSubArea(subAreaFilter)
+    setTempPhoto(photoFilter)
+    setTempSort(sortBy)
     setTempDateFrom(dateFrom)
     setTempDateTo(dateTo)
     setTempMyReportsOnly(myReportsOnly)
@@ -114,6 +156,10 @@ export function useReports(reports = []) {
     setTypeFilter(tempType)
     setAreaFilter(tempArea)
     setRoleFilter(tempRole)
+    setAuthorFilter(tempAuthor)
+    setSubAreaFilter(tempSubArea)
+    setPhotoFilter(tempPhoto)
+    setSortBy(tempSort)
     setDateFrom(tempDateFrom)
     setDateTo(tempDateTo)
     setMyReportsOnly(tempMyReportsOnly)
@@ -130,10 +176,14 @@ export function useReports(reports = []) {
   }
 
   const resetTempFilter = () => {
-    setTempStatus("")
-    setTempType("")
-    setTempArea("")
-    setTempRole("")
+    setTempStatus([])
+    setTempType([])
+    setTempArea([])
+    setTempRole([])
+    setTempAuthor([])
+    setTempSubArea([])
+    setTempPhoto("")
+    setTempSort("latest")
     setTempDateFrom("")
     setTempDateTo("")
     setTempMyReportsOnly(false)
@@ -141,10 +191,14 @@ export function useReports(reports = []) {
 
   const resetAllFilters = () => {
     setSearch("")
-    setStatusFilter("")
-    setTypeFilter("")
-    setAreaFilter("")
-    setRoleFilter("")
+    setStatusFilter([])
+    setTypeFilter([])
+    setAreaFilter([])
+    setRoleFilter([])
+    setAuthorFilter([])
+    setSubAreaFilter([])
+    setPhotoFilter("")
+    setSortBy("latest")
     setDateFrom("")
     setDateTo("")
     setMyReportsOnly(false)
@@ -231,6 +285,14 @@ export function useReports(reports = []) {
     setTempArea,
     tempRole,
     setTempRole,
+    tempAuthor,
+    setTempAuthor,
+    tempSubArea,
+    setTempSubArea,
+    tempPhoto,
+    setTempPhoto,
+    tempSort,
+    setTempSort,
     tempDateFrom,
     setTempDateFrom,
     tempDateTo,

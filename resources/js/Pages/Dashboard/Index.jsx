@@ -1,205 +1,386 @@
-import { Head, Link, usePage } from "@inertiajs/react";
-import AppLayout from "@/Layouts/AppLayout";
-import { HiArrowRight, HiOutlineChartBar, HiOutlineCheckCircle, HiOutlineClock, HiOutlineDocumentReport, HiOutlineExternalLink, HiOutlineUser } from "react-icons/hi";
+import { Head, Link, router, usePage } from "@inertiajs/react"
+import AppLayout from "@/Layouts/AppLayout"
+import BtnDefault from "@/Components/Button/BtnDefault"
+import { useAuthorization } from "@/hooks/useAuthorization"
+import { HiArrowRight, HiOutlineCheckCircle, HiOutlineClock, HiOutlineDocumentReport, HiOutlineInbox, HiOutlineLocationMarker, HiOutlinePlus } from "react-icons/hi"
+import { CalendarDays } from "lucide-react"
+import { useEffect, useState } from "react"
+
+const PERIOD_OPTIONS = [
+  ["today", "Hari ini"],
+  ["last_7_days", "7 hari terakhir"],
+  ["this_month", "Bulan ini"],
+  ["last_month", "Bulan lalu"],
+  ["last_90_days", "90 hari terakhir"],
+  ["custom", "Rentang kustom"],
+  ["all", "Semua waktu"],
+]
 
 const statusConfig = {
-    closed: "border-[var(--border)] bg-[var(--background)] text-[var(--foreground)]",
-    open: "border-[var(--border)] bg-[var(--background)] text-[var(--foreground)]",
-};
+  closed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  open: "border-blue-200 bg-blue-50 text-blue-700",
+}
 
 const formatRelative = (dateStr) => {
-    if (!dateStr) return "-";
+  if (!dateStr) return "-"
+  const diffMinutes = Math.floor((new Date() - new Date(dateStr)) / 1000 / 60)
+  if (diffMinutes < 60) return `${Math.max(diffMinutes, 0)} menit lalu`
+  if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)} jam lalu`
+  return `${Math.floor(diffMinutes / 1440)} hari lalu`
+}
 
-    const now = new Date();
-    const date = new Date(dateStr);
-    const diffMinutes = Math.floor((now - date) / 1000 / 60);
+function StatusBadge({ status }) {
+  const className = statusConfig[status] || "border-border bg-muted text-muted-foreground"
+  return (
+    <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold ${className}`}>
+      <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
+      {status === "closed" ? "Selesai" : status === "open" ? "Terbuka" : status}
+    </span>
+  )
+}
 
-    if (diffMinutes < 60) return `${diffMinutes}m ago`;
-    if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}h ago`;
+function StatCard({ title, value, note, href, icon, tone = "blue" }) {
+  const tones = {
+    blue: "border-blue-200 bg-blue-50 text-blue-700",
+    amber: "border-amber-200 bg-amber-50 text-amber-700",
+    emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    slate: "border-slate-200 bg-slate-50 text-slate-700",
+  }
 
-    return `${Math.floor(diffMinutes / 1440)}d ago`;
-};
-
-const StatCard = ({ title, value, note, href, hrefLabel, icon }) => (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card)] p-4 shadow-sm">
-        <div className="flex items-start justify-between gap-3">
-            <div>
-                <p className="text-[12px] font-medium text-[var(--muted-foreground)]">{title}</p>
-                <p className="mt-3 text-[34px] font-bold leading-none tracking-tight text-[var(--foreground)]">{value}</p>
-                <p className="mt-2 text-[11px] text-[var(--muted-foreground)]">{note}</p>
-            </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--muted-foreground)]">{icon}</div>
+  return (
+    <Link href={href} className="group rounded-xl border border-border bg-card p-4 transition-colors hover:border-slate-300 sm:p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[13px] font-semibold text-muted-foreground">{title}</p>
+          <p className="mt-2 text-[30px] font-bold leading-none tracking-tight text-foreground tabular-nums sm:text-[34px]">{value}</p>
         </div>
-        {href && (
-            <Link href={href} className="mt-4 inline-flex items-center gap-1 text-[11.5px] font-medium text-[var(--primary)] hover:gap-2 transition-all">
-                {hrefLabel} <HiOutlineExternalLink className="h-3 w-3" />
-            </Link>
-        )}
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${tones[tone]}`}>{icon}</span>
+      </div>
+      <div className="mt-4 flex items-center justify-between gap-3 border-t border-border pt-3">
+        <p className="truncate text-xs text-muted-foreground">{note}</p>
+        <HiArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+      </div>
+    </Link>
+  )
+}
+
+function TicketRow({ report }) {
+  return (
+    <Link href="/reports" className="grid gap-3 px-4 py-4 transition-colors hover:bg-background sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-5">
+      <div className="flex min-w-0 items-start gap-3">
+        <span className="flex h-10 min-w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-background px-2 text-xs font-bold text-foreground">#{report.id}</span>
+        <div className="min-w-0">
+          <p className="line-clamp-1 text-sm font-semibold text-foreground">{report.issue || "Tanpa judul kendala"}</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <HiOutlineLocationMarker className="h-3.5 w-3.5" />
+              {report.area}
+            </span>
+            <span aria-hidden="true">·</span>
+            <span>{report.activity}</span>
+            <span aria-hidden="true">·</span>
+            <span>{formatRelative(report.created_at)}</span>
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center justify-between gap-3 pl-[52px] sm:justify-end sm:pl-0">
+        <StatusBadge status={report.status} />
+        <HiArrowRight className="h-4 w-4 text-muted-foreground" />
+      </div>
+    </Link>
+  )
+}
+
+function EmptyTickets({ canCreate }) {
+  return (
+    <div className="flex min-h-64 flex-col items-center justify-center px-6 py-10 text-center">
+      <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
+        <HiOutlineInbox className="h-6 w-6" />
+      </span>
+      <p className="text-sm font-semibold text-foreground">Belum ada laporan</p>
+      <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">Laporan operasional yang dibuat akan muncul di bagian ini.</p>
+      {canCreate && (
+        <BtnDefault href="/reports" size="sm" className="mt-4 gap-2">
+          <HiOutlinePlus className="h-4 w-4" />
+          Buat Laporan
+        </BtnDefault>
+      )}
     </div>
-);
+  )
+}
 
-const StatusBadge = ({ status }) => {
-    const className = statusConfig[status] || "bg-slate-100 text-slate-600";
-
-    return (
-        <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap ${className}`}>
-            {status === "closed" ? "Closed" : status === "open" ? "Open" : status}
+function ProgressPanel({ stats, completionPct, topArea }) {
+  return (
+    <section className="rounded-xl border border-border bg-card p-5">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Progress Penyelesaian</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Perbandingan tiket selesai dari seluruh tiket.</p>
+        </div>
+        <p className="text-2xl font-bold text-foreground tabular-nums">{completionPct}%</p>
+      </div>
+      <div
+        className="mt-5 h-2.5 overflow-hidden rounded-full bg-slate-200"
+        role="progressbar"
+        aria-label="Progress penyelesaian tiket"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-valuenow={completionPct}
+      >
+        <div className="h-full rounded-full bg-emerald-600 transition-[width] duration-300" style={{ width: `${completionPct}%` }} />
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        <span>
+          {stats.closed} dari {stats.total} tiket selesai
         </span>
-    );
-};
+        <span>{stats.open} masih terbuka</span>
+      </div>
+      <div className="mt-5 border-t border-border pt-4">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Area dengan tiket terbanyak</p>
+        <p className="mt-1.5 text-sm font-semibold text-foreground">{topArea || "Belum ada data area"}</p>
+      </div>
+    </section>
+  )
+}
 
-const GaugeChart = ({ pct }) => {
-    const angle = Math.min((pct / 100) * 180, 180);
+function AttentionPanel({ ticket }) {
+  return (
+    <section className="rounded-xl border border-border bg-card p-5">
+      <div className="flex items-center gap-2">
+        <HiOutlineClock className="h-5 w-5 text-amber-600" />
+        <h2 className="text-base font-semibold text-foreground">Perlu Perhatian</h2>
+      </div>
+      {!ticket ? (
+        <div className="mt-4 flex items-start gap-3 rounded-lg bg-emerald-50 p-3 text-emerald-700">
+          <HiOutlineCheckCircle className="mt-0.5 h-5 w-5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold">Tidak ada tiket terbuka</p>
+            <p className="mt-0.5 text-xs">Seluruh tiket dalam cakupan Anda telah ditangani.</p>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4">
+          <div className="flex items-start justify-between gap-3">
+            <p className="line-clamp-2 text-sm font-semibold leading-relaxed text-foreground">
+              #{ticket.id} · {ticket.issue}
+            </p>
+            <StatusBadge status="open" />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {ticket.area} · {ticket.activity}
+          </p>
+          <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+            <span className="text-xs text-muted-foreground">Terbuka selama</span>
+            <span className={`text-sm font-bold tabular-nums ${ticket.age_in_days >= 30 ? "text-red-600" : "text-amber-700"}`}>{ticket.age_in_days} hari</span>
+          </div>
+          <Link href="/reports?status=open" className="mt-3 inline-flex min-h-9 items-center gap-1.5 text-xs font-semibold text-primary">
+            Tinjau tiket <HiArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
+      )}
+    </section>
+  )
+}
 
-    const toXY = (deg) => {
-        const rad = ((deg - 180) * Math.PI) / 180;
-        return { x: 64 + 48 * Math.cos(rad), y: 64 + 48 * Math.sin(rad) };
-    };
+function DashboardPeriod({ filters, areas }) {
+  const [period, setPeriod] = useState(filters.period || "this_month")
+  const [dateFrom, setDateFrom] = useState(filters.date_from || "")
+  const [dateTo, setDateTo] = useState(filters.date_to || "")
+  const [status, setStatus] = useState(filters.status || "")
+  const [areaId, setAreaId] = useState(filters.area_id ? String(filters.area_id) : "")
 
-    const start = toXY(0);
-    const end = toXY(angle);
-    const arc = `M ${start.x} ${start.y} A 48 48 0 0 1 ${end.x} ${end.y}`;
-    const backgroundArc = `M ${toXY(0).x} ${toXY(0).y} A 48 48 0 1 1 ${toXY(180).x} ${toXY(180).y}`;
+  useEffect(() => {
+    setPeriod(filters.period || "this_month")
+    setDateFrom(filters.date_from || "")
+    setDateTo(filters.date_to || "")
+    setStatus(filters.status || "")
+    setAreaId(filters.area_id ? String(filters.area_id) : "")
+  }, [filters.area_id, filters.date_from, filters.date_to, filters.period, filters.status])
 
-    return (
-        <svg viewBox="0 0 128 76" width="120" height="72">
-            <path d={backgroundArc} fill="none" stroke="var(--border)" strokeWidth="12" strokeLinecap="round" />
-            <path d={arc} fill="none" stroke="var(--primary)" strokeWidth="12" strokeLinecap="round" />
-            <text x="64" y="70" textAnchor="middle" fontSize="20" fontWeight="700" fill="var(--foreground)" fontFamily="Plus Jakarta Sans, sans-serif">
-                {pct}%
-            </text>
-        </svg>
-    );
-};
+  const apply = (nextPeriod = period) => {
+    router.get(
+      route("dashboard"),
+      { period: nextPeriod, status: status || undefined, area_id: areaId || undefined, ...(nextPeriod === "custom" ? { date_from: dateFrom || undefined, date_to: dateTo || undefined } : {}) },
+      { preserveState: true, preserveScroll: true, replace: true },
+    )
+  }
 
-export default function Dashboard({ stats = { total: 0, open: 0, closed: 0, myReports: 0 }, recentReports = [], topArea = null, oldestOpenTicket = null }) {
-    const { auth } = usePage().props;
-    const firstName = auth?.user?.name?.split(" ")[0] || "User";
-    const completionPct = stats.total > 0 ? Math.round((stats.closed / stats.total) * 100) : 0;
+  return (
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+      <div className="relative min-w-0">
+        <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <select
+          value={period}
+          onChange={(event) => {
+            setPeriod(event.target.value)
+            if (event.target.value !== "custom") setTimeout(() => apply(event.target.value), 0)
+          }}
+          aria-label="Pilih periode dashboard"
+          className="ui-field min-h-11 w-full appearance-none pl-9 pr-8 text-sm font-semibold sm:w-44"
+        >
+          {PERIOD_OPTIONS.map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <select
+        value={status}
+        onChange={(event) => {
+          setStatus(event.target.value)
+          setTimeout(
+            () =>
+              router.get(
+                route("dashboard"),
+                { period, status: event.target.value || undefined, area_id: areaId || undefined, ...(period === "custom" ? { date_from: dateFrom || undefined, date_to: dateTo || undefined } : {}) },
+                { preserveState: true, preserveScroll: true, replace: true },
+              ),
+            0,
+          )
+        }}
+        aria-label="Filter status tiket"
+        className="ui-field min-h-11 w-full text-sm sm:w-36"
+      >
+        <option value="">Semua status</option>
+        <option value="open">Terbuka</option>
+        <option value="closed">Selesai</option>
+      </select>
+      {areas.length > 0 && (
+        <select
+          value={areaId}
+          onChange={(event) => {
+            setAreaId(event.target.value)
+            setTimeout(
+              () =>
+                router.get(
+                  route("dashboard"),
+                  { period, status: status || undefined, area_id: event.target.value || undefined, ...(period === "custom" ? { date_from: dateFrom || undefined, date_to: dateTo || undefined } : {}) },
+                  { preserveState: true, preserveScroll: true, replace: true },
+                ),
+              0,
+            )
+          }}
+          aria-label="Filter area"
+          className="ui-field min-h-11 w-full text-sm sm:w-44"
+        >
+          <option value="">Semua area</option>
+          {areas.map((area) => (
+            <option key={area.id} value={area.id}>
+              {area.area}
+            </option>
+          ))}
+        </select>
+      )}
+      {period === "custom" && (
+        <>
+          <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} aria-label="Tanggal mulai" className="ui-field min-h-11 w-full text-sm sm:w-36" />
+          <input
+            type="date"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={(event) => setDateTo(event.target.value)}
+            aria-label="Tanggal akhir"
+            className="ui-field min-h-11 w-full text-sm sm:w-36"
+          />
+          <button
+            type="button"
+            onClick={() => apply("custom")}
+            className="min-h-11 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground outline-none hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          >
+            Terapkan
+          </button>
+        </>
+      )}
+    </div>
+  )
+}
 
-    return (
-        <AppLayout title="Dashboard">
-            <Head>
-                <title>Dashboard</title>
-            </Head>
+export default function Dashboard({ stats = { total: 0, open: 0, closed: 0, myReports: 0 }, recentReports = [], topArea = null, oldestOpenTicket = null, filters = {}, filterAreas = [] }) {
+  const { auth } = usePage().props
+  const { can } = useAuthorization()
+  const canCreate = can("reports.create")
+  const firstName = auth?.user?.name?.split(" ")[0] || "User"
+  const completionPct = stats.total > 0 ? Math.round((stats.closed / stats.total) * 100) : 0
+  const isLowData = recentReports.length > 0 && recentReports.length <= 3
 
-            <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between gap-3 flex-wrap">
-                    <div>
-                        <h1 className="text-2xl font-bold tracking-tight text-[var(--foreground)]">Dashboard</h1>
-                        <p className="mt-1 text-[13px] text-[var(--muted-foreground)]">Welcome back, {firstName}. Here is today&apos;s ticket overview.</p>
-                    </div>
-                    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2 text-[12px] font-medium text-[var(--muted-foreground)]">
-                        {new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                    </div>
-                </div>
-
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    <StatCard title="Total Tickets" value={stats.total} note="All tickets in your dashboard scope" href="/reports" hrefLabel="View all" icon={<HiOutlineDocumentReport className="h-4 w-4" />} />
-                    <StatCard title="Open Tickets" value={stats.open} note="Still waiting for follow-up" href="/reports?status=open" hrefLabel="View open" icon={<HiOutlineClock className="h-4 w-4" />} />
-                    <StatCard title="Closed Tickets" value={stats.closed} note="Already completed" href="/reports?status=closed" hrefLabel="View closed" icon={<HiOutlineCheckCircle className="h-4 w-4" />} />
-                    <StatCard title="My Reports" value={stats.myReports} note="Tickets created by you" href="/reports" hrefLabel="Open reports" icon={<HiOutlineUser className="h-4 w-4" />} />
-                </div>
-
-                <div className="grid gap-4 xl:grid-cols-[1.3fr_0.7fr]">
-                    <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-                        <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
-                            <div>
-                                <h2 className="text-[15px] font-bold text-[var(--foreground)]">Recent Tickets</h2>
-                                <p className="mt-0.5 text-[11.5px] text-[var(--muted-foreground)]">Latest updates from your visible reports</p>
-                            </div>
-                            <Link href="/reports" className="inline-flex items-center gap-1 text-[12px] font-semibold text-[var(--primary)] hover:gap-2 transition-all">
-                                View all <HiArrowRight className="h-3.5 w-3.5" />
-                            </Link>
-                        </div>
-
-                        <div className="divide-y divide-[var(--border)]">
-                            {recentReports.length === 0 ? (
-                                <div className="py-12 text-center text-[13px] text-[var(--muted-foreground)]">No reports yet</div>
-                            ) : (
-                                recentReports.map((report) => (
-                                    <div key={report.id} className="flex items-start gap-3 px-5 py-4">
-                                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[11px] font-bold text-[var(--accent-foreground)]">
-                                            {report.submitted_by?.charAt(0)?.toUpperCase() || "?"}
-                                        </div>
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="min-w-0">
-                                                    <p className="truncate text-[13px] font-semibold text-[var(--foreground)]">{report.issue ?? "-"}</p>
-                                                    <p className="mt-1 text-[11.5px] text-[var(--muted-foreground)]">
-                                                        {report.area} · {report.activity} · by {report.submitted_by}
-                                                    </p>
-                                                    <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">{formatRelative(report.created_at)}</p>
-                                                </div>
-                                                <StatusBadge status={report.status} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </section>
-
-                    <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-sm">
-                        <div className="border-b border-[var(--border)] px-5 py-4">
-                            <h2 className="text-[15px] font-bold text-[var(--foreground)]">Ticket Completion</h2>
-                            <p className="mt-0.5 text-[11.5px] text-[var(--muted-foreground)]">Quick health check and oldest open ticket in your queue</p>
-                        </div>
-
-                        <div className="flex flex-col gap-5 p-5">
-                            <div className="grid gap-3 md:grid-cols-[0.9fr_1.1fr]">
-                                <div className="flex items-center justify-center rounded-2xl border border-[var(--border)] bg-[var(--background)] py-4">
-                                    <GaugeChart pct={completionPct} />
-                                </div>
-
-                                <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
-                                    <p className="text-[11px] text-[var(--muted-foreground)]">Top Area</p>
-                                    <p className="mt-2 text-[20px] font-bold text-[var(--foreground)]">{topArea || "N/A"}</p>
-                                    <p className="mt-1 text-[11px] text-[var(--muted-foreground)]">Area with the highest ticket volume in your current scope</p>
-                                </div>
-                            </div>
-
-                            <div className="rounded-2xl border border-[var(--border)] bg-[var(--background)] p-4">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div className="flex items-center gap-2">
-                                        <HiOutlineChartBar className="h-4 w-4 text-[var(--muted-foreground)]" />
-                                        <p className="text-[12px] font-semibold text-[var(--foreground)]">Oldest Open Ticket</p>
-                                    </div>
-                                    <p className="text-[11px] text-[var(--muted-foreground)]">Total {stats.total} tickets</p>
-                                </div>
-
-                                {!oldestOpenTicket ? (
-                                    <p className="mt-3 text-[12px] text-[var(--muted-foreground)]">No open ticket in your current dashboard scope.</p>
-                                ) : (
-                                    <div className="mt-3 space-y-2.5">
-                                        <p className="text-[14px] font-semibold text-[var(--foreground)]">{oldestOpenTicket.issue}</p>
-                                        <p className="text-[11.5px] text-[var(--muted-foreground)]">
-                                            {oldestOpenTicket.area} · {oldestOpenTicket.activity}
-                                        </p>
-                                        <div className="grid grid-cols-3 gap-2">
-                                            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5">
-                                                <p className="text-[10.5px] text-[var(--muted-foreground)]">Ticket ID</p>
-                                                <p className="mt-1 text-[13px] font-bold text-[var(--foreground)]">#{oldestOpenTicket.id}</p>
-                                            </div>
-                                            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5">
-                                                <p className="text-[10.5px] text-[var(--muted-foreground)]">Opened</p>
-                                                <p className="mt-1 text-[13px] font-bold text-[var(--foreground)]">{formatRelative(oldestOpenTicket.created_at)}</p>
-                                            </div>
-                                            <div className="rounded-xl border border-[var(--border)] bg-[var(--card)] px-3 py-2.5">
-                                                <p className="text-[10.5px] text-[var(--muted-foreground)]">Age</p>
-                                                <p className={`mt-1 text-[13px] font-bold ${oldestOpenTicket.age_in_days >= 30 ? "text-red-600" : "text-[var(--foreground)]"}`}>
-                                                    {oldestOpenTicket.age_in_days} days
-                                                </p>
-                                            </div>
-                                        </div>
-                                        {oldestOpenTicket.age_in_days >= 30 && <p className="text-[11.5px] text-red-600">This ticket has been open for more than 1 month and should be prioritized.</p>}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </section>
-                </div>
+  return (
+    <AppLayout title="Dashboard">
+      <Head>
+        <title>Dashboard</title>
+      </Head>
+      <div className="flex flex-col gap-5 lg:gap-6">
+        <header className="border-b border-border pb-3 sm:pb-5">
+          <div className="flex min-h-12 items-center justify-between gap-3">
+            <div>
+              <h1 className="text-[22px] font-bold tracking-tight text-foreground sm:text-[26px]">Dashboard</h1>
+              <p className="mt-0.5 text-xs text-muted-foreground sm:mt-1 sm:text-[13px]">Selamat datang, {firstName}.</p>
             </div>
-        </AppLayout>
-    );
+            {canCreate && (
+              <Link
+                href="/reports"
+                aria-label="Buat laporan"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 md:hidden"
+              >
+                <HiOutlinePlus className="h-5 w-5" />
+              </Link>
+            )}
+          </div>
+          <div className="mt-4 flex w-full flex-col gap-2 md:flex-row md:items-center md:justify-end">
+            <DashboardPeriod filters={filters} areas={filterAreas} />
+            <span className="inline-flex min-h-11 items-center rounded-lg border border-border bg-card px-4 text-xs font-medium text-muted-foreground">
+              {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            </span>
+            {canCreate && (
+              <BtnDefault href="/reports" className="w-full gap-2 sm:w-fit">
+                <HiOutlinePlus className="h-4 w-4" />
+                Buat Laporan
+              </BtnDefault>
+            )}
+          </div>
+        </header>
+
+        <section aria-label="Ringkasan tiket" className="grid grid-cols-1 gap-3 min-[375px]:grid-cols-2 xl:grid-cols-4">
+          <StatCard title="Total Tiket" value={stats.total} note="Seluruh tiket" href="/reports" icon={<HiOutlineDocumentReport className="h-5 w-5" />} />
+          <StatCard title="Perlu Tindakan" value={stats.open} note="Tiket masih terbuka" href="/reports?status=open" icon={<HiOutlineClock className="h-5 w-5" />} tone="amber" />
+          <StatCard title="Selesai" value={stats.closed} note="Tiket telah ditutup" href="/reports?status=closed" icon={<HiOutlineCheckCircle className="h-5 w-5" />} tone="emerald" />
+          <StatCard
+            title="Completion"
+            value={`${completionPct}%`}
+            note={`${stats.closed} dari ${stats.total} tiket`}
+            href="/reports"
+            icon={<HiOutlineCheckCircle className="h-5 w-5" />}
+            tone="slate"
+          />
+        </section>
+
+        <div className={`grid items-start gap-5 ${isLowData ? "xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]" : "xl:grid-cols-[minmax(0,1.5fr)_minmax(340px,0.7fr)]"}`}>
+          <section className="overflow-hidden rounded-xl border border-border bg-card">
+            <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-4 sm:px-5">
+              <div>
+                <h2 className="text-base font-semibold text-foreground">Tickets Overview</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">{recentReports.length ? `${recentReports.length} laporan terbaru` : "Belum ada aktivitas laporan"}</p>
+              </div>
+              <Link href="/reports" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-primary hover:bg-blue-50">
+                Lihat semua <HiArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+            {recentReports.length === 0 ? (
+              <EmptyTickets canCreate={canCreate} />
+            ) : (
+              <div className="divide-y divide-border">
+                {recentReports.map((report) => (
+                  <TicketRow key={report.id} report={report} />
+                ))}
+              </div>
+            )}
+          </section>
+          <div className="grid gap-5">
+            <ProgressPanel stats={stats} completionPct={completionPct} topArea={topArea} />
+            <AttentionPanel ticket={oldestOpenTicket} />
+          </div>
+        </div>
+      </div>
+    </AppLayout>
+  )
 }

@@ -169,7 +169,7 @@ export default function CloseTicket({ report = {}, areas = [], activities = [] }
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <div
                   className="border-2 border-dashed rounded-xl overflow-hidden min-h-[120px] flex items-center justify-center bg-muted transition-colors"

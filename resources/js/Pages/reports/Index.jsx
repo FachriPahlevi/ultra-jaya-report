@@ -2,8 +2,6 @@ import { Head } from "@inertiajs/react"
 import AppLayout from "@/Layouts/AppLayout"
 import { formatDate } from "@/lib/format.ts"
 import BtnDefault from "@/Components/Button/BtnDefault"
-import InputDropdown from "@/Components/Input/InputDropdown"
-import InputSelect from "@/Components/Input/InputSelect"
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
 import ReportForm from "@/Pages/reports/components/ReportForm"
 import CloseTicketForm from "@/Pages/reports/components/CloseTicketForm"
@@ -13,11 +11,14 @@ import Pagination from "@/Components/Navigation/Pagination"
 import ExpandableImage from "@/Components/UI/ExpandableImage"
 import { useReports } from "@/Pages/reports/hooks/useReports"
 import { HiOutlineX, HiOutlinePlus } from "react-icons/hi"
-import { CalendarClock, File, FileDown, FileText, Image as ImageIcon, MapPin, Search, SlidersHorizontal, StickyNote, UserRound, ChevronDown, ChevronUp } from "lucide-react"
+import { CalendarClock, File, FileText, Layers3, MapPin, StickyNote, UserRound, ChevronDown, ChevronUp } from "lucide-react"
 import { useState } from "react"
 import { LAYERS } from "@/lib/layers"
-
-const pageSizeOptions = [10, 25, 50, 100]
+import PageHeader from "@/Components/Layout/PageHeader"
+import DataTableToolbar from "@/Components/Table/DataTableToolbar"
+import FilterChoiceGroup from "@/Components/Table/FilterChoiceGroup"
+import FilterMultiSelect from "@/Components/Table/FilterMultiSelect"
+import FilterSelectField from "@/Components/Table/FilterSelectField"
 
 const RichText = ({ text, maxLines = 3 }) => {
   const [expanded, setExpanded] = useState(false)
@@ -92,57 +93,95 @@ const RichText = ({ text, maxLines = 3 }) => {
   )
 }
 
-function FilterFields({ temp, statusOptions, filterAreaOptions, typeOptions }) {
+function FilterFields({ temp, statusOptions, filterAreaOptions, typeOptions, subAreaOptions, authorOptions, roleOptions, canFilterReporter, canToggleOwn }) {
   return (
     <div className="flex flex-col gap-5">
       <div>
         <p className="block text-[12px] font-semibold text-foreground mb-2">Periode</p>
-        <div className="flex items-center gap-2">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
           <input
             type="date"
             value={temp.tempDateFrom}
             onChange={(e) => temp.setTempDateFrom(e.target.value)}
-            className="flex-1 border border-border rounded-xl px-3 py-2.5 text-[13px] text-foreground bg-background outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            className="min-w-0 w-full border border-border rounded-xl px-2 py-2.5 text-xs text-foreground bg-background outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary min-[375px]:px-3 min-[375px]:text-[13px]"
           />
           <span className="text-muted-foreground text-sm font-medium shrink-0">–</span>
           <input
             type="date"
             value={temp.tempDateTo}
             onChange={(e) => temp.setTempDateTo(e.target.value)}
-            className="flex-1 border border-border rounded-xl px-3 py-2.5 text-[13px] text-foreground bg-background outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            className="min-w-0 w-full border border-border rounded-xl px-2 py-2.5 text-xs text-foreground bg-background outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary min-[375px]:px-3 min-[375px]:text-[13px]"
           />
         </div>
       </div>
-      <div>
-        <p className="block text-[12px] font-semibold text-foreground mb-2">Status</p>
-        <div className="flex gap-2">
-          {statusOptions.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => temp.setTempStatus(opt.value)}
-              className={`flex-1 py-2.5 rounded-xl text-[12.5px] font-semibold border transition-all
-                                ${temp.tempStatus === opt.value ? "bg-primary text-primary-foreground border-primary shadow-sm" : "bg-background text-foreground border-border hover:border-primary/40"}`}
-            >
-              {opt.label}
-            </button>
-          ))}
+      <FilterSelectField
+        label="Susun laporan"
+        description="Pilih urutan daftar laporan."
+        value={temp.tempSort}
+        onChange={temp.setTempSort}
+        options={[
+          ["latest", "Terbaru lebih dulu"],
+          ["oldest", "Terlama lebih dulu"],
+          ["area-asc", "Area A–Z"],
+          ["activity-asc", "Aktivitas A–Z"],
+          ...(canFilterReporter ? [["reporter-asc", "Nama pelapor A–Z"]] : []),
+        ]}
+      />
+      <FilterChoiceGroup
+        legend="Tahap laporan"
+        description="Pilih satu atau keduanya."
+        value={temp.tempStatus}
+        onChange={temp.setTempStatus}
+        options={statusOptions.filter((option) => option.value)}
+        multiple
+        variant="chips"
+      />
+      <FilterMultiSelect label="Lokasi area" values={temp.tempArea} onChange={temp.setTempArea} options={filterAreaOptions.filter((option) => option.value)} placeholder="Semua area" />
+      <FilterMultiSelect label="Lokasi sub-area" values={temp.tempSubArea} onChange={temp.setTempSubArea} options={subAreaOptions.filter((option) => option.value)} placeholder="Semua sub-area" />
+      <FilterMultiSelect label="Jenis aktivitas" values={temp.tempType} onChange={temp.setTempType} options={typeOptions.filter((option) => option.value)} placeholder="Semua aktivitas" />
+      {canFilterReporter && (
+        <FilterMultiSelect label="Dibuat oleh" values={temp.tempAuthor} onChange={temp.setTempAuthor} options={authorOptions.filter((option) => option.value)} placeholder="Semua pengguna" />
+      )}
+      {canFilterReporter && (
+        <FilterMultiSelect
+          label="Peran pembuat"
+          values={temp.tempRole}
+          onChange={temp.setTempRole}
+          options={roleOptions.filter((option) => option.value)}
+          placeholder="Semua peran"
+          searchable={false}
+        />
+      )}
+      <FilterChoiceGroup
+        legend="Dokumentasi foto"
+        value={temp.tempPhoto}
+        onChange={temp.setTempPhoto}
+        options={[
+          ["", "Apa pun"],
+          ["before", "Ada foto awal"],
+          ["after", "Ada foto akhir"],
+          ["complete", "Lengkap"],
+        ]}
+        variant="chips"
+      />
+      {canToggleOwn && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3.5 py-3">
+          <div>
+            <p className="text-[13px] font-semibold text-foreground">Hanya laporan saya</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">Sembunyikan laporan pengguna lain.</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={temp.tempMyReportsOnly}
+            aria-label="Tampilkan hanya laporan saya"
+            onClick={() => temp.setTempMyReportsOnly((v) => !v)}
+            className={`w-10 h-6 rounded-full transition-colors relative shrink-0 cursor-pointer ${temp.tempMyReportsOnly ? "bg-primary" : "bg-border"}`}
+          >
+            <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${temp.tempMyReportsOnly ? "left-5" : "left-1"}`} />
+          </button>
         </div>
-      </div>
-      <InputDropdown label="Area" defaultValue={temp.tempArea} setObject={(item) => temp.setTempArea(item.value)} itemList={filterAreaOptions} />
-      <InputDropdown label="Activity" defaultValue={temp.tempType} setObject={(item) => temp.setTempType(item.value)} itemList={typeOptions} />
-      <div className="flex items-center justify-between gap-3 py-0.5">
-        <span className="text-[13px] text-foreground font-medium">Show only my reports</span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={temp.tempMyReportsOnly}
-          aria-label="Tampilkan hanya laporan saya"
-          onClick={() => temp.setTempMyReportsOnly((v) => !v)}
-          className={`w-10 h-6 rounded-full transition-colors relative shrink-0 cursor-pointer ${temp.tempMyReportsOnly ? "bg-primary" : "bg-border"}`}
-        >
-          <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${temp.tempMyReportsOnly ? "left-5" : "left-1"}`} />
-        </button>
-      </div>
+      )}
     </div>
   )
 }
@@ -153,11 +192,11 @@ function DesktopStatusPill({ status }) {
   return (
     <span
       className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[12px] font-medium ${
-        isClosed ? "border-orange-100 bg-orange-50 text-orange-700" : "border-emerald-100 bg-emerald-50 text-emerald-700"
+        isClosed ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-blue-200 bg-blue-50 text-blue-700"
       }`}
     >
-      <span className={`h-2 w-2 rounded-full ${isClosed ? "bg-orange-400" : "bg-emerald-400"}`} />
-      {isClosed ? "Closed" : "Open"}
+      <span className={`h-2 w-2 rounded-full ${isClosed ? "bg-emerald-500" : "bg-blue-500"}`} />
+      {isClosed ? "Selesai" : "Terbuka"}
     </span>
   )
 }
@@ -175,49 +214,39 @@ function TablePhotoPreview({ src, label }) {
   )
 }
 
-function PageSizeSelect({ value, onChange, total, compact = false }) {
+function DetailField({ icon: Icon, label, children, className = "" }) {
   return (
-    <div className={`flex items-center gap-3 ${compact ? "justify-between" : "justify-end"}`}>
-      <span className="whitespace-nowrap text-[12px] text-muted-foreground">{total} records</span>
-      <div className="flex items-center gap-2">
-        <label htmlFor={`page-size-${compact ? "mobile" : "desktop"}`} className="whitespace-nowrap text-[12px] text-muted-foreground">
-          Show
-        </label>
-        <InputSelect
-          id={`page-size-${compact ? "mobile" : "desktop"}`}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          options={pageSizeOptions.map((option) => ({
-            label: String(option),
-            value: option,
-          }))}
-          className="min-w-[88px]"
-          selectClassName="h-9 bg-background px-3 text-[12.5px] shadow-sm"
-        />
+    <section className={`min-w-0 ${className}`}>
+      <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground">
+        <Icon className="h-4 w-4 shrink-0 text-slate-500" />
+        {label}
+      </div>
+      <div className="mt-1 pl-7 text-sm leading-6 text-foreground">{children}</div>
+    </section>
+  )
+}
+
+function ReportPhoto({ src, label, showLabel = true }) {
+  if (!src) return null
+
+  return (
+    <div className="min-w-0">
+      {showLabel && <p className="mb-2 text-xs font-semibold text-muted-foreground">{label}</p>}
+      <div className="flex min-h-44 items-center justify-center overflow-hidden rounded-xl bg-slate-50 sm:min-h-52">
+        <ExpandableImage src={`/storage/${src}`} alt={label} className="max-h-[420px] w-full object-contain" />
       </div>
     </div>
   )
 }
 
-function DetailField({ icon: Icon, label, children, className = "" }) {
+function ReportContentRow({ icon: Icon, label, children, divided = false }) {
   return (
-    <section className={`rounded-2xl border border-border bg-background p-3.5 ${className}`}>
-      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-        <Icon className="h-4 w-4" />
+    <div className={`grid gap-2 py-3 sm:grid-cols-[130px_minmax(0,1fr)] sm:gap-4 ${divided ? "border-t border-border" : ""}`}>
+      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+        <Icon className="h-4 w-4 shrink-0 text-slate-500" />
         {label}
       </div>
-      <div className="mt-2 text-sm text-foreground">{children}</div>
-    </section>
-  )
-}
-
-function ReportPhoto({ src, label }) {
-  if (!src) return null
-
-  return (
-    <div className="min-w-0">
-      <p className="mb-2 text-[12px] font-semibold text-foreground">{label}</p>
-      <ExpandableImage src={`/storage/${src}`} alt={label} className="h-40 w-full rounded-xl border border-border object-cover" />
+      <div className="pl-6 text-sm leading-6 text-foreground sm:pl-0">{children}</div>
     </div>
   )
 }
@@ -229,81 +258,97 @@ function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onD
 
   return (
     <ModalOverlay id="report-detail-modal" isOpen={isOpen} onClose={onClose}>
-      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
-        <div className="flex items-center justify-between p-5 border-b border-border">
-          <h3 className="text-lg font-semibold text-foreground">Report Details</h3>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+      <div className="flex max-h-[92dvh] w-full max-w-3xl flex-col overflow-hidden rounded-t-3xl border border-border bg-card shadow-2xl sm:rounded-2xl">
+        <div className="flex items-start justify-between border-b border-border bg-card px-4 py-4 sm:px-6 sm:py-5">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-lg font-bold tracking-tight text-foreground">Detail laporan</h3>
+              <DesktopStatusPill status={report.status} />
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Dibuat {formatDate(report.created_at)} · {report.author?.name ?? "Pelapor tidak diketahui"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup detail laporan"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
+          >
             <HiOutlineX className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="space-y-4 overflow-y-auto p-5">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <DetailField icon={CalendarClock} label="Dibuat pada">
-              {formatDate(report.created_at)}
-            </DetailField>
-            <DetailField icon={UserRound} label="Dilaporkan oleh">
-              <p className="font-medium">{report.author?.name ?? "-"}</p>
-              {report.author?.role && <p className="mt-0.5 text-xs text-muted-foreground">{report.author.role}</p>}
-            </DetailField>
-            <DetailField icon={MapPin} label="Area">
-              {report.area?.area ?? "-"}
-            </DetailField>
-            <DetailField icon={MapPin} label="Sub-area">
-              {report.sub_area?.name ?? "-"}
-            </DetailField>
-            <DetailField icon={FileText} label="Aktivitas">
-              <p className="font-medium">{mainActivity}</p>
-              {subActivity && <p className="mt-0.5 text-xs text-muted-foreground">Sub activity: {subActivity}</p>}
-            </DetailField>
-            <DetailField icon={FileText} label="Status">
-              <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${report.status === "closed" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                {report.status === "closed" ? "Closed" : "Open"}
-              </span>
-            </DetailField>
-          </div>
+        <div className="space-y-4 overflow-y-auto bg-slate-50/40 p-4 sm:p-6">
+          <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
+            <h4 className="mb-5 text-[15px] font-bold text-foreground">Informasi laporan</h4>
+            <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
+              <DetailField icon={CalendarClock} label="Dibuat pada">
+                {formatDate(report.created_at)}
+              </DetailField>
+              <DetailField icon={UserRound} label="Dilaporkan oleh">
+                <p className="font-medium">{report.author?.name ?? "-"}</p>
+                {report.author?.role && <p className="mt-0.5 text-xs text-muted-foreground">{report.author.role}</p>}
+              </DetailField>
+              <DetailField icon={MapPin} label="Area">
+                {report.area?.area ?? "-"}
+              </DetailField>
+              <DetailField icon={Layers3} label="Sub-area">
+                {report.sub_area?.name ?? "-"}
+              </DetailField>
+              <DetailField icon={FileText} label="Aktivitas">
+                <p className="font-medium">{mainActivity}</p>
+                {subActivity && <p className="mt-0.5 text-xs text-muted-foreground">Sub-aktivitas: {subActivity}</p>}
+              </DetailField>
+            </div>
+          </section>
 
-          <DetailField icon={StickyNote} label="Issue">
-            <p className="whitespace-pre-wrap break-words">{report.issue || "-"}</p>
-          </DetailField>
-
-          <DetailField icon={StickyNote} label="Notes">
-            <p className="whitespace-pre-wrap break-words">{report.activity || "-"}</p>
-          </DetailField>
+          <section className="rounded-xl border border-border bg-card px-4 py-3 sm:px-5">
+            <h4 className="mb-1 text-[15px] font-bold text-foreground">Detail isi laporan</h4>
+            <ReportContentRow icon={FileText} label="Kendala">
+              <p className="whitespace-pre-wrap break-words">{report.issue || "-"}</p>
+            </ReportContentRow>
+            <ReportContentRow icon={StickyNote} label="Catatan" divided>
+              <p className="whitespace-pre-wrap break-words">{report.activity || "-"}</p>
+            </ReportContentRow>
+          </section>
 
           {(report.photo_before || report.photo_after) && (
-            <DetailField icon={ImageIcon} label="Foto laporan">
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <ReportPhoto src={report.photo_before} label="Foto sebelum" />
-                <ReportPhoto src={report.photo_after} label="Foto setelah" />
+            <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
+              <h4 className="mb-3 text-[15px] font-bold text-foreground">Dokumentasi foto</h4>
+              <div className={`grid grid-cols-1 gap-4 ${report.photo_before && report.photo_after ? "sm:grid-cols-2" : ""}`}>
+                <ReportPhoto src={report.photo_before} label="Foto sebelum" showLabel={Boolean(report.photo_after)} />
+                <ReportPhoto src={report.photo_after} label="Foto setelah" showLabel={Boolean(report.photo_before)} />
               </div>
-            </DetailField>
+            </section>
           )}
 
           {report.status === "closed" && (
-            <DetailField icon={UserRound} label="Penyelesaian">
-              <p className="font-medium">Ditutup pada {formatDate(report.closed_at)}</p>
-              {report.closer && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Oleh {report.closer.name}
-                  {report.closer.role ? ` · ${report.closer.role}` : ""}
-                </p>
-              )}
-              {report.close_comment && <p className="mt-3 whitespace-pre-wrap break-words rounded-xl bg-muted/50 p-3 text-sm">{report.close_comment}</p>}
-            </DetailField>
+            <section className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 sm:p-5">
+              <DetailField icon={UserRound} label="Penyelesaian">
+                <p className="font-medium">Ditutup pada {formatDate(report.closed_at)}</p>
+                {report.closer && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Oleh {report.closer.name}
+                    {report.closer.role ? ` · ${report.closer.role}` : ""}
+                  </p>
+                )}
+                {report.close_comment && <p className="mt-3 whitespace-pre-wrap break-words rounded-xl bg-muted/50 p-3 text-sm">{report.close_comment}</p>}
+              </DetailField>
+            </section>
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-3 p-5 border-t border-border">
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border bg-card p-3 sm:px-6" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
           {report.can?.close && (
             <button
               onClick={() => {
                 onCloseTicket(report)
                 onClose()
               }}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold transition-colors"
+              className="min-h-11 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-700"
             >
-              Close Ticket
+              Selesaikan laporan
             </button>
           )}
           {isReportEditable(report) && (
@@ -312,9 +357,9 @@ function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onD
                 onEdit(report)
                 onClose()
               }}
-              className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg text-sm font-semibold transition-colors"
+              className="min-h-11 rounded-xl border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
             >
-              Edit
+              Ubah
             </button>
           )}
           {isReportDeletable(report) && (
@@ -323,9 +368,9 @@ function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onD
                 onDelete(report)
                 onClose()
               }}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors"
+              className="min-h-11 rounded-xl px-4 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50"
             >
-              Delete
+              Hapus
             </button>
           )}
         </div>
@@ -340,107 +385,98 @@ export default function Index({ reports = [], areas = [], activities = [], users
   const assignedAreas = areas.filter((area) => area.is_in_current_user_scope)
   const exportAreas = r.perms.canExportAll ? areas : r.perms.canExportArea ? assignedAreas : []
   const exportUsers = r.perms.canExportAll ? users : []
-  const areaOfAuthUser = assignedAreas[0]
 
   const statusOptions = [
-    { label: "All Statuses", value: "" },
-    { label: "Open", value: "open" },
-    { label: "Closed", value: "closed" },
+    { label: "Semua status", value: "" },
+    { label: "Terbuka", value: "open" },
+    { label: "Selesai", value: "closed" },
   ]
   const typeOptions = [{ label: "All Activities", value: "" }, ...activities.map((a) => ({ label: a.name, value: String(a.id) }))]
   const areaOptions = [{ label: "All Areas", value: "" }, ...areas.map((a) => ({ label: a.area, value: String(a.id) }))]
+  const visibleReportAreaIds = new Set(reports.map((report) => String(report.area_id)).filter(Boolean))
   const filterAreaOptions = r.perms.canViewAll
     ? areaOptions
-    : r.perms.canSolveOwnArea
-      ? [{ label: "All Assigned Areas", value: "" }, ...assignedAreas.map((a) => ({ label: a.area, value: String(a.id) }))]
-      : areaOptions
+    : [{ label: "Semua area yang dapat diakses", value: "" }, ...areas.filter((area) => visibleReportAreaIds.has(String(area.id))).map((area) => ({ label: area.area, value: String(area.id) }))]
+  const scopedAreaIds = new Set(filterAreaOptions.filter((option) => option.value).map((option) => String(option.value)))
+  const subAreaOptions = [
+    { label: "Semua sub-area", value: "" },
+    ...areas
+      .filter((area) => r.perms.canViewAll || scopedAreaIds.has(String(area.id)))
+      .flatMap((area) => area.sub_areas.map((subArea) => ({ label: `${area.area} / ${subArea.name}`, value: String(subArea.id) }))),
+  ]
+  const authorOptions = [
+    { label: "Semua pelapor", value: "" },
+    ...[...new Map(reports.filter((report) => report.author).map((report) => [report.author.id, { label: report.author.name, value: String(report.author.id) }])).values()].sort((left, right) =>
+      left.label.localeCompare(right.label, "id"),
+    ),
+  ]
+  const roleOptions = [{ label: "Semua role", value: "" }, ...[...new Set(reports.map((report) => report.author?.role).filter(Boolean))].sort().map((role) => ({ label: role, value: role }))]
 
   const { temp } = r
 
   return (
-    <AppLayout title="Report Lists">
+    <AppLayout title="Laporan">
       <Head>
-        <title>Reports</title>
+        <title>Laporan</title>
       </Head>
 
-      <div className="hidden sm:flex flex-col gap-5">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Report Lists</h1>
-            <p className="mt-1 text-[13px] text-muted-foreground">Manage and track all reports</p>
-          </div>
-          {r.perms.canCreate && (
-            <BtnDefault onClick={r.openCreateModal} size="md" className="gap-2 px-6 h-12 rounded-2xl shadow-sm min-w-[152px]">
-              <HiOutlinePlus className="w-4 h-4" />
-              New Issue
-            </BtnDefault>
-          )}
-        </div>
-
-        <div className="bg-card rounded-[28px] border border-border px-5 py-4 shadow-sm">
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="relative flex-1 min-w-[320px]">
-              <Search className="absolute left-5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search by issue, submitter, or activity..."
-                value={r.search}
-                onChange={(e) => {
-                  r.setSearch(e.target.value)
-                  r.setPage(1)
-                }}
-                className="h-12 w-full rounded-2xl border border-border bg-background pl-12 pr-4 text-[15px] text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/40 focus:ring-2 focus:ring-primary/10"
-              />
-            </div>
-            <BtnDefault outline onClick={r.openFilterModal} className="gap-2 h-12 rounded-2xl px-6 text-[14px] font-medium min-w-[102px]">
-              <SlidersHorizontal className="w-4 h-4" />
-              Filter
-              {r.hasActiveFilter && <span className="w-4 h-4 rounded-full border border-border bg-background text-foreground text-[10px] font-bold flex items-center justify-center">!</span>}
-            </BtnDefault>
-            {r.perms.canExport && (
-              <BtnDefault outline onClick={() => r.setIsExportModalOpen(true)} className="gap-2 h-12 px-6 rounded-2xl text-[14px] font-medium min-w-[176px]">
-                <File className="w-4 h-4" />
-                Export Dokumen
-              </BtnDefault>
-            )}
-          </div>
-          {r.hasActiveFilter && (
-            <div className="flex items-center gap-2 flex-wrap mt-3 pt-3 border-t border-border">
-              <span className="text-xs text-muted-foreground font-medium">Filters active</span>
-              <button onClick={r.resetAllFilters} className="text-xs text-primary font-semibold hover:underline ml-1">
-                Clear all
+      <div className="hidden xl:flex flex-col gap-5">
+        <PageHeader
+          title="Laporan"
+          mobileAction={
+            r.perms.canCreate ? (
+              <button
+                type="button"
+                onClick={r.openCreateModal}
+                aria-label="Buat laporan"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm outline-none transition-colors hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                <HiOutlinePlus className="h-5 w-5" />
               </button>
-            </div>
-          )}
-        </div>
+            ) : null
+          }
+          actions={
+            r.perms.canCreate ? (
+              <BtnDefault onClick={r.openCreateModal} size="lg" className="min-w-[152px] gap-2">
+                <HiOutlinePlus className="w-4 h-4" />
+                Buat Laporan
+              </BtnDefault>
+            ) : null
+          }
+        />
 
-        <div className="bg-card rounded-[28px] border border-border shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-border bg-background flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-500">
-                <FileText className="h-4 w-4" />
-              </div>
-              <h3 className="text-[15px] font-bold text-foreground">
-                Report <span>{areaOfAuthUser?.area ?? "Area"}</span>
-              </h3>
-            </div>
-            <PageSizeSelect
-              value={r.perPage}
-              onChange={(value) => {
-                r.setPerPage(value)
-                r.setPage(1)
-              }}
-              total={r.filtered.length}
-            />
-          </div>
+        <div className="ui-panel overflow-hidden">
+          <DataTableToolbar
+            search={r.search}
+            onSearchChange={(value) => {
+              r.setSearch(value)
+              r.setPage(1)
+            }}
+            searchPlaceholder="Cari kendala, pelapor, atau aktivitas..."
+            perPage={r.perPage}
+            onPerPageChange={(value) => {
+              r.setPerPage(value)
+              r.setPage(1)
+            }}
+            resultText={`${r.filtered.length} hasil`}
+            onMobileFilter={r.openFilterModal}
+            mobileFilterActive={r.hasActiveFilter}
+            actions={
+              <>
+                {r.perms.canExport && (
+                  <BtnDefault outline onClick={() => r.setIsExportModalOpen(true)} size="sm" className="gap-2">
+                    <File className="h-4 w-4" /> Ekspor
+                  </BtnDefault>
+                )}
+              </>
+            }
+          />
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <table className="ui-table">
               <thead>
-                <tr className="bg-background text-left border-b border-border">
-                  {["No", "Date", "Submitted By", "Area", "Issue", "Photo", "Type Activity", "Status", "Closed"].map((col) => (
-                    <th key={col} className="px-5 py-4 text-[11px] font-semibold text-muted-foreground tracking-[0.04em] uppercase whitespace-nowrap">
-                      {col}
-                    </th>
+                <tr>
+                  {["No", "Tanggal", "Pelapor", "Area", "Kendala", "Foto", "Aktivitas", "Status", "Selesai pada"].map((col) => (
+                    <th key={col}>{col}</th>
                   ))}
                 </tr>
               </thead>
@@ -448,7 +484,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
                 {r.paginated.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="py-16 text-center text-muted-foreground text-[13px]">
-                      No data found
+                      Laporan tidak ditemukan
                     </td>
                   </tr>
                 ) : (
@@ -476,8 +512,8 @@ export default function Index({ reports = [], areas = [], activities = [], users
                         <td className="px-5 py-4 min-w-[250px]">{report.issue && <RichText text={report.issue} maxLines={3} />}</td>
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-2">
-                            <TablePhotoPreview src={report.photo_before} label="Before" />
-                            {report.status === "closed" && <TablePhotoPreview src={report.photo_after} label="After" />}
+                            <TablePhotoPreview src={report.photo_before} label="Sebelum" />
+                            {report.status === "closed" && <TablePhotoPreview src={report.photo_after} label="Sesudah" />}
                           </div>
                         </td>
                         <td className="px-5 py-4 whitespace-nowrap">
@@ -498,7 +534,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
               </tbody>
             </table>
           </div>
-          <Pagination page={r.page} totalPages={r.totalPages} onChange={r.setPage} />
+          <Pagination page={r.page} totalPages={r.totalPages} onChange={r.setPage} total={r.filtered.length} perPage={r.perPage} />
         </div>
 
         <ReportDetailModal
@@ -514,74 +550,56 @@ export default function Index({ reports = [], areas = [], activities = [], users
         />
       </div>
 
-      <div className="flex sm:hidden flex-col gap-0 bg-background min-h-screen -mx-4 -mt-4">
-        <div className="sticky top-0 z-10 bg-card px-4 pt-4 pb-3 border-b border-border shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-[17px] font-bold text-foreground leading-tight">Report Lists</h2>
-              <p className="text-[12px] text-muted-foreground mt-0.5">Manage reports</p>
-            </div>
-            {r.perms.canCreate && (
-              <button onClick={r.openCreateModal} className="w-9 h-9 rounded-full border border-border bg-card flex items-center justify-center shadow-sm active:scale-95 transition-transform">
-                <HiOutlinePlus className="w-5 h-5 text-foreground" />
+      <div className="flex flex-col gap-4 bg-background xl:hidden">
+        <PageHeader
+          title="Laporan"
+          mobileAction={
+            r.perms.canCreate ? (
+              <button
+                type="button"
+                onClick={r.openCreateModal}
+                aria-label="Buat laporan"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm outline-none transition-colors hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                <HiOutlinePlus className="h-5 w-5" />
               </button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.35-4.35" strokeLinecap="round" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search reports..."
-                value={r.search}
-                onChange={(e) => {
-                  r.setSearch(e.target.value)
-                  r.setPage(1)
-                }}
-                className="w-full pl-9 pr-3 py-2 rounded-xl bg-muted text-[13px] text-foreground placeholder:text-muted-foreground border border-border outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            <button
-              onClick={r.openFilterSheet}
-              className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl border border-border bg-card text-[13px] font-medium text-foreground transition-colors"
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              Filter
-              {r.hasActiveFilter && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full border border-border bg-background text-foreground text-[10px] font-bold flex items-center justify-center">!</span>
-              )}
-            </button>
-            {r.perms.canExport && (
-              <button onClick={() => r.setIsExportModalOpen(true)} className="flex items-center px-3 py-2 rounded-xl border border-border bg-card text-muted-foreground transition-colors">
-                <FileDown className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-          {r.hasActiveFilter && (
-            <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-border">
-              <span className="text-[11px] text-muted-foreground">Filters active</span>
-              <button onClick={r.resetAllFilters} className="text-[11px] text-primary font-semibold">
-                Clear all
-              </button>
-            </div>
-          )}
+            ) : null
+          }
+          actions={
+            r.perms.canCreate ? (
+              <BtnDefault onClick={r.openCreateModal} className="w-full gap-2">
+                <HiOutlinePlus className="h-4 w-4" /> Buat Laporan
+              </BtnDefault>
+            ) : null
+          }
+        />
+        <div className="ui-panel overflow-hidden">
+          <DataTableToolbar
+            search={r.search}
+            onSearchChange={(value) => {
+              r.setSearch(value)
+              r.setPage(1)
+            }}
+            searchPlaceholder="Cari laporan..."
+            perPage={r.perPage}
+            onPerPageChange={(value) => {
+              r.setPerPage(value)
+              r.setPage(1)
+            }}
+            resultText={`${r.filtered.length} hasil`}
+            onMobileFilter={r.openFilterSheet}
+            mobileFilterActive={r.hasActiveFilter}
+            actions={
+              r.perms.canExport ? (
+                <BtnDefault outline onClick={() => r.setIsExportModalOpen(true)} size="sm" className="gap-2">
+                  <File className="h-4 w-4" /> Ekspor
+                </BtnDefault>
+              ) : null
+            }
+          />
         </div>
 
-        <div className="px-3 py-3 flex flex-col gap-2.5">
-          <div className="rounded-2xl border border-border bg-card px-3.5 py-3 shadow-sm">
-            <PageSizeSelect
-              value={r.perPage}
-              onChange={(value) => {
-                r.setPerPage(value)
-                r.setPage(1)
-              }}
-              total={r.filtered.length}
-              compact
-            />
-          </div>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           {r.paginated.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
               <div className="w-20 h-20 mb-4 opacity-30">
@@ -595,7 +613,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
               {r.perms.canCreate && (
                 <button
                   onClick={r.openCreateModal}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[13px] font-semibold shadow-md active:scale-95 transition-transform"
+                  className="flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-[13px] font-semibold text-primary-foreground transition-colors hover:bg-blue-700"
                 >
                   <HiOutlinePlus className="w-4 h-4" />
                   Buat Laporan Baru
@@ -616,7 +634,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
           )}
         </div>
 
-        <Pagination page={r.page} totalPages={r.totalPages} onChange={r.setPage} center />
+        <Pagination page={r.page} totalPages={r.totalPages} onChange={r.setPage} total={r.filtered.length} perPage={r.perPage} />
 
         <ReportDetailModal
           report={r.selectedReport}
@@ -632,9 +650,12 @@ export default function Index({ reports = [], areas = [], activities = [], users
       </div>
 
       <ModalOverlay isOpen={r.isFilterModalOpen} onClose={() => r.setIsFilterModalOpen(false)}>
-        <div className="bg-card rounded-2xl border border-border shadow-2xl w-full max-w-[520px] max-h-[90vh] flex flex-col">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-            <h2 className="text-base font-bold text-foreground">Filter Reports</h2>
+        <div className="flex max-h-[90dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl border border-border bg-card shadow-2xl sm:rounded-2xl">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4 shrink-0">
+            <div>
+              <h2 className="text-lg font-bold tracking-tight text-foreground">Atur tampilan</h2>
+              <p className="mt-1 text-xs text-muted-foreground">Temukan laporan yang ingin diperiksa.</p>
+            </div>
             <button
               onClick={() => r.setIsFilterModalOpen(false)}
               className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
@@ -642,45 +663,68 @@ export default function Index({ reports = [], areas = [], activities = [], users
               <HiOutlineX className="w-4 h-4" />
             </button>
           </div>
-          <div className="px-6 py-5 overflow-y-auto flex-1">
-            <FilterFields temp={temp} statusOptions={statusOptions} filterAreaOptions={filterAreaOptions} typeOptions={typeOptions} />
+          <div className="flex-1 overflow-y-auto bg-slate-50/50 px-5 py-5">
+            <FilterFields
+              temp={temp}
+              statusOptions={statusOptions}
+              filterAreaOptions={filterAreaOptions}
+              typeOptions={typeOptions}
+              subAreaOptions={subAreaOptions}
+              authorOptions={authorOptions}
+              roleOptions={roleOptions}
+              canFilterReporter={r.perms.canViewAll}
+              canToggleOwn={r.perms.canViewAll || r.perms.canReviewArea || r.perms.canSolveOwnArea}
+            />
           </div>
-          <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border bg-muted/20 shrink-0">
-            <BtnDefault outline onClick={r.resetTempFilter} className="h-9 px-5 rounded-xl text-sm">
+          <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-border bg-card px-5 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.04)]">
+            <BtnDefault outline onClick={r.resetTempFilter} className="min-h-12 rounded-xl text-sm">
               Reset
             </BtnDefault>
-            <BtnDefault onClick={r.applyFilterModal} className="h-9 px-5 rounded-xl text-sm">
-              Apply Filter
+            <BtnDefault onClick={r.applyFilterModal} className="min-h-12 rounded-xl text-sm">
+              Tampilkan hasil
             </BtnDefault>
           </div>
         </div>
       </ModalOverlay>
 
       {r.isFilterSheetOpen && (
-        <div className={`fixed inset-0 ${LAYERS.modal} sm:hidden`}>
-          <button type="button" aria-label="Tutup filter" className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => r.setIsFilterSheetOpen(false)} />
+        <div className={`fixed inset-0 ${LAYERS.modal} xl:hidden`}>
+          <button type="button" aria-label="Tutup filter" className="absolute inset-0 bg-slate-950/55" onClick={() => r.setIsFilterSheetOpen(false)} />
           <div
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl max-h-[88vh] flex flex-col"
+            className="absolute bottom-0 left-0 right-0 flex max-h-[88vh] flex-col rounded-t-xl border-t border-gray-200 bg-white shadow-lg"
             style={{ "--foreground": "#111827", "--muted-foreground": "#9ca3af", "--border": "#e5e7eb", "--background": "#ffffff", "--primary": "#2563eb", "--primary-foreground": "#ffffff" }}
           >
             <div className="flex items-center justify-center pt-3 pb-1 shrink-0">
               <div className="w-10 h-1 bg-gray-200 rounded-full" />
             </div>
             <div className="flex items-center justify-between px-5 pt-2 pb-3 border-b border-gray-100 shrink-0">
-              <h3 className="text-[17px] font-bold text-gray-900">Filter Reports</h3>
+              <div>
+                <h3 className="text-[17px] font-bold text-gray-900">Atur tampilan</h3>
+                <p className="mt-0.5 text-xs text-gray-500">Temukan laporan yang ingin diperiksa.</p>
+              </div>
               <button onClick={() => r.setIsFilterSheetOpen(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
                 <HiOutlineX className="w-4 h-4" />
               </button>
             </div>
-            <div className="px-5 py-4 overflow-y-auto flex-1">
-              <FilterFields temp={temp} statusOptions={statusOptions} filterAreaOptions={filterAreaOptions} typeOptions={typeOptions} />
+            <div className="flex-1 overflow-y-auto bg-slate-50/70 px-5 py-5">
+              <FilterFields
+                temp={temp}
+                statusOptions={statusOptions}
+                filterAreaOptions={filterAreaOptions}
+                typeOptions={typeOptions}
+                subAreaOptions={subAreaOptions}
+                authorOptions={authorOptions}
+                roleOptions={roleOptions}
+                canFilterReporter={r.perms.canViewAll}
+                canToggleOwn={r.perms.canViewAll || r.perms.canReviewArea || r.perms.canSolveOwnArea}
+              />
             </div>
             <div className="flex gap-3 px-5 py-4 border-t border-gray-100 shrink-0">
               <button onClick={r.resetTempFilter} className="flex-1 py-3.5 rounded-2xl border border-gray-200 text-[14px] font-semibold text-gray-700 active:bg-gray-50 transition-colors">
                 Reset
               </button>
               <button onClick={r.applyFilterSheet} className="flex-1 py-3.5 rounded-2xl bg-blue-600 text-white text-[14px] font-semibold shadow-md active:bg-blue-700 transition-colors">
-                Apply Filter
+                Tampilkan hasil
               </button>
             </div>
           </div>

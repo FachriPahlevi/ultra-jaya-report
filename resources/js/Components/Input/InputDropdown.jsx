@@ -7,7 +7,7 @@ export default function InputDropdown({
   itemList = [],
   required = false,
   defaultValue = "",
-  placeholder = "Select an option",
+  placeholder = "Pilih opsi",
   setObjectGroup,
   setObject,
   object,
@@ -68,7 +68,7 @@ export default function InputDropdown({
   return (
     <div className="w-full flex flex-col gap-1.5 relative">
       {label && (
-        <label className="text-[13px] font-semibold text-foreground">
+        <label htmlFor={componentId || id} className="ui-label">
           {label} {required && <span className="text-destructive">*</span>}
         </label>
       )}
@@ -82,15 +82,11 @@ export default function InputDropdown({
           type="button"
           onClick={handleSelectClick}
           disabled={disabled}
+          aria-expanded={showDropdown}
+          aria-haspopup="listbox"
           className={`
-                        w-full h-10 px-3.5 rounded-xl text-[13.5px] text-left flex items-center justify-between gap-2
-                        border transition-all duration-150 outline-none
+                        ui-field flex items-center justify-between gap-2 text-left
                         ${iconSrc ? "pl-9" : ""}
-                        ${
-                          disabled
-                            ? "bg-muted text-muted-foreground cursor-not-allowed border-border"
-                            : "bg-card text-foreground border-border hover:border-primary/40 focus:border-primary focus:ring-2 focus:ring-primary/10"
-                        }
                         ${error ? "border-destructive focus:border-destructive focus:ring-destructive/10" : ""}
                         ${showDropdown ? "border-primary ring-2 ring-primary/10" : ""}
                     `}
@@ -100,17 +96,19 @@ export default function InputDropdown({
         </button>
 
         {showDropdown && (
-          <div className="absolute z-50 w-full mt-1.5 bg-card border border-border rounded-xl shadow-lg overflow-hidden">
+          <div className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-lg border border-border bg-card shadow-md" role="listbox">
             <div className="max-h-[250px] overflow-y-auto overscroll-contain">
               {itemList.length === 0 ? (
-                <div className="px-4 py-3 text-[13px] text-muted-foreground text-center">No options available</div>
+                <div className="px-4 py-3 text-center text-[13px] text-muted-foreground">Pilihan tidak tersedia</div>
               ) : (
                 itemList.map((item, index) => {
                   const isSelected = displayValue === item.value
                   return (
                     <button
-                      key={index}
+                      key={`${item.value}-${index}`}
                       type="button"
+                      role="option"
+                      aria-selected={isSelected}
                       onClick={() => handleOptionClick(item)}
                       className={`w-full text-left px-4 py-2.5 text-[13.5px] transition-colors duration-100 ${
                         isSelected ? "bg-primary/10 text-primary font-semibold" : "text-foreground hover:bg-muted"
@@ -126,7 +124,11 @@ export default function InputDropdown({
         )}
       </div>
 
-      {error && <p className="text-[11.5px] text-destructive">{error}</p>}
+      {error && (
+        <p className="ui-error" role="alert">
+          {error}
+        </p>
+      )}
     </div>
   )
 }

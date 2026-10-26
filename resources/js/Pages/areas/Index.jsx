@@ -10,6 +10,7 @@ import AreaListSection from "./components/AreaListSection"
 import AreaFormModal from "./components/AreaFormModal"
 import SubAreaFormModal from "./components/SubAreaFormModal"
 import { useAuthorization } from "@/hooks/useAuthorization"
+import PageHeader from "@/Components/Layout/PageHeader"
 
 const INITIAL_FORM = {
   name: "",
@@ -21,7 +22,7 @@ function buildAreaForm(area) {
   }
 }
 
-export default function Index({ areas = { data: [], links: [], meta: {} } }) {
+export default function Index({ areas = { data: [], links: [], meta: {} }, filters = {} }) {
   const { can } = useAuthorization()
   const { setStatusModalProps } = useStatusModal()
   const [showModal, setShowModal] = useState(false)
@@ -33,11 +34,26 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
   const [subAreaArea, setSubAreaArea] = useState(null)
   const [subAreaName, setSubAreaName] = useState("")
   const [subAreaError, setSubAreaError] = useState("")
+  const [listSearch, setListSearch] = useState(filters.search ?? "")
 
   const canAdd = can("areas.create")
   const canEdit = can("areas.edit")
   const canDelete = can("areas.delete")
-  const totalAreas = areas.meta?.total ?? areas.data.length
+  const perPage = Number(filters.per_page ?? 10)
+
+  useEffect(() => {
+    if (listSearch === (filters.search ?? "")) return undefined
+
+    const timeoutId = window.setTimeout(() => {
+      router.get(route("areas.index"), { search: listSearch, per_page: perPage }, { preserveState: true, preserveScroll: true, replace: true })
+    }, 350)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [filters.search, listSearch, perPage])
+
+  const handlePerPageChange = (value) => {
+    router.get(route("areas.index"), { search: listSearch, per_page: value }, { preserveState: true, preserveScroll: true, replace: true })
+  }
   useEffect(() => {
     if (showModal && editTarget) {
       setForm(buildAreaForm(editTarget))
@@ -282,23 +298,35 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
         <title>Master Area</title>
       </Head>
       <div className="flex flex-col gap-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Master Area</h1>
-          </div>
-          {canAdd && (
-            <BtnDefault onClick={openAdd} size="md" className="h-11 min-w-[140px] gap-2 rounded-2xl px-5 shadow-none">
-              <HiOutlinePlus className="h-4 w-4" />
-              Add Area
-            </BtnDefault>
-          )}
-        </div>
+        <PageHeader
+          title="Area"
+          mobileAction={
+            canAdd ? (
+              <button
+                type="button"
+                onClick={openAdd}
+                aria-label="Tambah area"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm outline-none transition-colors hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                <HiOutlinePlus className="h-5 w-5" />
+              </button>
+            ) : null
+          }
+          actions={
+            canAdd ? (
+              <BtnDefault onClick={openAdd} size="md" className="w-full gap-2 sm:w-fit sm:min-w-[140px]">
+                <HiOutlinePlus className="h-4 w-4" />
+                Tambah Area
+              </BtnDefault>
+            ) : null
+          }
+        />
 
         <AreaListSection
           areas={areas}
-          totalAreas={totalAreas}
           canEdit={canEdit}
           canDelete={canDelete}
+          canViewArchived={can("areas.view.all") || canDelete}
           onEdit={openEdit}
           onAddSubArea={openSubAreaModal}
           onEditSubArea={openSubAreaModal}
@@ -306,6 +334,10 @@ export default function Index({ areas = { data: [], links: [], meta: {} } }) {
           onArchive={confirmDelete}
           onRestore={confirmRestore}
           onForceDelete={confirmForceDelete}
+          search={listSearch}
+          onSearchChange={setListSearch}
+          perPage={perPage}
+          onPerPageChange={handlePerPageChange}
         />
       </div>
 

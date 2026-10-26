@@ -1,5 +1,5 @@
 import { getRequestErrorMessage } from "@/lib/errorMessages"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Head, router } from "@inertiajs/react"
 import http from "@/lib/http"
 import AppLayout from "@/Layouts/AppLayout"
@@ -9,6 +9,7 @@ import { HiOutlinePlus } from "react-icons/hi"
 import ActivityListSection from "./components/ActivityListSection"
 import ActivityFormModal from "./components/ActivityFormModal"
 import { useAuthorization } from "@/hooks/useAuthorization"
+import PageHeader from "@/Components/Layout/PageHeader"
 
 const INITIAL_FORM = {
   name: "",
@@ -18,7 +19,7 @@ const INITIAL_FORM = {
   sub_activities: [{ name: "", description: "" }],
 }
 
-export default function Index({ activities = { data: [], links: [], meta: {} }, parentActivities = [], activityTotals = { all: 0 } }) {
+export default function Index({ activities = { data: [], links: [], meta: {} }, parentActivities = [], filters = {} }) {
   const { can } = useAuthorization()
   const { setStatusModalProps } = useStatusModal()
   const canAdd = can("activities.create")
@@ -31,9 +32,24 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
   const [form, setForm] = useState(INITIAL_FORM)
   const [errors, setErrors] = useState({})
   const [isBulkSubMode, setIsBulkSubMode] = useState(false)
+  const [listSearch, setListSearch] = useState(filters.search ?? "")
 
-  const totalActivities = activityTotals.all || activities.meta?.total || activities.data.length
   const parentOptions = parentActivities.filter((item) => !editTarget || item.id !== editTarget.id).map((item) => ({ label: item.name, value: String(item.id) }))
+  const perPage = Number(filters.per_page ?? 10)
+
+  useEffect(() => {
+    if (listSearch === (filters.search ?? "")) return undefined
+
+    const timeoutId = window.setTimeout(() => {
+      router.get(route("activities.index"), { search: listSearch, per_page: perPage }, { preserveState: true, preserveScroll: true, replace: true })
+    }, 350)
+
+    return () => window.clearTimeout(timeoutId)
+  }, [filters.search, listSearch, perPage])
+
+  const handlePerPageChange = (value) => {
+    router.get(route("activities.index"), { search: listSearch, per_page: value }, { preserveState: true, preserveScroll: true, replace: true })
+  }
 
   const showStatusModal = (type, title, message) => {
     setStatusModalProps({
@@ -53,12 +69,12 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
     if (error.response?.status === 422) {
       const payloadErrors = error.response.data.errors || {}
       setErrors(payloadErrors)
-      showStatusModal("error", "Validation Error", getRequestErrorMessage(error))
+      showStatusModal("error", "Validasi Gagal", getRequestErrorMessage(error))
       return
     }
 
     const errorMessage = getRequestErrorMessage(error)
-    showStatusModal("error", "Error", errorMessage)
+    showStatusModal("error", "Terjadi Kesalahan", errorMessage)
   }
 
   const openAdd = (parentActivity = null) => {
@@ -151,10 +167,10 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
     try {
       if (editTarget) {
         await http.put(`/activities/${editTarget.id}`, submitData)
-        showStatusModal("success", "Success", `Activity "${form.name}" has been updated`)
+        showStatusModal("success", "Berhasil", `Aktivitas “${form.name}” berhasil diperbarui.`)
       } else {
         await http.post("/activities", submitData)
-        showStatusModal("success", "Success", `Activity "${form.name}" has been created`)
+        showStatusModal("success", "Berhasil", `Aktivitas “${form.name}” berhasil dibuat.`)
       }
 
       reloadActivities()
@@ -170,18 +186,18 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
     setStatusModalProps({
       isOpen: true,
       type: "warning",
-      title: "Delete Activity",
+      title: "Hapus Aktivitas",
       message:
         activity.children_count > 0
-          ? `Activity "${activity.name}" still has ${activity.children_count} sub activities. Remove or move them first.`
-          : `Activity "${activity.name}" will be removed from the directory.`,
+          ? `Aktivitas “${activity.name}” masih memiliki ${activity.children_count} sub-aktivitas. Hapus atau pindahkan sub-aktivitas terlebih dahulu.`
+          : `Aktivitas “${activity.name}” akan dihapus dari daftar.`,
       button1: {
-        text: "Delete",
+        text: "Hapus",
         variant: "danger",
         onClick: () => {
           router.delete(`/activities/${activity.id}`, {
             onSuccess: () => {
-              showStatusModal("success", "Success", `Activity "${activity.name}" has been deleted`)
+              showStatusModal("success", "Berhasil", `Aktivitas “${activity.name}” berhasil dihapus.`)
               reloadActivities()
             },
             onError: (error) => {
@@ -190,20 +206,20 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
           })
         },
       },
-      button2: { text: "Cancel" },
+      button2: { text: "Batal" },
     })
   }
 
   if (!activities || !activities.data) {
     return (
-      <AppLayout title="Master Activity">
+      <AppLayout title="Aktivitas">
         <Head>
-          <title>Master Activity</title>
+          <title>Aktivitas</title>
         </Head>
         <div className="flex h-64 items-center justify-center">
           <div className="text-center">
             <div className="mx-auto h-12 w-12 animate-spin rounded-full border-b-2 border-primary"></div>
-            <p className="mt-4 text-muted-foreground">Loading...</p>
+            <p className="mt-4 text-muted-foreground">Memuat...</p>
           </div>
         </div>
       </AppLayout>
@@ -211,23 +227,48 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
   }
 
   return (
-    <AppLayout title="Master Activity">
+    <AppLayout title="Aktivitas">
       <Head>
-        <title>Master Activity</title>
+        <title>Aktivitas</title>
       </Head>
 
       <div className="flex flex-col gap-5">
-        <div className="flex items-center justify-between gap-4">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Master Activity</h1>
-          {canAdd && (
-            <BtnDefault onClick={() => openAdd()} size="md" className="h-11 min-w-[132px] gap-2 rounded-2xl px-4 shadow-none sm:min-w-[148px] sm:px-5">
-              <HiOutlinePlus className="h-5 w-5" />
-              Add Activity
-            </BtnDefault>
-          )}
-        </div>
+        <PageHeader
+          title="Aktivitas"
+          mobileAction={
+            canAdd ? (
+              <button
+                type="button"
+                onClick={() => openAdd()}
+                aria-label="Tambah aktivitas"
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm outline-none transition-colors hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              >
+                <HiOutlinePlus className="h-5 w-5" />
+              </button>
+            ) : null
+          }
+          actions={
+            canAdd ? (
+              <BtnDefault onClick={() => openAdd()} size="md" className="w-full gap-2 sm:w-fit sm:min-w-[148px]">
+                <HiOutlinePlus className="h-5 w-5" />
+                Tambah Aktivitas
+              </BtnDefault>
+            ) : null
+          }
+        />
 
-        <ActivityListSection activities={activities} totalActivities={totalActivities} canEdit={canEdit} canDelete={canDelete} onAddSub={openAdd} onEdit={openEdit} onDelete={confirmDelete} />
+        <ActivityListSection
+          activities={activities}
+          canEdit={canEdit}
+          canDelete={canDelete}
+          onAddSub={openAdd}
+          onEdit={openEdit}
+          onDelete={confirmDelete}
+          search={listSearch}
+          onSearchChange={setListSearch}
+          perPage={perPage}
+          onPerPageChange={handlePerPageChange}
+        />
       </div>
 
       <ActivityFormModal

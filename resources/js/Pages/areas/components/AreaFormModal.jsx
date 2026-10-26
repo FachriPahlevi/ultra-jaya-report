@@ -6,7 +6,7 @@ import { HiOutlineX } from "react-icons/hi"
 export default function AreaFormModal({ isOpen, onClose, onSubmit, editTarget, form, errors, processing, onFieldChange }) {
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
-      <div className="w-full max-w-[560px] rounded-[28px] border border-border bg-card shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-[560px] overflow-y-auto rounded-t-xl border border-border bg-card shadow-lg sm:rounded-xl">
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-5">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{editTarget ? "Update Area" : "Create Area"}</p>

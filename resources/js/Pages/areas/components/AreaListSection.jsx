@@ -1,11 +1,38 @@
+import { Fragment, useEffect, useMemo, useState } from "react"
 import { router } from "@inertiajs/react"
-import BtnDefault from "@/Components/Button/BtnDefault"
-import { HiOutlinePencil, HiOutlineTrash } from "react-icons/hi"
-import { Building2, FileText, RotateCcw, Trash2 } from "lucide-react"
+import { HiChevronDown, HiChevronRight, HiOutlinePencil, HiOutlinePlus, HiOutlineTrash } from "react-icons/hi"
+import { Building2, RotateCcw, Search, SlidersHorizontal, Trash2, X } from "lucide-react"
+import ServerPagination from "@/Components/Navigation/ServerPagination"
+import ModalOverlay from "@/Components/Modal/ModalOverlay"
+import FilterChoiceGroup from "@/Components/Table/FilterChoiceGroup"
+import FilterSelectField from "@/Components/Table/FilterSelectField"
 
-const AREA_TABLE_COLUMNS = ["No", "Area Name", "Sub-area & Supervisor", "Manager Area", "Actions"]
+const SORT_OPTIONS = [
+  ["latest", "Terbaru"],
+  ["name-asc", "Nama A–Z"],
+  ["name-desc", "Nama Z–A"],
+  ["sub-area-desc", "Sub-area terbanyak"],
+  ["sub-area-asc", "Sub-area tersedikit"],
+  ["manager-desc", "Manager terbanyak"],
+  ["manager-asc", "Manager tersedikit"],
+]
+const MANAGER_OPTIONS = [
+  ["all", "Semua"],
+  ["assigned", "Ada manager"],
+  ["unassigned", "Belum ada manager"],
+]
+const SUB_AREA_OPTIONS = [
+  ["all", "Semua"],
+  ["available", "Ada sub-area"],
+  ["empty", "Tanpa sub-area"],
+]
+const ARCHIVE_OPTIONS = [
+  ["all", "Semua"],
+  ["active", "Aktif"],
+  ["archived", "Diarsipkan"],
+]
 
-function getUserInitials(name = "") {
+function initials(name = "") {
   return name
     .split(" ")
     .filter(Boolean)
@@ -15,266 +42,407 @@ function getUserInitials(name = "") {
     .toUpperCase()
 }
 
-function AreaManagers({ managers = [], compact = false }) {
-  if (!managers.length) {
-    return <span className="text-[12px] text-muted-foreground">Belum ada manager ditugaskan</span>
-  }
-
+function ExpandButton({ expanded, onClick, label }) {
   return (
-    <div className={`flex flex-wrap items-center gap-2 ${compact ? "max-w-full" : ""}`}>
-      {managers.map((manager) => (
-        <div key={manager.id} className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-2.5 py-1.5">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[11px] font-semibold text-foreground">{getUserInitials(manager.name)}</span>
-          <span className="text-[12px] font-medium text-foreground">{manager.name}</span>
-        </div>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-expanded={expanded}
+      aria-label={`${expanded ? "Tutup" : "Buka"} detail ${label}`}
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-500 outline-none transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1"
+    >
+      {expanded ? <HiChevronDown className="h-5 w-5" /> : <HiChevronRight className="h-5 w-5" />}
+    </button>
+  )
+}
+
+function People({ people = [], emptyText, compact = false }) {
+  if (!people.length) return <span className="text-xs text-slate-500">{emptyText}</span>
+  return (
+    <div className="flex min-w-0 flex-wrap gap-1.5">
+      {people.map((person) => (
+        <span key={person.id} className={`inline-flex max-w-full items-center gap-1.5 rounded-full bg-slate-100 text-slate-700 ${compact ? "px-2 py-1 text-[11px]" : "px-2.5 py-1.5 text-xs"}`}>
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[9px] font-bold ring-1 ring-slate-200">{initials(person.name)}</span>
+          <span className="truncate font-medium">{person.name}</span>
+        </span>
       ))}
     </div>
   )
 }
 
-function SubAreaAssignments({ area, subAreas = [], canEdit, onAdd, onEdit, onDelete }) {
-  if (!subAreas.length) {
-    return canEdit ? (
-      <button type="button" onClick={() => onAdd(area)} className="text-[12px] font-medium text-primary hover:underline">
-        Tambah sub-area
-      </button>
-    ) : (
-      <span className="text-[12px] text-muted-foreground">Belum ada sub-area</span>
-    )
-  }
-
+function IconAction({ label, danger = false, children, ...props }) {
   return (
-    <div className="grid min-w-[280px] gap-2">
-      {subAreas.map((subArea) => (
-        <div key={subArea.id} className="rounded-xl border border-border bg-background px-3 py-2">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-[12px] font-semibold text-foreground">{subArea.name}</p>
-            {canEdit && (
-              <div className="flex gap-1">
-                <button type="button" onClick={() => onEdit(area, subArea)} className="text-[11px] font-medium text-muted-foreground hover:text-foreground">
-                  Ubah
-                </button>
-                <button type="button" onClick={() => onDelete(area, subArea)} className="text-[11px] font-medium text-red-600 hover:text-red-700">
-                  Hapus
-                </button>
-              </div>
-            )}
-          </div>
-          <p className="mt-1 text-[11px] text-muted-foreground">{subArea.supervisors?.length ? subArea.supervisors.map((supervisor) => supervisor.name).join(", ") : "Belum ada supervisor"}</p>
-        </div>
-      ))}
-      {canEdit && (
-        <button type="button" onClick={() => onAdd(area)} className="rounded-xl border border-dashed border-border px-3 py-2 text-left text-[12px] font-medium text-primary hover:bg-muted/40">
-          + Tambah sub-area
-        </button>
-      )}
-    </div>
-  )
-}
-
-function AreaActionButton({ children, tone = "default", className = "", ...props }) {
-  const tones = {
-    default: "border-border bg-background text-foreground hover:bg-muted/50",
-    subtle: "border-transparent bg-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-    danger: "border-transparent bg-transparent text-red-600 hover:bg-red-50 hover:text-red-700",
-  }
-
-  return (
-    <button {...props} className={`inline-flex h-8 items-center justify-center rounded-lg border px-2.5 text-[12px] font-medium transition-colors ${tones[tone]} ${className}`}>
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      {...props}
+      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-slate-400 ${danger ? "text-red-600 hover:bg-red-50" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}
+    >
       {children}
     </button>
   )
 }
 
-function AreaActions({ area, canEdit, canDelete, onEdit, onArchive, onRestore, onForceDelete, mobile = false }) {
-  const iconButtonClass = mobile ? "h-8 w-8 px-0" : "px-2"
-
-  if (area.deleted_at) {
+function AreaActions({ area, canEdit, canDelete, onEdit, onArchive, onRestore, onForceDelete }) {
+  if (area.deleted_at)
     return (
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex shrink-0">
         {canDelete && (
           <>
-            <AreaActionButton onClick={() => onRestore(area)} tone="subtle" title="Restore" className={iconButtonClass}>
-              {mobile ? (
-                <RotateCcw className="h-4 w-4" />
-              ) : (
-                <>
-                  <RotateCcw className="mr-1.5 h-4 w-4" />
-                  Restore
-                </>
-              )}
-            </AreaActionButton>
-            <AreaActionButton onClick={() => onForceDelete(area)} tone="danger" title="Delete Permanently" className={iconButtonClass}>
-              {mobile ? (
-                <Trash2 className="h-4 w-4" />
-              ) : (
-                <>
-                  <Trash2 className="mr-1.5 h-4 w-4" />
-                  Delete
-                </>
-              )}
-            </AreaActionButton>
+            <IconAction label="Pulihkan area" onClick={() => onRestore(area)}>
+              <RotateCcw className="h-4 w-4" />
+            </IconAction>
+            <IconAction label="Hapus permanen" danger onClick={() => onForceDelete(area)}>
+              <Trash2 className="h-4 w-4" />
+            </IconAction>
           </>
         )}
       </div>
     )
-  }
-
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex shrink-0">
       {canEdit && (
-        <AreaActionButton onClick={() => onEdit(area)} tone="subtle" title="Edit" className={iconButtonClass}>
-          {mobile ? (
-            <HiOutlinePencil className="h-4 w-4" />
-          ) : (
-            <>
-              <HiOutlinePencil className="mr-1.5 h-4 w-4" />
-              Edit
-            </>
-          )}
-        </AreaActionButton>
+        <IconAction label="Ubah area" onClick={() => onEdit(area)}>
+          <HiOutlinePencil className="h-4 w-4" />
+        </IconAction>
       )}
       {canDelete && (
-        <AreaActionButton onClick={() => onArchive(area)} tone="danger" title="Hapus" className={iconButtonClass}>
-          {mobile ? (
-            <HiOutlineTrash className="h-4 w-4" />
-          ) : (
-            <>
-              <HiOutlineTrash className="mr-1.5 h-4 w-4" />
-              Hapus
-            </>
-          )}
-        </AreaActionButton>
+        <IconAction label="Hapus area" danger onClick={() => onArchive(area)}>
+          <HiOutlineTrash className="h-4 w-4" />
+        </IconAction>
       )}
     </div>
   )
 }
 
-function AreaPagination({ links = [] }) {
-  if (links.length <= 3) return null
-
+function SubActions({ area, subArea, canEdit, onEditSubArea, onDeleteSubArea }) {
+  if (!canEdit) return null
   return (
-    <div className="flex flex-wrap items-center gap-2 border-t border-border px-4 py-4 sm:px-6">
-      {links.map((link, idx) => (
-        <BtnDefault key={idx} size="sm" outline={!link.active} disabled={!link.url} onClick={() => link.url && router.visit(link.url)} className="min-w-[36px] rounded-xl px-2.5">
-          <span dangerouslySetInnerHTML={{ __html: link.label }} />
-        </BtnDefault>
-      ))}
+    <div className="flex shrink-0">
+      <IconAction label={`Ubah ${subArea.name}`} onClick={() => onEditSubArea(area, subArea)}>
+        <HiOutlinePencil className="h-4 w-4" />
+      </IconAction>
+      <IconAction label={`Hapus ${subArea.name}`} danger onClick={() => onDeleteSubArea(area, subArea)}>
+        <HiOutlineTrash className="h-4 w-4" />
+      </IconAction>
     </div>
   )
 }
 
-function AreaEmptyState() {
+function ParentRow({ area, expanded, onToggle, ...actions }) {
   return (
-    <div className="rounded-2xl border border-border bg-card px-6 py-16 text-center shadow-sm">
-      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-background text-muted-foreground">
-        <Building2 className="h-6 w-6" />
-      </div>
-      <p className="text-[16px] font-semibold text-foreground">No areas found</p>
-      <p className="mt-1 text-[13px] text-muted-foreground">Area data will appear here after it is created.</p>
-    </div>
-  )
-}
-
-function AreaDesktopTable({ areas, totalAreas, canEdit, canDelete, onEdit, onAddSubArea, onEditSubArea, onDeleteSubArea, onArchive, onRestore, onForceDelete }) {
-  return (
-    <div className="hidden overflow-hidden rounded-[28px] border border-border bg-card shadow-sm sm:block">
-      <div className="flex items-center justify-between gap-3 border-b border-border px-6 py-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-muted/30 text-muted-foreground">
-            <FileText className="h-4 w-4" />
+    <tr className={expanded ? "bg-blue-50/30" : "bg-white"}>
+      <td>
+        <div className="flex min-w-[260px] items-start gap-2">
+          <ExpandButton expanded={expanded} onClick={onToggle} label={area.area} />
+          <div className="min-w-0 pt-1.5">
+            <p className="text-[15px] font-semibold leading-5 text-slate-900">{area.area}</p>
+            <p className="mt-1 text-xs font-medium text-slate-500">{area.sub_areas.length} sub-area</p>
           </div>
-          <h3 className="text-[15px] font-bold text-foreground">Area Directory</h3>
         </div>
-        <span className="text-[12px] font-medium text-muted-foreground">{totalAreas} records</span>
-      </div>
+      </td>
+      <td>
+        <People people={area.managers} emptyText="Belum ada manager" />
+      </td>
+      <td>
+        <div className="flex justify-end">
+          <AreaActions area={area} {...actions} />
+        </div>
+      </td>
+    </tr>
+  )
+}
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-b border-border text-left">
-              {AREA_TABLE_COLUMNS.map((col) => (
-                <th key={col} className="px-6 py-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground whitespace-nowrap">
-                  {col}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/60">
-            {areas.data.length === 0 ? (
-              <tr>
-                <td colSpan="5" className="py-16 text-center text-[13px] text-muted-foreground">
-                  No areas found
-                </td>
-              </tr>
+function ChildRow({ area, subArea, ...actions }) {
+  return (
+    <tr className="bg-slate-50/70">
+      <td>
+        <div className="flex min-w-[260px] items-start gap-3 pl-[52px]">
+          <span className="mt-2 h-2 w-2 shrink-0 rounded-full border-2 border-white bg-slate-400 ring-1 ring-slate-300" />
+          <div>
+            <p className="text-sm font-semibold text-slate-800">{subArea.name}</p>
+            <p className="mt-1 text-xs text-slate-500">Sub-area</p>
+          </div>
+        </div>
+      </td>
+      <td>
+        <People people={subArea.supervisors} emptyText="Belum ada supervisor" compact />
+      </td>
+      <td>
+        <div className="flex justify-end">
+          <SubActions area={area} subArea={subArea} {...actions} />
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+function DesktopList({ areas, expandedIds, onToggle, onAddSubArea, ...actions }) {
+  return (
+    <div className="hidden overflow-x-auto xl:block">
+      <table className="ui-table min-w-[900px]">
+        <thead>
+          <tr>
+            <th className="w-[42%]">Area &amp; Sub-area</th>
+            <th>Penanggung Jawab</th>
+            <th>
+              <span className="sr-only">Aksi</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {areas.map((area) => (
+            <Fragment key={area.id}>
+              <ParentRow area={area} expanded={expandedIds.has(area.id)} onToggle={() => onToggle(area.id)} {...actions} />
+              {expandedIds.has(area.id) && (
+                <>
+                  {area.sub_areas.map((subArea) => (
+                    <ChildRow key={subArea.id} area={area} subArea={subArea} {...actions} />
+                  ))}
+                  {!area.sub_areas.length && (
+                    <tr className="bg-slate-50/70">
+                      <td colSpan="3" className="pl-[76px] text-sm text-slate-500">
+                        Belum ada sub-area.
+                      </td>
+                    </tr>
+                  )}
+                  {actions.canEdit && !area.deleted_at && (
+                    <tr className="bg-slate-50/70">
+                      <td colSpan="3" className="pl-[76px]">
+                        <button type="button" onClick={() => onAddSubArea(area)} className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary">
+                          <HiOutlinePlus />
+                          Tambah sub-area
+                        </button>
+                      </td>
+                    </tr>
+                  )}
+                </>
+              )}
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function MobileArea({ area, expanded, onToggle, onAddSubArea, ...actions }) {
+  return (
+    <article className={expanded ? "bg-slate-50/80" : "bg-white"}>
+      <div className="flex items-start gap-1 px-3 py-3 sm:px-5">
+        <ExpandButton expanded={expanded} onClick={onToggle} label={area.area} />
+        <div className="min-w-0 flex-1 py-1.5">
+          <h3 className="text-[15px] font-semibold text-slate-900">{area.area}</h3>
+          <p className="mt-1.5 text-xs text-slate-500">
+            {area.sub_areas.length} sub-area · {area.managers.length} manager
+          </p>
+        </div>
+        <AreaActions area={area} {...actions} />
+      </div>
+      {expanded && (
+        <div className="border-t border-slate-200 bg-slate-50/80 px-3 py-4 sm:px-6">
+          <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Manager Area</p>
+          <People people={area.managers} emptyText="Belum ada manager" />
+          <div className="mt-5 border-t border-slate-200 pt-2">
+            {!area.sub_areas.length ? (
+              <p className="py-3 pl-6 text-sm text-slate-500">Belum ada sub-area.</p>
             ) : (
-              areas.data.map((area, index) => (
-                <tr key={area.id} className="align-top transition-colors hover:bg-muted/10">
-                  <td className="w-12 px-6 py-5 text-[13px] font-semibold text-foreground">{(areas.meta?.from ?? 1) + index}</td>
-                  <td className="px-6 py-5">
-                    <p className="min-w-[220px] text-[14px] font-semibold text-foreground">{area.area}</p>
-                  </td>
-                  <td className="px-6 py-5">
-                    <SubAreaAssignments area={area} subAreas={area.sub_areas} canEdit={canEdit} onAdd={onAddSubArea} onEdit={onEditSubArea} onDelete={onDeleteSubArea} />
-                  </td>
-                  <td className="px-6 py-5 min-w-[280px]">
-                    <AreaManagers managers={area.managers} />
-                  </td>
-                  <td className="px-6 py-5 w-[220px]">
-                    <AreaActions area={area} canEdit={canEdit} canDelete={canDelete} onEdit={onEdit} onArchive={onArchive} onRestore={onRestore} onForceDelete={onForceDelete} />
-                  </td>
-                </tr>
+              area.sub_areas.map((subArea) => (
+                <div key={subArea.id} className="flex items-start gap-2 py-2.5">
+                  <span className="w-4 text-slate-400">↳</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-slate-800">{subArea.name}</p>
+                    <div className="mt-1">
+                      <People people={subArea.supervisors} emptyText="Belum ada supervisor" compact />
+                    </div>
+                  </div>
+                  <SubActions area={area} subArea={subArea} {...actions} />
+                </div>
               ))
             )}
-          </tbody>
-        </table>
-      </div>
-
-      <AreaPagination links={areas.links} />
-    </div>
+            {actions.canEdit && !area.deleted_at && (
+              <button type="button" onClick={() => onAddSubArea(area)} className="ml-5 inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary">
+                <HiOutlinePlus />
+                Tambah sub-area
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </article>
   )
 }
 
-function AreaMobileList({ areas, canEdit, canDelete, onEdit, onAddSubArea, onEditSubArea, onDeleteSubArea, onArchive, onRestore, onForceDelete }) {
+function FilterSheet({ open, onClose, active, onApply, canViewArchived, allExpanded, onToggleAll, hasData }) {
+  const [draft, setDraft] = useState(active)
+  useEffect(() => {
+    if (open) setDraft(active)
+  }, [active, open])
   return (
-    <div className="flex flex-col gap-3 sm:hidden">
-      {areas.data.length === 0 ? (
-        <AreaEmptyState />
-      ) : (
-        areas.data.map((area, index) => (
-          <div key={area.id} className="rounded-[24px] border border-border bg-card p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">#{(areas.meta?.from ?? 1) + index}</p>
-                <h3 className="mt-1 text-[15px] font-bold text-foreground leading-tight">{area.area}</h3>
-              </div>
-              <AreaActions area={area} canEdit={canEdit} canDelete={canDelete} onEdit={onEdit} onArchive={onArchive} onRestore={onRestore} onForceDelete={onForceDelete} mobile />
-            </div>
-
-            <div className="mt-4 border-t border-border pt-4">
-              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Assigned Users</p>
-              <AreaManagers managers={area.managers} compact />
-              <p className="mb-3 mt-5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Sub-area & Supervisor</p>
-              <SubAreaAssignments area={area} subAreas={area.sub_areas} canEdit={canEdit} onAdd={onAddSubArea} onEdit={onEditSubArea} onDelete={onDeleteSubArea} />
-            </div>
-          </div>
-        ))
-      )}
-
-      {areas.links?.length > 3 && (
-        <div className="rounded-2xl border border-border bg-card shadow-sm">
-          <AreaPagination links={areas.links} />
+    <ModalOverlay id="area-filter-sheet" isOpen={open} onClose={onClose}>
+      <section className="flex max-h-[88dvh] w-full flex-col overflow-hidden rounded-t-3xl border-t border-border bg-card shadow-2xl sm:max-w-xl sm:rounded-2xl sm:border">
+        <div className="px-4 pt-2">
+          <div className="mx-auto h-1 w-12 rounded-full bg-slate-300" />
         </div>
-      )}
+        <header className="flex items-center justify-between border-b border-border px-4 py-3.5">
+          <div>
+            <h2 className="text-lg font-bold">Atur tampilan</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Temukan area yang ingin diperiksa.</p>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Tutup" className="flex h-11 w-11 items-center justify-center rounded-full bg-muted">
+            <X className="h-5 w-5" />
+          </button>
+        </header>
+        <div className="flex-1 space-y-5 overflow-y-auto bg-slate-50/50 px-4 py-5">
+          <FilterSelectField label="Susun area" value={draft.sort} onChange={(sort) => setDraft({ ...draft, sort })} options={SORT_OPTIONS} />
+          <FilterChoiceGroup legend="Penanggung jawab" value={draft.manager} onChange={(manager) => setDraft({ ...draft, manager })} options={MANAGER_OPTIONS} variant="chips" />
+          <FilterChoiceGroup legend="Ketersediaan sub-area" value={draft.subArea} onChange={(subArea) => setDraft({ ...draft, subArea })} options={SUB_AREA_OPTIONS} variant="chips" />
+          {canViewArchived && <FilterChoiceGroup legend="Kondisi data" value={draft.archive} onChange={(archive) => setDraft({ ...draft, archive })} options={ARCHIVE_OPTIONS} variant="chips" />}
+          <FilterSelectField
+            label="Baris per halaman"
+            value={String(draft.perPage)}
+            onChange={(perPage) => setDraft({ ...draft, perPage: Number(perPage) })}
+            options={[10, 25, 50, 100, -1].map((value) => [String(value), value === -1 ? "Tampilkan semua" : `${value} baris`])}
+          />
+          {hasData && (
+            <button type="button" onClick={onToggleAll} className="min-h-11 border-t border-border pt-4 text-sm font-semibold text-primary">
+              {allExpanded ? "Tutup semua detail" : "Buka semua detail"}
+            </button>
+          )}
+        </div>
+        <footer className="grid grid-cols-2 gap-2 border-t border-border bg-card px-4 py-3">
+          <button type="button" onClick={() => setDraft({ sort: "latest", manager: "all", subArea: "all", archive: "all", perPage: 10 })} className="min-h-12 rounded-xl border font-semibold">
+            Reset
+          </button>
+          <button type="button" onClick={() => onApply(draft)} className="min-h-12 rounded-xl bg-primary font-semibold text-primary-foreground">
+            Tampilkan hasil
+          </button>
+        </footer>
+      </section>
+    </ModalOverlay>
+  )
+}
+
+function Toolbar({ search, onSearchChange, resultText, onOpenFilter, active }) {
+  return (
+    <div className="border-b border-border p-3 sm:p-4 lg:px-6">
+      <div className="flex items-center gap-2">
+        <div className="relative min-w-0 flex-1 lg:max-w-md">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input type="search" value={search} onChange={(event) => onSearchChange(event.target.value)} placeholder="Cari area atau sub-area..." className="ui-field rounded-full pl-10" />
+        </div>
+        <p className="ml-auto hidden text-sm text-muted-foreground sm:block">{resultText}</p>
+        <button
+          type="button"
+          onClick={onOpenFilter}
+          className={`flex h-11 items-center gap-2 rounded-full border px-3.5 text-sm font-semibold sm:rounded-lg ${active ? "border-primary text-primary" : "border-border"}`}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          <span className="hidden sm:inline">Filter</span>
+          {active && <span className="h-2 w-2 rounded-full bg-primary" />}
+        </button>
+      </div>
+      <p className="mt-2 text-xs text-muted-foreground sm:hidden">{resultText}</p>
     </div>
   )
 }
 
 export default function AreaListSection(props) {
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [expandedIds, setExpandedIds] = useState(() => new Set())
+  const [filter, setFilter] = useState({ sort: "latest", manager: "all", subArea: "all", archive: "all", perPage: Number(props.perPage) })
+  const areas = useMemo(
+    () =>
+      [...props.areas.data]
+        .filter((area) => filter.manager === "all" || (filter.manager === "assigned" ? area.managers.length : !area.managers.length))
+        .filter((area) => filter.subArea === "all" || (filter.subArea === "available" ? area.sub_areas.length : !area.sub_areas.length))
+        .filter((area) => filter.archive === "all" || (filter.archive === "active" ? !area.deleted_at : area.deleted_at))
+        .sort((a, b) =>
+          filter.sort === "name-asc"
+            ? a.area.localeCompare(b.area, "id")
+            : filter.sort === "name-desc"
+              ? b.area.localeCompare(a.area, "id")
+              : filter.sort === "sub-area-desc"
+                ? b.sub_areas.length - a.sub_areas.length
+                : filter.sort === "sub-area-asc"
+                  ? a.sub_areas.length - b.sub_areas.length
+                  : filter.sort === "manager-desc"
+                    ? b.managers.length - a.managers.length
+                    : filter.sort === "manager-asc"
+                      ? a.managers.length - b.managers.length
+                      : 0,
+        ),
+    [filter, props.areas.data],
+  )
+  const toggle = (id) =>
+    setExpandedIds((current) => {
+      const next = new Set(current)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  const allExpanded = areas.length > 0 && areas.every((area) => expandedIds.has(area.id))
+  const toggleAll = () => setExpandedIds(allExpanded ? new Set() : new Set(areas.map((area) => area.id)))
+  useEffect(() => {
+    if (props.search) setExpandedIds(new Set(props.areas.data.map((area) => area.id)))
+  }, [props.areas.data, props.search])
+  const active = filter.sort !== "latest" || filter.manager !== "all" || filter.subArea !== "all" || filter.archive !== "all" || filter.perPage !== 10
+  const actions = {
+    canEdit: props.canEdit,
+    canDelete: props.canDelete,
+    onEdit: props.onEdit,
+    onArchive: props.onArchive,
+    onRestore: props.onRestore,
+    onForceDelete: props.onForceDelete,
+    onEditSubArea: props.onEditSubArea,
+    onDeleteSubArea: props.onDeleteSubArea,
+  }
+  const apply = (next) => {
+    setFilter(next)
+    setFilterOpen(false)
+    if (next.perPage !== Number(props.perPage)) props.onPerPageChange(next.perPage)
+  }
   return (
-    <>
-      <AreaDesktopTable {...props} />
-      <AreaMobileList {...props} />
-    </>
+    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <Toolbar
+        search={props.search}
+        onSearchChange={props.onSearchChange}
+        resultText={`${areas.length}${active ? ` dari ${props.areas.data.length}` : ""} area`}
+        onOpenFilter={() => setFilterOpen(true)}
+        active={active}
+      />
+      {!areas.length ? (
+        <div className="px-6 py-16 text-center">
+          <Building2 className="mx-auto h-7 w-7 text-muted-foreground" />
+          <p className="mt-3 font-semibold">Area tidak ditemukan</p>
+        </div>
+      ) : (
+        <>
+          <DesktopList areas={areas} expandedIds={expandedIds} onToggle={toggle} onAddSubArea={props.onAddSubArea} {...actions} />
+          <div className="divide-y divide-slate-200 xl:hidden">
+            {areas.map((area) => (
+              <MobileArea key={area.id} area={area} expanded={expandedIds.has(area.id)} onToggle={() => toggle(area.id)} onAddSubArea={props.onAddSubArea} {...actions} />
+            ))}
+          </div>
+        </>
+      )}
+      <ServerPagination
+        links={props.areas.links}
+        from={props.areas.meta?.from}
+        to={props.areas.meta?.to}
+        total={props.areas.meta?.total ?? 0}
+        onNavigate={(url) => router.visit(url, { preserveState: true, preserveScroll: true })}
+      />
+      <FilterSheet
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        active={filter}
+        onApply={apply}
+        canViewArchived={props.canViewArchived}
+        allExpanded={allExpanded}
+        onToggleAll={toggleAll}
+        hasData={areas.length > 0}
+      />
+    </section>
   )
 }

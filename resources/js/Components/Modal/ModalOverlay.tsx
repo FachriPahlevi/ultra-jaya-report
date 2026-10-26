@@ -56,7 +56,7 @@ export default function ModalOverlay({ id, isOpen, onClose, children, forceMount
   }
 
   return createPortal(
-    <div aria-modal="true" className={`fixed inset-0 ${LAYERS[layer]} flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm`} role="dialog" onMouseDown={handleBackdropClick}>
+    <div aria-modal="true" className={`fixed inset-0 ${LAYERS[layer]} flex items-end justify-center bg-slate-950/55 p-0 sm:items-center sm:p-4`} role="dialog" onMouseDown={handleBackdropClick}>
       {children}
     </div>,
     document.body,

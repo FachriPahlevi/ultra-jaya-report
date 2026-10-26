@@ -19,21 +19,27 @@ use Inertia\Response;
 
 class AreaController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $user = Auth::user();
+        $perPage = $this->resolvePerPage($request);
+        $search = trim($request->string('search')->toString());
 
         if ($user->can('areas.view.all') || $user->hasRole('SUPER_ADMIN') || $user->hasRole('ADMIN')) {
             $areas = Area::withTrashed()
                 ->with(['managers:id,name', 'subAreas.supervisors:id,name'])
+                ->when($search !== '', fn ($query) => $query->where('area', 'like', "%{$search}%"))
                 ->latest()
-                ->paginate(10);
+                ->paginate($perPage === -1 ? 2147483647 : $perPage)
+                ->withQueryString();
         } else {
             $areas = Area::with(['managers:id,name', 'subAreas.supervisors:id,name'])
                 ->where('is_active', true)
                 ->whereHas('pics', fn ($query) => $query->where('users.id', $user->id))
+                ->when($search !== '', fn ($query) => $query->where('area', 'like', "%{$search}%"))
                 ->latest()
-                ->paginate(10);
+                ->paginate($perPage === -1 ? 2147483647 : $perPage)
+                ->withQueryString();
         }
 
         $areas->through(function (Area $area) {
@@ -59,7 +65,15 @@ class AreaController extends Controller
 
         return Inertia::render('areas/Index', [
             'areas' => $areas,
+            'filters' => ['search' => $search, 'per_page' => $perPage],
         ]);
+    }
+
+    private function resolvePerPage(Request $request): int
+    {
+        $perPage = (int) $request->integer('per_page', 10);
+
+        return in_array($perPage, [10, 25, 50, 100, -1], true) ? $perPage : 10;
     }
 
     public function store(Request $request): JsonResponse|RedirectResponse
