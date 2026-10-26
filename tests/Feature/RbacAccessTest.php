@@ -101,6 +101,7 @@ class RbacAccessTest extends TestCase
 
         $author = User::factory()->create();
         $pic = User::factory()->create();
+        $pic->assignRole('SUPERVISOR');
         $pic->givePermissionTo('reports.solve.own.area');
         $assignedArea = Area::create(['area' => 'Area PIC', 'is_active' => true]);
         $otherArea = Area::create(['area' => 'Area Lain', 'is_active' => true]);
@@ -108,6 +109,8 @@ class RbacAccessTest extends TestCase
         $otherSubArea = SubArea::create(['area_id' => $otherArea->id, 'name' => 'Sub Area Lain', 'max_personnel' => 1]);
         $assignedSubArea->supervisors()->attach($pic);
         $activity = Activity::create(['name' => 'Aktivitas Uji', 'is_active' => true]);
+        $activity->assignees()->attach($pic);
+        $unassignedActivity = Activity::create(['name' => 'Aktivitas Tidak Ditugaskan', 'is_active' => true]);
 
         $assignedReport = Report::create([
             'author_id' => $author->id,
@@ -125,10 +128,53 @@ class RbacAccessTest extends TestCase
             'issue' => 'Temuan lain',
             'status' => Report::STATUS_OPEN,
         ]);
+        $unassignedActivityReport = Report::create([
+            'author_id' => $author->id,
+            'area_id' => $assignedArea->id,
+            'sub_area_id' => $assignedSubArea->id,
+            'activity_id' => $unassignedActivity->id,
+            'issue' => 'Temuan aktivitas lain',
+            'status' => Report::STATUS_OPEN,
+        ]);
 
         $this->assertTrue($pic->can('close', $assignedReport));
         $this->assertFalse($pic->can('close', $otherReport));
+        $this->assertFalse($pic->can('close', $unassignedActivityReport));
         $this->actingAs($pic)->post(route('reports.close', $otherReport))->assertForbidden();
+    }
+
+    public function test_report_category_cannot_be_closed_even_by_an_assigned_supervisor(): void
+    {
+        $this->seed(RoleSeeder::class);
+
+        $author = User::factory()->create();
+        $supervisor = User::factory()->create();
+        $supervisor->assignRole('SUPERVISOR');
+        $supervisor->givePermissionTo('reports.solve.own.area');
+        $area = Area::create(['area' => 'Area Uji', 'is_active' => true]);
+        $subArea = SubArea::create(['area_id' => $area->id, 'name' => 'Sub Area Uji', 'max_personnel' => 1]);
+        $subArea->supervisors()->attach($supervisor);
+        $activity = Activity::create(['name' => 'Aktivitas Observasi', 'is_active' => true]);
+        $activity->assignees()->attach($supervisor);
+        $reportOnlySubActivity = Activity::create([
+            'name' => 'Kondisi Baik',
+            'parent_id' => $activity->id,
+            'category' => 'REPORT',
+            'is_active' => true,
+        ]);
+        $reportOnlySubActivity->assignees()->attach($supervisor);
+        $report = Report::create([
+            'author_id' => $author->id,
+            'area_id' => $area->id,
+            'sub_area_id' => $subArea->id,
+            'activity_id' => $activity->id,
+            'sub_activity_id' => $reportOnlySubActivity->id,
+            'issue' => 'Area sudah bersih dan rapi',
+            'status' => Report::STATUS_OPEN,
+        ]);
+
+        $this->assertFalse($supervisor->can('close', $report));
+        $this->actingAs($supervisor)->post(route('reports.close', $report))->assertForbidden();
     }
 
     public function test_navigation_follows_page_permissions(): void

@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\BusinessException;
 use App\Models\Activity;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,7 +26,10 @@ class ActivityController extends Controller
         $search = trim($request->string('search')->toString());
 
         $activities = Activity::with([
+            'managers:id,name',
+            'supervisors:id,name',
             'children' => fn ($query) => $query
+                ->with(['managers:id,name', 'supervisors:id,name'])
                 ->withCount(['reportsAsType', 'reportsAsSubType'])
                 ->orderBy('name'),
         ])
@@ -54,10 +58,15 @@ class ActivityController extends Controller
                 'level' => 'parent',
                 'children_count' => $activity->children_count,
                 'usage_count' => $activity->reports_as_type_count + $activity->reports_as_sub_type_count,
+                'managers' => $activity->managers->map(fn (User $manager) => ['id' => $manager->id, 'name' => $manager->name])->values(),
+                'supervisors' => $activity->supervisors->map(fn (User $supervisor) => ['id' => $supervisor->id, 'name' => $supervisor->name])->values(),
                 'children' => $activity->children->map(fn (Activity $child) => [
                     'id' => $child->id,
                     'name' => $child->name,
                     'description' => $child->description,
+                    'category' => $child->category,
+                    'managers' => $child->managers->map(fn (User $manager) => ['id' => $manager->id, 'name' => $manager->name])->values(),
+                    'supervisors' => $child->supervisors->map(fn (User $supervisor) => ['id' => $supervisor->id, 'name' => $supervisor->name])->values(),
                     'is_active' => $child->is_active,
                     'parent_id' => $child->parent_id,
                     'parent' => [
@@ -77,6 +86,8 @@ class ActivityController extends Controller
                 ->select('id', 'name')
                 ->orderBy('name')
                 ->get(),
+            'managerOptions' => User::role('MANAGER')->where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'supervisorOptions' => User::role('SUPERVISOR')->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'activityTotals' => [
                 'all' => Activity::count(),
                 'main' => Activity::whereNull('parent_id')->count(),
@@ -84,18 +95,24 @@ class ActivityController extends Controller
                 'active' => Activity::where('is_active', true)->count(),
             ],
             'filters' => ['search' => $search, 'per_page' => $perPage],
+            'canManageActivityCategory' => $request->user()?->hasRole('SUPER_ADMIN') ?? false,
+            'canAssignActivityManager' => $this->canAssignManager($request),
+            'canAssignActivitySupervisor' => $this->canAssignSupervisor($request),
         ]);
     }
 
     public function store(Request $request): JsonResponse|RedirectResponse
     {
         $validated = $request->validate($this->storeRules($request));
+        $isBulkSubActivity = $request->filled('parent_id') && $request->filled('sub_activities');
+        $assigneeIds = $isBulkSubActivity ? [] : $this->resolveAssigneeIds($request, $validated, $request->filled('parent_id'));
 
-        if ($request->filled('parent_id') && $request->filled('sub_activities')) {
+        if ($isBulkSubActivity) {
             foreach ($validated['sub_activities'] as $subActivity) {
                 Activity::create([
                     'name' => $subActivity['name'],
                     'description' => $subActivity['description'] ?? null,
+                    'category' => $this->categoryForCreate($request, $subActivity['category'] ?? null),
                     'is_active' => true,
                     'parent_id' => $validated['parent_id'],
                 ]);
@@ -110,12 +127,15 @@ class ActivityController extends Controller
             return redirect()->route('activities.index');
         }
 
-        Activity::create([
+        $activity = Activity::create([
             'name' => $validated['name'],
             'description' => $validated['description'] ?? null,
             'is_active' => $validated['is_active'] ?? true,
             'parent_id' => $validated['parent_id'] ?? null,
+            'category' => $this->categoryForCreate($request, $validated['category'] ?? null),
         ]);
+
+        $activity->assignees()->sync($assigneeIds);
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -129,6 +149,8 @@ class ActivityController extends Controller
     public function update(Request $request, Activity $activity): JsonResponse|RedirectResponse
     {
         $validated = $request->validate($this->updateRules($activity));
+        $isSubActivity = ($validated['parent_id'] ?? $activity->parent_id) !== null;
+        $assigneeIds = $this->resolveAssigneeIds($request, $validated, $isSubActivity, $activity);
 
         if (($validated['parent_id'] ?? null) && $activity->children()->exists()) {
             throw ValidationException::withMessages([
@@ -141,7 +163,10 @@ class ActivityController extends Controller
             'description' => $validated['description'],
             'is_active' => $activity->parent_id !== null ? true : ($validated['is_active'] ?? $activity->is_active),
             'parent_id' => $validated['parent_id'] ?? null,
+            'category' => $this->categoryForUpdate($request, $activity, $validated['category'] ?? null),
         ]);
+
+        $activity->assignees()->sync($assigneeIds);
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -150,6 +175,18 @@ class ActivityController extends Controller
         }
 
         return redirect()->route('activities.index');
+    }
+
+    public function updateAssignees(Request $request, Activity $activity): JsonResponse
+    {
+        $validated = $request->validate($this->assignmentRules());
+        $assigneeIds = $this->resolveAssigneeIds($request, $validated, $activity->parent_id !== null, $activity);
+
+        $activity->assignees()->sync($assigneeIds);
+
+        return response()->json([
+            'message' => 'Penugasan pengguna berhasil diperbarui.',
+        ]);
     }
 
     public function updateStatus(Request $request, Activity $activity): JsonResponse
@@ -220,6 +257,12 @@ class ActivityController extends Controller
                 Rule::unique('activities', 'name')->whereNull('deleted_at'),
             ],
             'sub_activities.*.description' => ['nullable', 'string', 'max:500'],
+            'sub_activities.*.category' => ['nullable', Rule::in(['REPORT', 'ISSUE'])],
+            'category' => ['nullable', Rule::in(['REPORT', 'ISSUE'])],
+            'manager_ids' => ['nullable', 'array'],
+            'manager_ids.*' => ['integer', Rule::exists('users', 'id')->whereNull('deleted_at')],
+            'supervisor_ids' => ['nullable', 'array'],
+            'supervisor_ids.*' => ['integer', Rule::exists('users', 'id')->whereNull('deleted_at')],
         ];
     }
 
@@ -239,6 +282,86 @@ class ActivityController extends Controller
                 'not_in:'.$activity->id,
                 Rule::exists('activities', 'id')->whereNull('deleted_at')->whereNull('parent_id')->where('is_active', true),
             ],
+            'category' => ['nullable', Rule::in(['REPORT', 'ISSUE'])],
+            'manager_ids' => ['nullable', 'array'],
+            'manager_ids.*' => ['integer', Rule::exists('users', 'id')->whereNull('deleted_at')],
+            'supervisor_ids' => ['nullable', 'array'],
+            'supervisor_ids.*' => ['integer', Rule::exists('users', 'id')->whereNull('deleted_at')],
         ];
+    }
+
+    private function assignmentRules(): array
+    {
+        return [
+            'manager_ids' => ['nullable', 'array'],
+            'manager_ids.*' => ['integer', Rule::exists('users', 'id')->whereNull('deleted_at')],
+            'supervisor_ids' => ['nullable', 'array'],
+            'supervisor_ids.*' => ['integer', Rule::exists('users', 'id')->whereNull('deleted_at')],
+        ];
+    }
+
+    private function categoryForCreate(Request $request, ?string $category): string
+    {
+        if ($request->user()?->hasRole('SUPER_ADMIN') && in_array($category, ['REPORT', 'ISSUE'], true)) {
+            return $category;
+        }
+
+        return 'ISSUE';
+    }
+
+    private function resolveAssigneeIds(Request $request, array $validated, bool $isSubActivity, ?Activity $activity = null): array
+    {
+        $hasManagerInput = array_key_exists('manager_ids', $validated);
+        $hasSupervisorInput = array_key_exists('supervisor_ids', $validated);
+        $managerIds = $hasManagerInput ? $validated['manager_ids'] : ($isSubActivity ? [] : $activity?->managers()->pluck('users.id')->all() ?? []);
+        $supervisorIds = $hasSupervisorInput ? $validated['supervisor_ids'] : ($isSubActivity ? $activity?->supervisors()->pluck('users.id')->all() ?? [] : []);
+
+        if ($hasManagerInput && ! $this->canAssignManager($request)) {
+            throw new BusinessException('Anda tidak memiliki izin untuk menugaskan Manager reviewer.', 403);
+        }
+
+        if ($hasSupervisorInput && ! $this->canAssignSupervisor($request)) {
+            throw new BusinessException('Anda tidak memiliki izin untuk menugaskan SPV penutup tiket.', 403);
+        }
+
+        if ($isSubActivity && $managerIds !== []) {
+            throw ValidationException::withMessages(['manager_ids' => 'Manager reviewer hanya dapat ditugaskan pada aktivitas utama.']);
+        }
+
+        if (! $isSubActivity && $supervisorIds !== []) {
+            throw ValidationException::withMessages(['supervisor_ids' => 'SPV penutup tiket hanya dapat ditugaskan pada sub-aktivitas.']);
+        }
+
+        $validManagerIds = User::role('MANAGER')->where('is_active', true)->whereIn('id', $managerIds)->pluck('id')->all();
+        $validSupervisorIds = User::role('SUPERVISOR')->where('is_active', true)->whereIn('id', $supervisorIds)->pluck('id')->all();
+
+        if (count($validManagerIds) !== count(array_unique($managerIds))) {
+            throw ValidationException::withMessages(['manager_ids' => 'Hanya pengguna dengan role Manager yang dapat ditugaskan sebagai reviewer.']);
+        }
+
+        if (count($validSupervisorIds) !== count(array_unique($supervisorIds))) {
+            throw ValidationException::withMessages(['supervisor_ids' => 'Hanya pengguna dengan role SPV yang dapat ditugaskan untuk menutup tiket.']);
+        }
+
+        return array_values(array_unique([...$validManagerIds, ...$validSupervisorIds]));
+    }
+
+    private function canAssignManager(Request $request): bool
+    {
+        return $request->user()?->hasRole('SUPER_ADMIN') || $request->user()?->can('activities.assign.manager');
+    }
+
+    private function canAssignSupervisor(Request $request): bool
+    {
+        return $request->user()?->hasRole('SUPER_ADMIN') || $request->user()?->can('activities.assign.supervisor');
+    }
+
+    private function categoryForUpdate(Request $request, Activity $activity, ?string $category): string
+    {
+        if (! $request->user()?->hasRole('SUPER_ADMIN')) {
+            return $activity->category ?? 'ISSUE';
+        }
+
+        return $category ?? $activity->category ?? 'ISSUE';
     }
 }

@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom"
 import { useEffect, useId, useRef, useState } from "react"
-import { HiOutlineDotsVertical, HiOutlinePencil, HiOutlinePlus, HiOutlineTrash } from "react-icons/hi"
+import { HiOutlineDotsVertical, HiOutlinePencil, HiOutlinePlus, HiOutlineTrash, HiOutlineUserAdd } from "react-icons/hi"
 import { Layers3 } from "lucide-react"
 
 export function ScopeAccess({ activity, compact = false, chips = false }) {
@@ -59,8 +59,9 @@ export function ScopeAccess({ activity, compact = false, chips = false }) {
   )
 }
 
-export function ActivityActions({ activity, canEdit, canDelete, onAddSub, onEdit, onDelete }) {
+export function ActivityActions({ activity, canEdit, canDelete, canAssignManager, canAssignSupervisor, onAddSub, onAssignUsers, onEdit, onDelete }) {
   const canAddSub = canEdit && !activity.parent_id && activity.is_active
+  const canAssignUsers = (!activity.parent_id && canAssignManager) || (activity.parent_id && canAssignSupervisor)
   const [open, setOpen] = useState(false)
   const [position, setPosition] = useState({ top: 0, right: 0 })
   const buttonRef = useRef(null)
@@ -98,7 +99,7 @@ export function ActivityActions({ activity, canEdit, canDelete, onAddSub, onEdit
     }
   }, [open])
 
-  if (!canAddSub && !canEdit && !canDelete) return null
+  if (!canAddSub && !canAssignUsers && !canEdit && !canDelete) return null
   const runAction = (action) => {
     setOpen(false)
     action(activity)
@@ -137,6 +138,17 @@ export function ActivityActions({ activity, canEdit, canDelete, onAddSub, onEdit
               >
                 <HiOutlinePlus className="h-4 w-4" />
                 Tambah sub-aktivitas
+              </button>
+            )}
+            {canAssignUsers && (
+              <button
+                role="menuitem"
+                type="button"
+                onClick={() => runAction(onAssignUsers)}
+                className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-medium text-slate-700 outline-none hover:bg-slate-50 focus-visible:bg-blue-50 focus-visible:text-blue-800"
+              >
+                <HiOutlineUserAdd className="h-4 w-4" />
+                {activity.parent_id ? "Atur SPV" : "Atur manager"}
               </button>
             )}
             {canEdit && (

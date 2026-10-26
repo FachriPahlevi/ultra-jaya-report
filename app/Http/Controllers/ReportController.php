@@ -8,6 +8,7 @@ use App\Exceptions\BusinessException;
 use App\Models\Activity;
 use App\Models\Area;
 use App\Models\Report;
+use App\Models\SubArea;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,10 +21,11 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
@@ -110,7 +112,7 @@ class ReportController extends Controller
             'activities' => Activity::with([
                 'children' => fn ($query) => $query
                     ->where('is_active', true)
-                    ->select('id', 'name', 'description', 'parent_id'),
+                    ->select('id', 'name', 'description', 'parent_id', 'category'),
             ])
                 ->where('is_active', true)
                 ->whereNull('parent_id')
@@ -126,6 +128,7 @@ class ReportController extends Controller
                             'id' => $child->id,
                             'name' => $child->name,
                             'description' => $child->description,
+                            'category' => $child->category,
                             'parent_id' => $child->parent_id,
                             'is_active' => $child->is_active,
                         ])->values(),
@@ -319,9 +322,9 @@ class ReportController extends Controller
         return $type === 'excel' ? $this->exportExcel($reports) : $this->exportPdf($reports);
     }
 
-    private function exportExcel($reports): \Symfony\Component\HttpFoundation\BinaryFileResponse
+    private function exportExcel($reports): BinaryFileResponse
     {
-        $sheet = (new Spreadsheet())->getActiveSheet();
+        $sheet = (new Spreadsheet)->getActiveSheet();
         $sheet->fromArray(['No', 'Pelapor', 'Area', 'Aktivitas', 'Temuan', 'Foto Sebelum', 'Foto Sesudah', 'Status', 'Dibuat'], null, 'A1');
         $sheet->getStyle('A1:I1')->getFont()->setBold(true);
         $sheet->getColumnDimension('E')->setWidth(36);
@@ -334,12 +337,17 @@ class ReportController extends Controller
             foreach (['photo_before' => 'F', 'photo_after' => 'G'] as $field => $column) {
                 $path = $report->{$field} ? storage_path('app/public/'.$report->{$field}) : null;
                 if ($path && file_exists($path)) {
-                    $drawing = new Drawing(); $drawing->setPath($path); $drawing->setHeight(65); $drawing->setCoordinates("{$column}{$row}"); $drawing->setWorksheet($sheet);
+                    $drawing = new Drawing;
+                    $drawing->setPath($path);
+                    $drawing->setHeight(65);
+                    $drawing->setCoordinates("{$column}{$row}");
+                    $drawing->setWorksheet($sheet);
                 }
             }
         }
         $file = storage_path('app/reports-'.uniqid().'.xlsx');
         (new Xlsx($sheet->getParent()))->save($file);
+
         return response()->download($file, 'laporan-'.now()->format('Y-m-d_H-i-s').'.xlsx')->deleteFileAfterSend();
     }
 
@@ -439,7 +447,7 @@ class ReportController extends Controller
 
     private function validateSubArea(int $subAreaId, int $areaId): void
     {
-        if (! \App\Models\SubArea::query()->whereKey($subAreaId)->where('area_id', $areaId)->exists()) {
+        if (! SubArea::query()->whereKey($subAreaId)->where('area_id', $areaId)->exists()) {
             throw ValidationException::withMessages(['sub_area_id' => 'Sub-area harus berada pada area yang dipilih.']);
         }
     }
@@ -453,7 +461,7 @@ class ReportController extends Controller
         }
 
         if ($user->can('reports.review.area')) {
-            return $query->whereHas('area.managers', fn (Builder $areas) => $areas->whereKey($user->id));
+            return $query->whereHas('activityType.managers', fn (Builder $managers) => $managers->whereKey($user->id));
         }
 
         if ($user->can('reports.view.own') && $user->can('reports.solve.own.area')) {

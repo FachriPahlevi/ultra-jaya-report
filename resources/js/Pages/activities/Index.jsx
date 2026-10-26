@@ -8,6 +8,7 @@ import { useStatusModal } from "@/Components/Context/StatusModalContext"
 import { HiOutlinePlus } from "react-icons/hi"
 import ActivityListSection from "./components/ActivityListSection"
 import ActivityFormModal from "./components/ActivityFormModal"
+import ActivityAssignmentModal from "./components/ActivityAssignmentModal"
 import { useAuthorization } from "@/hooks/useAuthorization"
 import PageHeader from "@/Components/Layout/PageHeader"
 
@@ -16,10 +17,20 @@ const INITIAL_FORM = {
   description: "",
   is_active: true,
   parent_id: "",
-  sub_activities: [{ name: "", description: "" }],
+  category: "ISSUE",
+  sub_activities: [{ name: "", description: "", category: "ISSUE" }],
 }
 
-export default function Index({ activities = { data: [], links: [], meta: {} }, parentActivities = [], filters = {} }) {
+export default function Index({
+  activities = { data: [], links: [], meta: {} },
+  parentActivities = [],
+  managerOptions = [],
+  supervisorOptions = [],
+  filters = {},
+  canManageActivityCategory = false,
+  canAssignActivityManager = false,
+  canAssignActivitySupervisor = false,
+}) {
   const { can } = useAuthorization()
   const { setStatusModalProps } = useStatusModal()
   const canAdd = can("activities.create")
@@ -31,6 +42,9 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
   const [processing, setProcessing] = useState(false)
   const [form, setForm] = useState(INITIAL_FORM)
   const [errors, setErrors] = useState({})
+  const [assignmentTarget, setAssignmentTarget] = useState(null)
+  const [assignmentValues, setAssignmentValues] = useState([])
+  const [assignmentProcessing, setAssignmentProcessing] = useState(false)
   const [isBulkSubMode, setIsBulkSubMode] = useState(false)
   const [listSearch, setListSearch] = useState(filters.search ?? "")
 
@@ -83,7 +97,8 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
       ...INITIAL_FORM,
       parent_id: parentActivity ? String(parentActivity.id) : "",
       is_active: true,
-      sub_activities: [{ name: "", description: "" }],
+      category: "ISSUE",
+      sub_activities: [{ name: "", description: "", category: "ISSUE" }],
     })
     setIsBulkSubMode(Boolean(parentActivity))
     setErrors({})
@@ -97,7 +112,8 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
       description: activity.description ?? "",
       is_active: activity.is_active ?? true,
       parent_id: activity.parent_id ? String(activity.parent_id) : "",
-      sub_activities: [{ name: "", description: "" }],
+      category: activity.category ?? "ISSUE",
+      sub_activities: [{ name: "", description: "", category: "ISSUE" }],
     })
     setIsBulkSubMode(false)
     setErrors({})
@@ -110,6 +126,38 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
     setForm(INITIAL_FORM)
     setIsBulkSubMode(false)
     setErrors({})
+  }
+
+  const openAssignment = (activity) => {
+    setAssignmentTarget(activity)
+    setAssignmentValues((activity.parent_id ? activity.supervisors : activity.managers).map((user) => String(user.id)))
+  }
+
+  const closeAssignment = () => {
+    if (assignmentProcessing) return
+    setAssignmentTarget(null)
+    setAssignmentValues([])
+  }
+
+  const submitAssignment = async (event) => {
+    event.preventDefault()
+    if (!assignmentTarget || assignmentProcessing) return
+
+    setAssignmentProcessing(true)
+    const isSubActivity = Boolean(assignmentTarget.parent_id)
+    try {
+      await http.put(`/activities/${assignmentTarget.id}/assignees`, {
+        ...(isSubActivity ? { supervisor_ids: assignmentValues.map(Number) } : { manager_ids: assignmentValues.map(Number) }),
+      })
+      showStatusModal("success", "Berhasil", `Pengguna untuk aktivitas “${assignmentTarget.name}” berhasil diperbarui.`)
+      reloadActivities()
+      setAssignmentTarget(null)
+      setAssignmentValues([])
+    } catch (error) {
+      showRequestError(error)
+    } finally {
+      setAssignmentProcessing(false)
+    }
   }
 
   const handleFormChange = (key, value) => {
@@ -133,7 +181,7 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
   const addSubActivityField = () => {
     setForm((prev) => ({
       ...prev,
-      sub_activities: [...prev.sub_activities, { name: "", description: "" }],
+      sub_activities: [...prev.sub_activities, { name: "", description: "", category: "ISSUE" }],
     }))
   }
 
@@ -156,10 +204,12 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
       description: form.description || null,
       is_active: form.is_active,
       parent_id: form.parent_id || null,
+      ...(canManageActivityCategory && form.parent_id ? { category: form.category } : {}),
       sub_activities: isBulkSubMode
         ? form.sub_activities.map((item) => ({
             name: item.name,
             description: item.description || null,
+            ...(canManageActivityCategory ? { category: item.category } : {}),
           }))
         : undefined,
     }
@@ -261,7 +311,10 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
           activities={activities}
           canEdit={canEdit}
           canDelete={canDelete}
+          canAssignManager={canAssignActivityManager}
+          canAssignSupervisor={canAssignActivitySupervisor}
           onAddSub={openAdd}
+          onAssignUsers={openAssignment}
           onEdit={openEdit}
           onDelete={confirmDelete}
           search={listSearch}
@@ -285,6 +338,17 @@ export default function Index({ activities = { data: [], links: [], meta: {} }, 
         onAddSubActivityField={addSubActivityField}
         onRemoveSubActivityField={removeSubActivityField}
         isBulkSubMode={isBulkSubMode}
+        canManageCategory={canManageActivityCategory}
+      />
+      <ActivityAssignmentModal
+        isOpen={Boolean(assignmentTarget)}
+        activity={assignmentTarget}
+        values={assignmentValues}
+        options={(assignmentTarget?.parent_id ? supervisorOptions : managerOptions).map((user) => ({ value: String(user.id), label: user.name }))}
+        processing={assignmentProcessing}
+        onChange={setAssignmentValues}
+        onClose={closeAssignment}
+        onSubmit={submitAssignment}
       />
     </AppLayout>
   )

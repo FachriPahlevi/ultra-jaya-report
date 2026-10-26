@@ -29,6 +29,8 @@ return [
         'activities.view' => ['group' => 'Aktivitas', 'label' => 'Melihat aktivitas', 'description' => 'Melihat aktivitas utama dan subaktivitas.'],
         'activities.create' => ['group' => 'Aktivitas', 'label' => 'Membuat aktivitas', 'description' => 'Menambahkan aktivitas utama atau subaktivitas.'],
         'activities.edit' => ['group' => 'Aktivitas', 'label' => 'Mengubah aktivitas', 'description' => 'Mengubah aktivitas dan statusnya.'],
+        'activities.assign.manager' => ['group' => 'Aktivitas', 'label' => 'Menugaskan Manager reviewer', 'description' => 'Menetapkan Manager sebagai reviewer pada aktivitas utama.'],
+        'activities.assign.supervisor' => ['group' => 'Aktivitas', 'label' => 'Menugaskan SPV penutup tiket', 'description' => 'Menetapkan SPV pada sub-aktivitas untuk menutup tiket ISSUE.'],
         'activities.delete' => ['group' => 'Aktivitas', 'label' => 'Menghapus aktivitas', 'description' => 'Menghapus aktivitas yang belum digunakan dalam laporan.'],
 
         'users.view' => ['group' => 'Pengguna', 'label' => 'Melihat pengguna', 'description' => 'Melihat daftar pengguna.'],
@@ -51,7 +53,7 @@ return [
         'SUPER_ADMIN' => ['label' => 'Super Admin', 'description' => 'Mengelola seluruh konfigurasi aplikasi dan RBAC.', 'permissions' => ['*']],
         'ADMIN' => ['label' => 'Admin', 'description' => 'Mengelola operasional pengguna, area, aktivitas, dan laporan.', 'permissions' => [
             'areas.view', 'areas.create', 'areas.edit', 'areas.delete',
-            'activities.view', 'activities.create', 'activities.edit', 'activities.delete',
+            'activities.view', 'activities.create', 'activities.edit', 'activities.assign.manager', 'activities.assign.supervisor', 'activities.delete',
             'users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign.area', 'users.promote',
             'reports.view.all', 'reports.create', 'reports.delete.all', 'reports.solve.all', 'settings.view',
             'roles.view', 'roles.create', 'roles.edit', 'roles.delete', 'permissions.manage',

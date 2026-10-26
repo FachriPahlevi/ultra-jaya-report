@@ -18,6 +18,7 @@ export default function ActivityFormModal({
   onAddSubActivityField,
   onRemoveSubActivityField,
   isBulkSubMode,
+  canManageCategory,
 }) {
   const isSubActivityEdit = Boolean(editTarget?.parent_id)
 
@@ -102,6 +103,22 @@ export default function ActivityFormModal({
                         required
                       />
 
+                      {canManageCategory && (
+                        <InputSelect
+                          id={`sub_category_${index}`}
+                          label="Kategori"
+                          value={item.category}
+                          onChange={(e) => onSubActivityChange(index, "category", e.target.value)}
+                          options={[
+                            { value: "REPORT", label: "REPORT" },
+                            { value: "ISSUE", label: "ISSUE" },
+                          ]}
+                          helperText="Hanya Super Admin yang dapat menentukan kategori sub-aktivitas."
+                          error={errors[`sub_activities.${index}.category`]}
+                          required
+                        />
+                      )}
+
                       <div className="flex flex-col gap-1.5">
                         <label htmlFor={`sub_description_${index}`} className="text-[13px] font-semibold text-foreground">
                           Deskripsi
@@ -127,6 +144,22 @@ export default function ActivityFormModal({
             ) : (
               <>
                 <InputText label="Nama Aktivitas" placeholder="Masukkan nama aktivitas" value={form.name} onChange={(e) => onFieldChange("name", e.target.value)} error={errors.name} required />
+
+                {canManageCategory && (Boolean(form.parent_id) || isSubActivityEdit) && (
+                  <InputSelect
+                    id="activity_category"
+                    label="Kategori"
+                    value={form.category}
+                    onChange={(e) => onFieldChange("category", e.target.value)}
+                    options={[
+                      { value: "REPORT", label: "REPORT" },
+                      { value: "ISSUE", label: "ISSUE" },
+                    ]}
+                    helperText="Hanya Super Admin yang dapat mengubah kategori sub-aktivitas."
+                    error={errors.category}
+                    required
+                  />
+                )}
 
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="activity_description" className="text-[13px] font-semibold text-foreground">

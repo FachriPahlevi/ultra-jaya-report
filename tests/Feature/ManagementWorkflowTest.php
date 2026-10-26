@@ -117,7 +117,7 @@ class ManagementWorkflowTest extends TestCase
         $this->actingAs($supervisor)->get(route('reports.index'))
             ->assertInertia(fn (Assert $page) => $page->has('reports', 2));
         $this->actingAs($manager)->get(route('reports.index'))
-            ->assertInertia(fn (Assert $page) => $page->has('reports', 2));
+            ->assertInertia(fn (Assert $page) => $page->has('reports', 3));
         $this->actingAs($admin)->get(route('reports.index'))
             ->assertInertia(fn (Assert $page) => $page->has('reports', 3));
 

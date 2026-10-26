@@ -162,7 +162,7 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
   const subAreaOptions = selectedAreaData?.sub_areas?.map((subArea) => ({ label: subArea.name, value: subArea.id })) ?? []
   const subActivityOptions =
     selectedParentActivity?.sub_activities?.map((activity) => ({
-      label: activity.name,
+      label: `${activity.name}${activity.category ? ` · ${activity.category}` : ""}`,
       value: activity.id,
     })) ?? []
 
