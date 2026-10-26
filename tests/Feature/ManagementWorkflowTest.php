@@ -226,7 +226,16 @@ class ManagementWorkflowTest extends TestCase
 
         $report = Report::firstOrFail();
         $this->assertNotNull($report->photo_before);
+        $this->assertMatchesRegularExpression(
+            '#^reports/\d{4}/\d{2}/'.$report->id.'/before-\d{8}-\d{6}-[a-z0-9]{8}\.jpg$#',
+            $report->photo_before,
+        );
         Storage::disk('public')->assertExists($report->photo_before);
+        $storedPhoto = Storage::disk('public')->get($report->photo_before);
+        $photoInfo = getimagesizefromstring($storedPhoto);
+        $this->assertNotFalse($photoInfo);
+        $this->assertSame('image/jpeg', $photoInfo['mime']);
+        $this->assertLessThanOrEqual(1600, max($photoInfo[0], $photoInfo[1]));
 
         $this->actingAs($user)->post(route('reports.store'), [
             'type_activity' => $activity->id,

@@ -11,7 +11,7 @@ import Pagination from "@/Components/Navigation/Pagination"
 import ExpandableImage from "@/Components/UI/ExpandableImage"
 import { useReports } from "@/Pages/reports/hooks/useReports"
 import { HiOutlineX, HiOutlinePlus } from "react-icons/hi"
-import { CalendarClock, File, FileText, Layers3, MapPin, StickyNote, UserRound, ChevronDown, ChevronUp } from "lucide-react"
+import { CalendarClock, File, FileText, Layers3, MapPin, StickyNote, UserRound, ChevronDown, ChevronUp, RotateCcw, SlidersHorizontal } from "lucide-react"
 import { useState } from "react"
 import { LAYERS } from "@/lib/layers"
 import PageHeader from "@/Components/Layout/PageHeader"
@@ -95,77 +95,103 @@ const RichText = ({ text, maxLines = 3 }) => {
 
 function FilterFields({ temp, statusOptions, filterAreaOptions, typeOptions, subAreaOptions, authorOptions, roleOptions, canFilterReporter, canToggleOwn }) {
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <p className="block text-[12px] font-semibold text-foreground mb-2">Periode</p>
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-          <input
-            type="date"
-            value={temp.tempDateFrom}
-            onChange={(e) => temp.setTempDateFrom(e.target.value)}
-            className="min-w-0 w-full border border-border rounded-xl px-2 py-2.5 text-xs text-foreground bg-background outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary min-[375px]:px-3 min-[375px]:text-[13px]"
-          />
-          <span className="text-muted-foreground text-sm font-medium shrink-0">–</span>
-          <input
-            type="date"
-            value={temp.tempDateTo}
-            onChange={(e) => temp.setTempDateTo(e.target.value)}
-            className="min-w-0 w-full border border-border rounded-xl px-2 py-2.5 text-xs text-foreground bg-background outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary min-[375px]:px-3 min-[375px]:text-[13px]"
+    <div className="flex flex-col gap-4">
+      <section className="rounded-2xl border border-border bg-card p-3.5 sm:p-4">
+        <p className="text-sm font-semibold text-foreground">Waktu & urutan</p>
+        <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Batasi periode dan tentukan laporan yang ditampilkan lebih dahulu.</p>
+        <div className="mt-4">
+          <p className="mb-2 text-[12px] font-semibold text-foreground">Periode dibuat</p>
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+            <input
+              type="date"
+              value={temp.tempDateFrom}
+              onChange={(e) => temp.setTempDateFrom(e.target.value)}
+              aria-label="Tanggal mulai"
+              className="min-h-11 min-w-0 w-full rounded-xl border border-border bg-background px-2 py-2 text-xs text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 min-[375px]:px-3 min-[375px]:text-[13px]"
+            />
+            <span className="text-muted-foreground text-sm font-medium shrink-0">–</span>
+            <input
+              type="date"
+              value={temp.tempDateTo}
+              onChange={(e) => temp.setTempDateTo(e.target.value)}
+              aria-label="Tanggal akhir"
+              className="min-h-11 min-w-0 w-full rounded-xl border border-border bg-background px-2 py-2 text-xs text-foreground outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 min-[375px]:px-3 min-[375px]:text-[13px]"
+            />
+          </div>
+        </div>
+        <div className="mt-4">
+          <FilterSelectField
+            label="Urutkan berdasarkan"
+            value={temp.tempSort}
+            onChange={temp.setTempSort}
+            options={[
+              ["latest", "Terbaru lebih dulu"],
+              ["oldest", "Terlama lebih dulu"],
+              ["area-asc", "Area A–Z"],
+              ["activity-asc", "Aktivitas A–Z"],
+              ...(canFilterReporter ? [["reporter-asc", "Nama pelapor A–Z"]] : []),
+            ]}
           />
         </div>
-      </div>
-      <FilterSelectField
-        label="Susun laporan"
-        description="Pilih urutan daftar laporan."
-        value={temp.tempSort}
-        onChange={temp.setTempSort}
-        options={[
-          ["latest", "Terbaru lebih dulu"],
-          ["oldest", "Terlama lebih dulu"],
-          ["area-asc", "Area A–Z"],
-          ["activity-asc", "Aktivitas A–Z"],
-          ...(canFilterReporter ? [["reporter-asc", "Nama pelapor A–Z"]] : []),
-        ]}
-      />
-      <FilterChoiceGroup
-        legend="Tahap laporan"
-        description="Pilih satu atau keduanya."
-        value={temp.tempStatus}
-        onChange={temp.setTempStatus}
-        options={statusOptions.filter((option) => option.value)}
-        multiple
-        variant="chips"
-      />
-      <FilterMultiSelect label="Lokasi area" values={temp.tempArea} onChange={temp.setTempArea} options={filterAreaOptions.filter((option) => option.value)} placeholder="Semua area" />
-      <FilterMultiSelect label="Lokasi sub-area" values={temp.tempSubArea} onChange={temp.setTempSubArea} options={subAreaOptions.filter((option) => option.value)} placeholder="Semua sub-area" />
-      <FilterMultiSelect label="Jenis aktivitas" values={temp.tempType} onChange={temp.setTempType} options={typeOptions.filter((option) => option.value)} placeholder="Semua aktivitas" />
-      {canFilterReporter && (
-        <FilterMultiSelect label="Dibuat oleh" values={temp.tempAuthor} onChange={temp.setTempAuthor} options={authorOptions.filter((option) => option.value)} placeholder="Semua pengguna" />
-      )}
-      {canFilterReporter && (
-        <FilterMultiSelect
-          label="Peran pembuat"
-          values={temp.tempRole}
-          onChange={temp.setTempRole}
-          options={roleOptions.filter((option) => option.value)}
-          placeholder="Semua peran"
-          searchable={false}
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-3.5 sm:p-4">
+        <FilterChoiceGroup
+          legend="Status laporan"
+          description="Anda dapat memilih lebih dari satu status."
+          value={temp.tempStatus}
+          onChange={temp.setTempStatus}
+          options={statusOptions.filter((option) => option.value)}
+          multiple
+          variant="chips"
         />
+        <div className="my-4 h-px bg-border" />
+        <FilterChoiceGroup
+          legend="Dokumentasi foto"
+          description="Pilih kelengkapan dokumentasi yang diperlukan."
+          value={temp.tempPhoto}
+          onChange={temp.setTempPhoto}
+          options={[
+            ["", "Apa pun"],
+            ["before", "Foto awal"],
+            ["after", "Foto akhir"],
+            ["complete", "Lengkap"],
+          ]}
+          variant="chips"
+        />
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-3.5 sm:p-4">
+        <p className="text-sm font-semibold text-foreground">Lokasi & aktivitas</p>
+        <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Pilih satu atau beberapa cakupan laporan.</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <FilterMultiSelect label="Area" values={temp.tempArea} onChange={temp.setTempArea} options={filterAreaOptions.filter((option) => option.value)} placeholder="Semua area" />
+          <FilterMultiSelect label="Sub-area" values={temp.tempSubArea} onChange={temp.setTempSubArea} options={subAreaOptions.filter((option) => option.value)} placeholder="Semua sub-area" />
+        </div>
+        <div className="mt-4">
+          <FilterMultiSelect label="Aktivitas" values={temp.tempType} onChange={temp.setTempType} options={typeOptions.filter((option) => option.value)} placeholder="Semua aktivitas" />
+        </div>
+      </section>
+
+      {canFilterReporter && (
+        <section className="rounded-2xl border border-border bg-card p-3.5 sm:p-4">
+          <p className="text-sm font-semibold text-foreground">Pelapor</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <FilterMultiSelect label="Dibuat oleh" values={temp.tempAuthor} onChange={temp.setTempAuthor} options={authorOptions.filter((option) => option.value)} placeholder="Semua pengguna" />
+            <FilterMultiSelect
+              label="Peran pembuat"
+              values={temp.tempRole}
+              onChange={temp.setTempRole}
+              options={roleOptions.filter((option) => option.value)}
+              placeholder="Semua peran"
+              searchable={false}
+            />
+          </div>
+        </section>
       )}
-      <FilterChoiceGroup
-        legend="Dokumentasi foto"
-        value={temp.tempPhoto}
-        onChange={temp.setTempPhoto}
-        options={[
-          ["", "Apa pun"],
-          ["before", "Ada foto awal"],
-          ["after", "Ada foto akhir"],
-          ["complete", "Lengkap"],
-        ]}
-        variant="chips"
-      />
+
       {canToggleOwn && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3.5 py-3">
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-3.5 py-3.5 sm:px-4">
           <div>
             <p className="text-[13px] font-semibold text-foreground">Hanya laporan saya</p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">Sembunyikan laporan pengguna lain.</p>
@@ -176,7 +202,7 @@ function FilterFields({ temp, statusOptions, filterAreaOptions, typeOptions, sub
             aria-checked={temp.tempMyReportsOnly}
             aria-label="Tampilkan hanya laporan saya"
             onClick={() => temp.setTempMyReportsOnly((v) => !v)}
-            className={`w-10 h-6 rounded-full transition-colors relative shrink-0 cursor-pointer ${temp.tempMyReportsOnly ? "bg-primary" : "bg-border"}`}
+            className={`relative h-6 w-10 shrink-0 cursor-pointer rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${temp.tempMyReportsOnly ? "bg-primary" : "bg-border"}`}
           >
             <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all ${temp.tempMyReportsOnly ? "left-5" : "left-1"}`} />
           </button>
@@ -413,6 +439,18 @@ export default function Index({ reports = [], areas = [], activities = [], users
   const roleOptions = [{ label: "Semua role", value: "" }, ...[...new Set(reports.map((report) => report.author?.role).filter(Boolean))].sort().map((role) => ({ label: role, value: role }))]
 
   const { temp } = r
+  const temporaryFilterCount = [
+    temp.tempStatus.length,
+    temp.tempType.length,
+    temp.tempArea.length,
+    temp.tempRole.length,
+    temp.tempAuthor.length,
+    temp.tempSubArea.length,
+    temp.tempPhoto ? 1 : 0,
+    temp.tempSort !== "latest" ? 1 : 0,
+    temp.tempDateFrom || temp.tempDateTo ? 1 : 0,
+    temp.tempMyReportsOnly ? 1 : 0,
+  ].reduce((total, count) => total + count, 0)
 
   return (
     <AppLayout title="Laporan">
@@ -650,20 +688,27 @@ export default function Index({ reports = [], areas = [], activities = [], users
       </div>
 
       <ModalOverlay isOpen={r.isFilterModalOpen} onClose={() => r.setIsFilterModalOpen(false)}>
-        <div className="flex max-h-[90dvh] w-full max-w-xl flex-col overflow-hidden rounded-t-3xl border border-border bg-card shadow-2xl sm:rounded-2xl">
-          <div className="flex items-center justify-between border-b border-border px-5 py-4 shrink-0">
-            <div>
-              <h2 className="text-lg font-bold tracking-tight text-foreground">Atur tampilan</h2>
-              <p className="mt-1 text-xs text-muted-foreground">Temukan laporan yang ingin diperiksa.</p>
+        <div className="flex h-[100dvh] w-full max-w-3xl flex-col overflow-hidden bg-card shadow-2xl sm:h-auto sm:max-h-[88dvh] sm:rounded-2xl sm:border sm:border-border">
+          <div className="flex shrink-0 items-start justify-between gap-4 border-b border-border bg-card px-4 py-4 sm:px-6 sm:py-5">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <SlidersHorizontal className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-lg font-bold tracking-tight text-foreground sm:text-xl">Filter laporan</h2>
+                <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Sesuaikan daftar laporan tanpa mengubah filter aktif sampai diterapkan.</p>
+              </div>
             </div>
             <button
+              type="button"
               onClick={() => r.setIsFilterModalOpen(false)}
-              className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              aria-label="Tutup filter laporan"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
             >
-              <HiOutlineX className="w-4 h-4" />
+              <HiOutlineX className="h-5 w-5" />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto bg-slate-50/50 px-5 py-5">
+          <div className="flex-1 overflow-y-auto bg-muted/30 px-4 py-4 sm:px-6 sm:py-5">
             <FilterFields
               temp={temp}
               statusOptions={statusOptions}
@@ -676,37 +721,45 @@ export default function Index({ reports = [], areas = [], activities = [], users
               canToggleOwn={r.perms.canViewAll || r.perms.canReviewArea || r.perms.canSolveOwnArea}
             />
           </div>
-          <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-border bg-card px-5 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.04)]">
-            <BtnDefault outline onClick={r.resetTempFilter} className="min-h-12 rounded-xl text-sm">
-              Reset
-            </BtnDefault>
-            <BtnDefault onClick={r.applyFilterModal} className="min-h-12 rounded-xl text-sm">
-              Tampilkan hasil
-            </BtnDefault>
+          <div className="shrink-0 border-t border-border bg-card px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] sm:px-6" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
+            <div className="mb-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span>{temporaryFilterCount ? `${temporaryFilterCount} pengaturan dipilih` : "Belum ada filter tambahan"}</span>
+              {temporaryFilterCount > 0 && <span>Hasil diperbarui setelah diterapkan</span>}
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              <BtnDefault outline onClick={r.resetTempFilter} className="min-h-12 rounded-xl text-sm">
+                <RotateCcw className="h-4 w-4" /> Atur ulang
+              </BtnDefault>
+              <BtnDefault onClick={r.applyFilterModal} className="min-h-12 rounded-xl text-sm">
+                Terapkan filter
+              </BtnDefault>
+            </div>
           </div>
         </div>
       </ModalOverlay>
 
       {r.isFilterSheetOpen && (
         <div className={`fixed inset-0 ${LAYERS.modal} xl:hidden`}>
-          <button type="button" aria-label="Tutup filter" className="absolute inset-0 bg-slate-950/55" onClick={() => r.setIsFilterSheetOpen(false)} />
-          <div
-            className="absolute bottom-0 left-0 right-0 flex max-h-[88vh] flex-col rounded-t-xl border-t border-gray-200 bg-white shadow-lg"
-            style={{ "--foreground": "#111827", "--muted-foreground": "#9ca3af", "--border": "#e5e7eb", "--background": "#ffffff", "--primary": "#2563eb", "--primary-foreground": "#ffffff" }}
-          >
-            <div className="flex items-center justify-center pt-3 pb-1 shrink-0">
-              <div className="w-10 h-1 bg-gray-200 rounded-full" />
+          <button type="button" aria-label="Tutup filter laporan" className="absolute inset-0 bg-slate-950/55" onClick={() => r.setIsFilterSheetOpen(false)} />
+          <div className="absolute bottom-0 left-0 right-0 flex max-h-[90dvh] flex-col overflow-hidden rounded-t-3xl border-t border-border bg-card shadow-2xl">
+            <div className="flex shrink-0 justify-center pt-3">
+              <div className="h-1 w-10 rounded-full bg-border" />
             </div>
-            <div className="flex items-center justify-between px-5 pt-2 pb-3 border-b border-gray-100 shrink-0">
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-border px-5 pb-3 pt-2">
               <div>
-                <h3 className="text-[17px] font-bold text-gray-900">Atur tampilan</h3>
-                <p className="mt-0.5 text-xs text-gray-500">Temukan laporan yang ingin diperiksa.</p>
+                <h3 className="text-lg font-bold tracking-tight text-foreground">Filter laporan</h3>
+                <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Pilih kriteria yang ingin ditampilkan.</p>
               </div>
-              <button onClick={() => r.setIsFilterSheetOpen(false)} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500">
-                <HiOutlineX className="w-4 h-4" />
+              <button
+                type="button"
+                onClick={() => r.setIsFilterSheetOpen(false)}
+                aria-label="Tutup filter laporan"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-muted-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <HiOutlineX className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto bg-slate-50/70 px-5 py-5">
+            <div className="flex-1 overflow-y-auto bg-muted/30 px-4 py-4">
               <FilterFields
                 temp={temp}
                 statusOptions={statusOptions}
@@ -719,13 +772,15 @@ export default function Index({ reports = [], areas = [], activities = [], users
                 canToggleOwn={r.perms.canViewAll || r.perms.canReviewArea || r.perms.canSolveOwnArea}
               />
             </div>
-            <div className="flex gap-3 px-5 py-4 border-t border-gray-100 shrink-0">
-              <button onClick={r.resetTempFilter} className="flex-1 py-3.5 rounded-2xl border border-gray-200 text-[14px] font-semibold text-gray-700 active:bg-gray-50 transition-colors">
-                Reset
-              </button>
-              <button onClick={r.applyFilterSheet} className="flex-1 py-3.5 rounded-2xl bg-blue-600 text-white text-[14px] font-semibold shadow-md active:bg-blue-700 transition-colors">
-                Tampilkan hasil
-              </button>
+            <div className="shrink-0 border-t border-border bg-card px-4 py-3" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
+              <div className="grid grid-cols-2 gap-2.5">
+                <BtnDefault outline onClick={r.resetTempFilter} className="min-h-12 rounded-xl text-sm">
+                  <RotateCcw className="h-4 w-4" /> Atur ulang
+                </BtnDefault>
+                <BtnDefault onClick={r.applyFilterSheet} className="min-h-12 rounded-xl text-sm">
+                  Terapkan
+                </BtnDefault>
+              </div>
             </div>
           </div>
         </div>

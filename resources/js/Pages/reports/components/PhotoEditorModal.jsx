@@ -26,6 +26,7 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
   const [size, setSize] = useState(5)
   const [zoom, setZoom] = useState(1)
   const [text, setText] = useState("")
+  const [historyCount, setHistoryCount] = useState(0)
 
   const getContext = () => canvasRef.current?.getContext("2d")
   const capture = () => canvasRef.current?.toDataURL("image/png")
@@ -45,7 +46,10 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
 
   const addHistory = () => {
     const image = capture()
-    if (image && historyRef.current.at(-1) !== image) historyRef.current.push(image)
+    if (image && historyRef.current.at(-1) !== image) {
+      historyRef.current.push(image)
+      setHistoryCount(historyRef.current.length)
+    }
   }
 
   useEffect(() => {
@@ -54,12 +58,13 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
     const image = new Image()
     image.onload = () => {
       const canvas = canvasRef.current
-      const ratio = Math.min(1280 / image.width, 860 / image.height, 1)
+      const ratio = Math.min(1600 / image.width, 1600 / image.height, 1)
       canvas.width = Math.round(image.width * ratio)
       canvas.height = Math.round(image.height * ratio)
       getContext().drawImage(image, 0, 0, canvas.width, canvas.height)
       originalRef.current = capture()
       historyRef.current = [originalRef.current]
+      setHistoryCount(1)
       setZoom(1)
     }
     image.src = objectUrl
@@ -193,11 +198,13 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
   const undo = () => {
     if (historyRef.current.length <= 1) return
     historyRef.current.pop()
+    setHistoryCount(historyRef.current.length)
     restore(historyRef.current.at(-1))
   }
 
   const reset = () => {
     historyRef.current = [originalRef.current]
+    setHistoryCount(1)
     restore(originalRef.current)
   }
 
@@ -215,11 +222,18 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
     addHistory()
   }
 
-  const save = () => canvasRef.current.toBlob((blob) => onSave(new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" })), "image/jpeg", 0.92)
+  const save = () =>
+    canvasRef.current.toBlob(
+      (blob) => {
+        if (blob) onSave(new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" }))
+      },
+      "image/jpeg",
+      0.82,
+    )
 
   return (
     <ModalOverlay isOpen={Boolean(file)} onClose={onClose} layer="statusModal">
-      <section className="flex h-[min(760px,calc(100vh-2rem))] w-full max-w-5xl flex-col overflow-hidden rounded-t-xl border border-slate-700 bg-[#101114] text-white shadow-lg sm:rounded-xl">
+      <section className="flex h-[100dvh] w-full max-w-5xl flex-col overflow-hidden bg-[#101114] text-white shadow-2xl sm:h-[min(820px,calc(100dvh-2rem))] sm:rounded-2xl sm:border sm:border-slate-700">
         <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-3 sm:px-5">
           <button type="button" onClick={onClose} aria-label="Batalkan edit foto" className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-white/10">
             <X className="h-5 w-5" />
@@ -231,17 +245,17 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
           <button
             type="button"
             onClick={undo}
-            disabled={historyRef.current.length <= 1}
+            disabled={historyCount <= 1}
             aria-label="Batalkan perubahan terakhir"
             className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-white/10 disabled:opacity-30"
           >
             <Undo2 className="h-5 w-5" />
           </button>
         </header>
-        <main className="relative flex min-h-0 flex-1 items-center justify-center overflow-auto bg-[#050505] p-4 sm:p-8">
+        <main className="relative flex min-h-0 flex-1 items-center justify-center overflow-auto bg-[#050505] p-2 sm:p-6">
           <canvas
             ref={canvasRef}
-            className="max-w-none touch-none shadow-2xl"
+            className="max-h-full max-w-full touch-none shadow-2xl"
             style={{ transform: `scale(${zoom})`, transformOrigin: "center" }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
@@ -286,8 +300,8 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
               Reset
             </button>
           </div>
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+          <div className="mt-2 grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
               {COLORS.map((item) => (
                 <button
                   key={item}
@@ -306,17 +320,33 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
                 className="h-7 w-7 shrink-0 cursor-pointer rounded-full border-0 bg-transparent p-0"
               />
             </div>
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))} className="text-lg text-white/80 hover:text-white" aria-label="Perkecil foto">
+            <div className="grid grid-cols-[2.75rem_1fr_2.75rem] items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))}
+                className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-lg text-white/80 hover:bg-white/20 hover:text-white"
+                aria-label="Perkecil foto"
+              >
                 −
               </button>
-              <input aria-label="Ukuran garis" type="range" min="2" max="20" value={size} onChange={(event) => setSize(Number(event.target.value))} className="w-20 accent-blue-600" />
-              <button type="button" onClick={() => setZoom((value) => Math.min(2, value + 0.25))} className="text-lg text-white/80 hover:text-white" aria-label="Perbesar foto">
+              <input aria-label="Ukuran garis" type="range" min="2" max="20" value={size} onChange={(event) => setSize(Number(event.target.value))} className="w-full min-w-20 accent-blue-600" />
+              <button
+                type="button"
+                onClick={() => setZoom((value) => Math.min(2, value + 0.25))}
+                className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-lg text-white/80 hover:bg-white/20 hover:text-white"
+                aria-label="Perbesar foto"
+              >
                 +
               </button>
             </div>
-            <button type="button" onClick={save} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-blue-600 text-white transition hover:bg-blue-500" aria-label="Gunakan foto ini">
+            <button
+              type="button"
+              onClick={save}
+              className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500 sm:w-auto"
+              aria-label="Gunakan foto ini"
+            >
               <Check className="h-6 w-6 stroke-[3]" />
+              <span>Gunakan foto</span>
             </button>
           </div>
         </footer>
