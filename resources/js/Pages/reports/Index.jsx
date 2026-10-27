@@ -49,6 +49,14 @@ function FilterFields({ temp, statusOptions, filterAreaOptions, typeOptions, sub
             ]}
           />
         </div>
+        <div className="mt-4">
+          <FilterSelectField
+            label="Rows per page"
+            value={String(temp.tempPerPage)}
+            onChange={(value) => temp.setTempPerPage(Number(value))}
+            options={[["10", "10 rows"], ["25", "25 rows"], ["50", "50 rows"], ["100", "100 rows"], ["-1", "Show all"]]}
+          />
+        </div>
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-3.5 sm:p-4">
@@ -407,7 +415,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
             actions={
               <>
                 {r.perms.canExport && (
-                  <BtnDefault outline onClick={() => r.setIsExportModalOpen(true)} size="sm" className="gap-2">
+                  <BtnDefault outline onClick={() => r.setIsExportModalOpen(true)} size="md" className="gap-2 px-3.5 text-sm">
                     <File className="h-4 w-4" /> Export
                   </BtnDefault>
                 )}

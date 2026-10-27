@@ -9,7 +9,7 @@ export default function SubAreaFormModal({ isOpen, onClose, onSubmit, area, subA
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
       <ModalPanel width="sm">
-        <ModalHeader title={isEditing ? "Edit sub-area" : "Create sub-area"} description={`Area: ${area?.area ?? "-"}. Assign supervisors in User settings.`} onClose={onClose} />
+        <ModalHeader title={isEditing ? "Edit sub-area" : "Create sub-area"} description={`Area: ${area?.area ?? "-"}.`} onClose={onClose} />
         <ModalBody>
           <form id="sub-area-form" onSubmit={onSubmit}>
             <InputText label="Sub-area name" value={name} onChange={(event) => onNameChange(event.target.value)} error={error} placeholder="Enter sub-area name" required />

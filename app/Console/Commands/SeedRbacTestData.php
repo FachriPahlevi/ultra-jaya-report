@@ -11,7 +11,7 @@ class SeedRbacTestData extends Command
 {
     protected $signature = 'app:seed-rbac-test {--reports-per-user=30 : Minimum 30 reports per user}';
 
-    protected $description = 'Add test reports using existing users and master data without changing accounts or assignments (local/testing only).';
+    protected $description = 'Add test reports and supervisor assignments using existing master data (local/testing only).';
 
     public function handle(): int
     {

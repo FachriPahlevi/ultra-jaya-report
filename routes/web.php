@@ -60,6 +60,8 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
             ->middleware('can:areas.edit');
 
         Route::post('/{area}/sub-areas', [AreaController::class, 'storeSubArea'])->name('sub-areas.store')->middleware('can:areas.edit');
+        Route::put('/{area}/assignees', [AreaController::class, 'updateAssignees'])->name('assignees.update')->middleware(['can:areas.view', 'can:users.assign.area']);
+        Route::put('/{area}/sub-areas/{subArea}/assignees', [AreaController::class, 'updateSubAreaAssignees'])->name('sub-areas.assignees.update')->middleware(['can:areas.view', 'can:users.assign.area']);
         Route::put('/{area}/sub-areas/{subArea}', [AreaController::class, 'updateSubArea'])->name('sub-areas.update')->middleware('can:areas.edit');
         Route::delete('/{area}/sub-areas/{subArea}', [AreaController::class, 'destroySubArea'])->name('sub-areas.destroy')->middleware('can:areas.edit');
 

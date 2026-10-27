@@ -60,8 +60,8 @@ class DashboardSummaryTest extends TestCase
             ->where('stats.total', 3)->where('stats.reports', 1)->where('stats.open', 1)->where('stats.closed', 1)
             ->where('attentionCanClose', false)->has('attentionTickets', 1)
             ->has('analytics.areas', 1)->where('analytics.areas.0.total', 3)
-            ->has('analytics.activities', 1)->where('analytics.activities.0.total', 3)
-            ->has('analytics.subActivities', 2)->where('analytics.subActivities.0.total', 2)
+            ->has('analytics.activities', 1)->where('analytics.activities.0.total', 3)->where('analytics.activities.0.issue_total', 2)->where('analytics.activities.0.issue_closed', 1)
+            ->has('analytics.subActivities', 2)->where('analytics.subActivities.0.total', 2)->where('analytics.subActivities.0.issue_total', 2)->where('analytics.subActivities.0.issue_closed', 1)->where('analytics.subActivities.0.activity_id', $activity->id)
             ->has('analytics.closers', 1)->where('analytics.closers.0.id', $user->id)->where('analytics.closers.0.total', 1)
             ->where('analytics.dailyTrend', fn ($trend) => collect($trend)->sum('total') === 3)
             ->where('recentReports', fn ($reports) => collect($reports)->contains(fn ($item) => $item['category'] === 'REPORT')));
