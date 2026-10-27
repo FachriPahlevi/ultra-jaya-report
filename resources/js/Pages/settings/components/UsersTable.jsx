@@ -1,193 +1,57 @@
 import { router } from "@inertiajs/react"
-import { HiOutlinePencil, HiOutlineTrash } from "react-icons/hi"
-import DataTableToolbar from "@/Components/Table/DataTableToolbar"
-import ServerPagination from "@/Components/Navigation/ServerPagination"
-import Can from "@/Components/Authorization/Can"
 import { useMemo, useState } from "react"
+import { HiOutlinePencil, HiOutlineTrash } from "react-icons/hi"
+import Can from "@/Components/Authorization/Can"
+import ServerPagination from "@/Components/Navigation/ServerPagination"
+import DataTableToolbar from "@/Components/Table/DataTableToolbar"
 import FilterChoiceGroup from "@/Components/Table/FilterChoiceGroup"
 import FilterMultiSelect from "@/Components/Table/FilterMultiSelect"
 import FilterSelectField from "@/Components/Table/FilterSelectField"
 
-const USER_TABLE_COLUMNS = ["No", "User", "Email", "Role", "Actions"]
-
-const getInitials = (name) =>
+const initials = (name) =>
   name
     ?.split(" ")
     .slice(0, 2)
     .map((word) => word[0]?.toUpperCase())
     .join("") ?? "U"
+const visibleUsers = (users, auth) => users.data.filter((user) => auth.user.roles.includes("SUPER_ADMIN") || user.roles[0]?.name !== "SUPER_ADMIN" || user.id === auth.user.id)
 
-const getVisibleUsers = (users, auth) => users.data.filter((user) => auth.user.roles.includes("SUPER_ADMIN") || user.roles[0]?.name !== "SUPER_ADMIN" || user.id === auth.user.id)
-
-function AreaAssignmentChips({ user }) {
+function ScopeChips({ user }) {
   const assignments = [...(user.managed_areas?.map((area) => area.area) ?? []), ...(user.supervised_sub_areas?.map((subArea) => `${subArea.area?.area ?? "Area"} / ${subArea.name}`) ?? [])]
-
-  if (!assignments.length && !user.scope_capabilities?.review && !user.scope_capabilities?.close) {
-    return null
-  }
-
-  if (!assignments.length) {
-    return <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[10px] font-medium text-amber-700">Belum ada scope ditugaskan</span>
-  }
-
+  if (!assignments.length) return null
+  const shown = assignments.slice(0, 2)
   return (
     <div className="mt-2 flex flex-wrap gap-1.5">
-      {assignments.map((assignment) => (
-        <span key={assignment} className="inline-flex items-center rounded-full border border-border bg-background px-2.5 py-1 text-[10px] font-medium text-muted-foreground">
+      {shown.map((assignment) => (
+        <span key={assignment} title={assignment} className="inline-flex max-w-full truncate rounded-md border border-border bg-background px-2 py-1 text-[10px] font-medium text-muted-foreground">
           {assignment}
         </span>
       ))}
+      {assignments.length > shown.length && (
+        <span title={assignments.slice(shown.length).join(", ")} className="rounded-md border border-border bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground">
+          +{assignments.length - shown.length} more
+        </span>
+      )}
     </div>
   )
 }
 
-function UserActionButton({ children, tone = "subtle", className = "", ...props }) {
-  const tones = {
-    subtle: "border-transparent bg-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-    danger: "border-transparent bg-transparent text-red-600 hover:bg-red-50 hover:text-red-700",
-  }
-
+function Action({ children, danger = false, ...props }) {
   return (
-    <button {...props} className={`inline-flex min-h-10 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition-colors ${tones[tone]} ${className}`}>
+    <button
+      {...props}
+      className={`inline-flex min-h-11 items-center justify-center rounded-lg px-3 text-xs font-semibold transition-colors ${danger ? "text-red-600 hover:bg-red-50" : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"}`}
+    >
       {children}
     </button>
   )
 }
 
-function visitWithActiveTab(url, activeTab) {
-  if (!url) {
-    return
-  }
-
+function visitPage(url, activeTab) {
+  if (!url) return
   const target = new URL(url, window.location.origin)
   target.searchParams.set("active_tab", activeTab)
-
-  router.visit(`${target.pathname}${target.search}`, {
-    preserveState: true,
-    preserveScroll: true,
-    replace: true,
-  })
-}
-
-function DesktopTable({ users, auth, onEdit, onDelete }) {
-  const visibleUsers = getVisibleUsers(users, auth)
-  const startNumber = users.meta?.from ?? 1
-
-  return (
-    <div className="hidden overflow-x-auto xl:block">
-      <table className="ui-table">
-        <thead>
-          <tr>
-            {USER_TABLE_COLUMNS.map((column) => (
-              <th key={column}>{column}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border/60">
-          {visibleUsers.length === 0 ? (
-            <tr>
-              <td colSpan="5" className="py-16 text-center text-[13px] text-muted-foreground">
-                Pengguna tidak ditemukan
-              </td>
-            </tr>
-          ) : (
-            visibleUsers.map((user, index) => (
-              <tr key={user.id} className="transition-colors hover:bg-muted/10">
-                <td className="w-12 px-6 py-5 text-[13px] font-semibold text-foreground">{startNumber + index}</td>
-                <td className="px-6 py-5">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-[12px] font-semibold text-primary">{getInitials(user.name)}</div>
-                    <div>
-                      <p className="text-[14px] font-semibold text-foreground">{user.name}</p>
-                      <AreaAssignmentChips user={user} />
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-5 text-[12.5px] text-muted-foreground">{user.email}</td>
-                <td className="px-6 py-5">
-                  <span className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground">
-                    {user.roles[0]?.name || "No role"}
-                  </span>
-                </td>
-                <td className="px-6 py-5">
-                  <div className="flex items-center gap-1.5">
-                    {user.can?.update && (
-                      <Can permission="users.edit">
-                        <UserActionButton onClick={() => onEdit(user)} title="Edit User">
-                          <HiOutlinePencil className="mr-1.5 h-4 w-4" />
-                          Edit
-                        </UserActionButton>
-                      </Can>
-                    )}
-                    {user.can?.delete && (
-                      <Can permission="users.delete">
-                        <UserActionButton onClick={() => onDelete(user)} tone="danger" title="Delete User">
-                          <HiOutlineTrash className="mr-1.5 h-4 w-4" />
-                          Delete
-                        </UserActionButton>
-                      </Can>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
-  )
-}
-
-function MobileList({ users, auth, onEdit, onDelete }) {
-  const visibleUsers = getVisibleUsers(users, auth)
-  const startNumber = users.meta?.from ?? 1
-
-  return (
-    <div className="grid grid-cols-1 divide-y divide-border xl:hidden">
-      {visibleUsers.length === 0 ? (
-        <div className="rounded-2xl border border-border bg-background px-4 py-8 text-center text-[13px] text-muted-foreground">No users found</div>
-      ) : (
-        visibleUsers.map((user, index) => (
-          <div key={user.id} className="min-w-0 p-4 sm:p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-[12px] font-semibold text-primary">{getInitials(user.name)}</div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">#{startNumber + index}</p>
-                  <h3 className="truncate text-[15px] font-semibold text-foreground">{user.name}</h3>
-                </div>
-              </div>
-              <span className="inline-flex max-w-[42%] shrink-0 truncate rounded-full border border-border bg-card px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground">
-                {user.roles[0]?.name || "No role"}
-              </span>
-            </div>
-
-            <p className="mt-3 break-all text-sm text-muted-foreground">{user.email}</p>
-            <AreaAssignmentChips user={user} />
-
-            <div className="mt-4 flex gap-2 border-t border-border pt-4 max-sm:[&>button]:flex-1">
-              {user.can?.update && (
-                <Can permission="users.edit">
-                  <UserActionButton onClick={() => onEdit(user)} title="Edit User">
-                    <HiOutlinePencil className="mr-1.5 h-4 w-4" />
-                    Edit
-                  </UserActionButton>
-                </Can>
-              )}
-              {user.can?.delete && (
-                <Can permission="users.delete">
-                  <UserActionButton onClick={() => onDelete(user)} tone="danger" title="Delete User">
-                    <HiOutlineTrash className="mr-1.5 h-4 w-4" />
-                    Delete
-                  </UserActionButton>
-                </Can>
-              )}
-            </div>
-          </div>
-        ))
-      )}
-    </div>
-  )
+  router.visit(`${target.pathname}${target.search}`, { preserveState: true, preserveScroll: true, replace: true })
 }
 
 export default function UsersTable({ users, onEdit, onDelete, auth, usersPerPage, onUsersPerPageChange, activeTab = "users", search, onSearchChange }) {
@@ -199,66 +63,66 @@ export default function UsersTable({ users, onEdit, onDelete, auth, usersPerPage
     () =>
       [
         ...new Set(
-          getVisibleUsers(users, auth)
+          visibleUsers(users, auth)
             .map((user) => user.roles[0]?.name)
             .filter(Boolean),
         ),
       ].sort(),
     [users, auth],
   )
-  const filteredUsers = useMemo(
+  const filtered = useMemo(
     () =>
-      getVisibleUsers(users, auth)
+      visibleUsers(users, auth)
         .filter((user) => role.length === 0 || role.includes(user.roles[0]?.name))
         .filter((user) => status === "all" || (status === "active" ? user.is_active !== false : user.is_active === false))
         .filter(
           (user) => scope === "all" || (scope === "assigned" ? user.managed_areas?.length || user.supervised_sub_areas?.length : !(user.managed_areas?.length || user.supervised_sub_areas?.length)),
         )
-        .sort((left, right) =>
+        .sort((a, b) =>
           sort === "name-desc"
-            ? right.name.localeCompare(left.name, "id")
+            ? b.name.localeCompare(a.name, "en")
             : sort === "latest"
-              ? new Date(right.created_at || 0) - new Date(left.created_at || 0)
+              ? new Date(b.created_at || 0) - new Date(a.created_at || 0)
               : sort === "oldest"
-                ? new Date(left.created_at || 0) - new Date(right.created_at || 0)
-                : left.name.localeCompare(right.name, "id"),
+                ? new Date(a.created_at || 0) - new Date(b.created_at || 0)
+                : a.name.localeCompare(b.name, "en"),
         ),
-    [users, auth, role, scope, sort, status],
+    [users, auth, role, status, scope, sort],
   )
-  const displayUsers = { ...users, data: filteredUsers }
+  const start = users.meta?.from ?? 1
   const filterContent = (
     <div className="space-y-5">
       <FilterSelectField
-        label="Susun pengguna"
+        label="Sort users"
         value={sort}
         onChange={setSort}
         options={[
-          ["name-asc", "Nama A–Z"],
-          ["name-desc", "Nama Z–A"],
-          ["latest", "Terbaru ditambahkan"],
-          ["oldest", "Paling lama ditambahkan"],
+          ["name-asc", "Name A–Z"],
+          ["name-desc", "Name Z–A"],
+          ["latest", "Recently added"],
+          ["oldest", "Oldest first"],
         ]}
       />
-      <FilterMultiSelect label="Peran pengguna" values={role} onChange={setRole} options={availableRoles.map((item) => ({ value: item, label: item }))} placeholder="Semua peran" searchable={false} />
+      <FilterMultiSelect label="User roles" values={role} onChange={setRole} options={availableRoles.map((item) => ({ value: item, label: item }))} placeholder="All roles" searchable={false} />
       <FilterChoiceGroup
-        legend="Status akun"
+        legend="Account status"
         value={status}
         onChange={setStatus}
         options={[
-          ["all", "Semua"],
-          ["active", "Aktif"],
-          ["inactive", "Nonaktif"],
+          ["all", "All"],
+          ["active", "Active"],
+          ["inactive", "Inactive"],
         ]}
         variant="chips"
       />
       <FilterChoiceGroup
-        legend="Penugasan wilayah"
+        legend="Area assignment"
         value={scope}
         onChange={setScope}
         options={[
-          ["all", "Semua"],
-          ["assigned", "Sudah ditugaskan"],
-          ["empty", "Belum ditugaskan"],
+          ["all", "All"],
+          ["assigned", "Assigned"],
+          ["empty", "Unassigned"],
         ]}
         variant="chips"
       />
@@ -268,12 +132,13 @@ export default function UsersTable({ users, onEdit, onDelete, auth, usersPerPage
   return (
     <section className="ui-panel overflow-hidden">
       <DataTableToolbar
+        language="en"
         search={search}
         onSearchChange={onSearchChange}
-        searchPlaceholder="Cari nama atau email..."
+        searchPlaceholder="Search by name or email..."
         perPage={Number(usersPerPage)}
         onPerPageChange={onUsersPerPageChange}
-        resultText={`${role.length === 0 ? (users.meta?.total ?? users.data.length) : filteredUsers.length} hasil`}
+        resultText={`${role.length === 0 ? (users.meta?.total ?? users.data.length) : filtered.length} results`}
         filterContent={filterContent}
         mobileFilterActive={sort !== "name-asc" || role.length > 0 || status !== "all" || scope !== "all"}
         onResetFilter={() => {
@@ -283,9 +148,70 @@ export default function UsersTable({ users, onEdit, onDelete, auth, usersPerPage
           setScope("all")
         }}
       />
-      <DesktopTable users={displayUsers} auth={auth} onEdit={onEdit} onDelete={onDelete} />
-      <MobileList users={displayUsers} auth={auth} onEdit={onEdit} onDelete={onDelete} />
-      <ServerPagination links={users.links} from={users.meta?.from} to={users.meta?.to} total={users.meta?.total ?? 0} onNavigate={(url) => visitWithActiveTab(url, activeTab)} />
+      <div className="hidden grid-cols-[48px_minmax(210px,1.15fr)_minmax(180px,1fr)_minmax(120px,.6fr)_100px_minmax(170px,.75fr)] border-y border-border bg-muted/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground lg:grid">
+        <span>No.</span>
+        <span>User</span>
+        <span>Email</span>
+        <span>Role</span>
+        <span>Status</span>
+        <span>Actions</span>
+      </div>
+      <div className="grid grid-cols-1 divide-y divide-border bg-card md:grid-cols-2 md:gap-3 md:divide-y-0 md:bg-background/60 md:p-3 lg:block lg:bg-card lg:p-0">
+        {filtered.length === 0 ? (
+          <div className="px-4 py-12 text-center text-[13px] text-muted-foreground md:col-span-2">No users found.</div>
+        ) : (
+          filtered.map((user, index) => (
+            <article
+              key={user.id}
+              className="flex min-w-0 flex-col p-4 transition-colors hover:bg-muted/10 md:rounded-xl md:border md:border-border md:bg-card lg:grid lg:grid-cols-[48px_minmax(210px,1.15fr)_minmax(180px,1fr)_minmax(120px,.6fr)_100px_minmax(170px,.75fr)] lg:items-center lg:rounded-none lg:border-x-0 lg:border-b lg:border-t-0 lg:px-5 lg:py-4"
+            >
+              <span className="mb-2 text-[11px] font-semibold text-muted-foreground lg:mb-0 lg:text-[13px] lg:text-foreground">
+                <span className="lg:hidden">#</span>
+                {start + index}
+              </span>
+              <div className="flex min-w-0 items-start gap-3 lg:items-center">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{initials(user.name)}</div>
+                <div className="min-w-0">
+                  <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground">{user.name}</h3>
+                  <ScopeChips user={user} />
+                </div>
+              </div>
+              <div className="mt-3 min-w-0 lg:mt-0 lg:px-1">
+                <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground lg:hidden">Email</span>
+                <p className="break-all text-xs leading-5 text-muted-foreground lg:break-normal">{user.email}</p>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 lg:mt-0">
+                <span className="inline-flex max-w-full truncate rounded-md border border-border bg-background px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-foreground">
+                  {user.roles[0]?.name || "No role"}
+                </span>
+              </div>
+              <span className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground lg:mt-0">
+                <span className={`h-1.5 w-1.5 rounded-full ${user.is_active === false ? "bg-slate-400" : "bg-emerald-500"}`} />
+                {user.is_active === false ? "Inactive" : "Active"}
+              </span>
+              <div className="mt-4 flex justify-end gap-1 border-t border-border pt-3 md:mt-auto lg:mt-0 lg:border-0 lg:p-0">
+                {user.can?.update && (
+                  <Can permission="users.edit">
+                    <Action onClick={() => onEdit(user)} title="Edit User">
+                      <HiOutlinePencil className="mr-1.5 h-4 w-4" />
+                      Edit
+                    </Action>
+                  </Can>
+                )}
+                {user.can?.delete && (
+                  <Can permission="users.delete">
+                    <Action danger onClick={() => onDelete(user)} title="Delete User">
+                      <HiOutlineTrash className="mr-1.5 h-4 w-4" />
+                      Delete
+                    </Action>
+                  </Can>
+                )}
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+      <ServerPagination language="en" links={users.links} from={users.meta?.from} to={users.meta?.to} total={users.meta?.total ?? 0} onNavigate={(url) => visitPage(url, activeTab)} />
     </section>
   )
 }

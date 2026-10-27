@@ -44,8 +44,9 @@ class DashboardController extends Controller
         $query->when($areaId, fn (Builder $builder) => $builder->where('area_id', $areaId));
 
         $totalReports = (clone $query)->count();
-        $openReports = (clone $query)->where('status', 'open')->count();
-        $closedReports = (clone $query)->where('status', 'closed')->count();
+        $reportCount = (clone $query)->where('category_snapshot', 'REPORT')->count();
+        $openReports = (clone $query)->where('category_snapshot', 'ISSUE')->where('status', 'open')->count();
+        $closedReports = (clone $query)->where('category_snapshot', 'ISSUE')->where('status', 'closed')->count();
         $myReports = Report::where('author_id', $userId)->count();
 
         $topArea = (clone $query)
@@ -54,24 +55,63 @@ class DashboardController extends Controller
             ->groupBy('area_id')
             ->orderByDesc('total')
             ->first();
+        $topOpenArea = (clone $query)->where('category_snapshot', 'ISSUE')->where('status', 'open')
+            ->select('area_id', DB::raw('count(*) as total'))->with('area')->groupBy('area_id')->orderByDesc('total')->first();
+
+        $areaBreakdown = (clone $query)->whereNotNull('area_id')->select('area_id', DB::raw('count(*) as total'))
+            ->with('area:id,area')->groupBy('area_id')->orderByDesc('total')->orderBy('area_id')->get()
+            ->map(fn ($row) => ['id' => $row->area_id, 'name' => $row->area?->area ?? 'Area tidak tersedia', 'total' => (int) $row->total]);
+        $activityBreakdown = (clone $query)->whereNotNull('activity_id')->select('activity_id', DB::raw('count(*) as total'))
+            ->with('activityType:id,name')->groupBy('activity_id')->orderByDesc('total')->orderBy('activity_id')->get()
+            ->map(fn ($row) => ['id' => $row->activity_id, 'name' => $row->activityType?->name ?? 'Aktivitas tidak tersedia', 'total' => (int) $row->total]);
+        $subActivityBreakdown = (clone $query)->whereNotNull('sub_activity_id')->select('sub_activity_id', DB::raw('count(*) as total'))
+            ->with('subActivity:id,name,activity_id', 'subActivity.activity:id,name')->groupBy('sub_activity_id')->orderByDesc('total')->orderBy('sub_activity_id')->get()
+            ->map(fn ($row) => ['id' => $row->sub_activity_id, 'name' => $row->subActivity?->name ?? 'Sub-aktivitas tidak tersedia', 'detail' => $row->subActivity?->activity?->name, 'total' => (int) $row->total]);
+        $closerBreakdown = (clone $query)->where('category_snapshot', 'ISSUE')->where('status', 'closed')->whereNotNull('closed_by')
+            ->select('closed_by', DB::raw('count(*) as total'))->with('closer:id,name')->groupBy('closed_by')->orderByDesc('total')->orderBy('closed_by')->get()
+            ->map(fn ($row) => ['id' => $row->closed_by, 'name' => $row->closer?->name ?? 'Pengguna tidak tersedia', 'total' => (int) $row->total]);
+
+        $trendEnd = ($dateTo ?? now())->copy()->startOfDay();
+        $trendStart = $trendEnd->copy()->subDays(29);
+        if ($dateFrom && $dateFrom->greaterThan($trendStart)) {
+            $trendStart = $dateFrom->copy()->startOfDay();
+        }
+        $dateExpression = DB::connection()->getDriverName() === 'sqlsrv' ? 'CONVERT(char(10), created_at, 23)' : 'DATE(created_at)';
+        $trendCounts = (clone $query)
+            ->whereBetween('created_at', [$trendStart, $trendEnd->copy()->endOfDay()])
+            ->selectRaw("{$dateExpression} as report_day, COUNT(*) as total")
+            ->groupByRaw($dateExpression)
+            ->pluck('total', 'report_day');
+        $dailyTrend = collect();
+        for ($day = $trendStart->copy(); $day->lessThanOrEqualTo($trendEnd); $day->addDay()) {
+            $key = $day->toDateString();
+            $dailyTrend->push(['date' => $key, 'total' => (int) ($trendCounts[$key] ?? 0)]);
+        }
 
         $recentReports = (clone $query)
             ->with(['author:id,name', 'area:id,area', 'activityType:id,name', 'subActivity:id,name'])
             ->latest()
-            ->take(5)
+            ->take(20)
             ->get();
 
-        $oldestOpenTicket = (clone $query)
+        $canClose = $user->hasAnyPermission(['reports.solve.all', 'reports.solve.own.area']);
+        $attentionQuery = (clone $query)->where('category_snapshot', 'ISSUE')->where('status', 'open');
+        if ($canClose && ! $user->can('reports.solve.all')) {
+            $attentionQuery->whereHas('subArea.supervisors', fn (Builder $users) => $users->whereKey($userId))
+                ->whereHas('subActivity.supervisors', fn (Builder $users) => $users->whereKey($userId));
+        }
+        $attentionTickets = $attentionQuery
             ->with(['area:id,area', 'activityType:id,name', 'subActivity:id,name'])
-            ->where('status', 'open')
             ->oldest('created_at')
-            ->first();
+            ->limit(5)->get();
+        $oldestOpenTicket = (clone $query)->with(['area:id,area', 'activityType:id,name', 'subActivity:id,name'])->where('status', 'open')->oldest('created_at')->first();
 
         $formattedRecentReports = $recentReports->map(function ($report) {
             return [
                 'id' => $report->id,
                 'issue' => $report->issue,
                 'status' => $report->status,
+                'category' => $report->category_snapshot,
                 'area' => $report->area?->area ?? '-',
                 'submitted_by' => $report->author?->name ?? 'Unknown',
                 'activity' => $report->subActivity?->name ?? $report->activityType?->name ?? '-',
@@ -81,6 +121,7 @@ class DashboardController extends Controller
 
         $stats = [
             'total' => $totalReports,
+            'reports' => $reportCount,
             'open' => $openReports,
             'closed' => $closedReports,
             'myReports' => $myReports,
@@ -90,14 +131,30 @@ class DashboardController extends Controller
             'stats' => $stats,
             'recentReports' => $formattedRecentReports,
             'topArea' => $topArea?->area?->area ?? null,
+            'topOpenArea' => $availableAreas->count() > 1 && $topOpenArea?->area ? ['name' => $topOpenArea->area->area, 'count' => $topOpenArea->total, 'id' => $topOpenArea->area_id] : null,
             'oldestOpenTicket' => $oldestOpenTicket ? [
-                'id' => $oldestOpenTicket->id,
-                'issue' => $oldestOpenTicket->issue,
+                'id' => $oldestOpenTicket->id, 'issue' => $oldestOpenTicket->issue,
                 'area' => $oldestOpenTicket->area?->area ?? '-',
                 'activity' => $oldestOpenTicket->subActivity?->name ?? $oldestOpenTicket->activityType?->name ?? '-',
                 'created_at' => $oldestOpenTicket->created_at,
                 'age_in_days' => (int) $oldestOpenTicket->created_at->diffInDays(now()),
             ] : null,
+            'attentionCanClose' => $canClose,
+            'analytics' => [
+                'areas' => $areaBreakdown,
+                'activities' => $activityBreakdown,
+                'subActivities' => $subActivityBreakdown,
+                'closers' => $closerBreakdown,
+                'dailyTrend' => $dailyTrend,
+            ],
+            'attentionTickets' => $attentionTickets->map(fn ($ticket) => [
+                'id' => $ticket->id,
+                'issue' => $ticket->issue,
+                'area' => $ticket->area?->area ?? '-',
+                'activity' => $ticket->subActivity?->name ?? $ticket->activityType?->name ?? '-',
+                'created_at' => $ticket->created_at,
+                'age_in_days' => (int) $ticket->created_at->diffInDays(now()),
+            ]),
             'filters' => [
                 'period' => $period,
                 'date_from' => $dateFrom?->toDateString(),

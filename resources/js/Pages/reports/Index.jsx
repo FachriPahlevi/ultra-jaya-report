@@ -8,7 +8,7 @@ import { ModalHeader, ModalPanel } from "@/Components/Modal/ModalLayout"
 import ReportForm from "@/Pages/reports/components/ReportForm"
 import CloseTicketForm from "@/Pages/reports/components/CloseTicketForm"
 import ExportForm from "@/Pages/reports/components/ExportReportForm"
-import ReportCard from "@/Pages/reports/components/ReportCard"
+import ReportCard, { reportDesktopGrid } from "@/Pages/reports/components/ReportCard"
 import Pagination from "@/Components/Navigation/Pagination"
 import ExpandableImage from "@/Components/UI/ExpandableImage"
 import { useReports } from "@/Pages/reports/hooks/useReports"
@@ -231,8 +231,8 @@ function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onD
             <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
               <h4 className="mb-3 text-[15px] font-bold text-foreground">Photo documentation</h4>
               <div className={`grid grid-cols-1 gap-4 ${report.photo_before && report.photo_after ? "sm:grid-cols-2" : ""}`}>
-                <ReportPhoto src={report.photo_before} label="Before photo" showLabel={Boolean(report.photo_after)} />
-                <ReportPhoto src={report.photo_after} label="After photo" showLabel={Boolean(report.photo_before)} />
+                <ReportPhoto src={report.photo_before} label="Before photo" />
+                <ReportPhoto src={report.photo_after} label="After photo" />
               </div>
             </section>
           )}
@@ -329,18 +329,18 @@ export default function Index({ reports = [], areas = [], activities = [], users
   const roleOptions = [{ label: "All roles", value: "" }, ...[...new Set(reports.map((report) => report.author?.role).filter(Boolean))].sort().map((role) => ({ label: role, value: role }))]
 
   const { temp } = r
-  const temporaryFilterCount = [
-    temp.tempStatus.length,
-    temp.tempType.length,
-    temp.tempArea.length,
-    temp.tempRole.length,
-    temp.tempAuthor.length,
-    temp.tempSubArea.length,
-    temp.tempPhoto ? 1 : 0,
-    temp.tempSort !== "latest" ? 1 : 0,
-    temp.tempDateFrom || temp.tempDateTo ? 1 : 0,
-    temp.tempMyReportsOnly ? 1 : 0,
-  ].reduce((total, count) => total + count, 0)
+  // const temporaryFilterCount = [
+  //   temp.tempStatus.length,
+  //   temp.tempType.length,
+  //   temp.tempArea.length,
+  //   temp.tempRole.length,
+  //   temp.tempAuthor.length,
+  //   temp.tempSubArea.length,
+  //   temp.tempPhoto ? 1 : 0,
+  //   temp.tempSort !== "latest" ? 1 : 0,
+  //   temp.tempDateFrom || temp.tempDateTo ? 1 : 0,
+  //   temp.tempMyReportsOnly ? 1 : 0,
+  // ].reduce((total, count) => total + count, 0)
 
   return (
     <AppLayout title="Reports">
@@ -415,7 +415,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
             }
           />
           <div className="border-b border-border/70 px-4 py-2 text-xs text-muted-foreground sm:hidden">{r.filtered.length} results</div>
-          <div className="hidden grid-cols-[2.5rem_minmax(0,2.2fr)_minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1.1fr)_7.5rem_6.5rem] gap-4 border-b border-border bg-muted/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground xl:grid">
+          <div className={`hidden border-b border-border bg-muted/30 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground xl:grid ${reportDesktopGrid}`}>
             <span>No</span>
             <span>Finding</span>
             <span>Reporter</span>
@@ -471,16 +471,12 @@ export default function Index({ reports = [], areas = [], activities = [], users
               canToggleOwn={r.perms.canViewAll || r.perms.canReviewArea || r.perms.canSolveOwnArea}
             />
           </div>
-          <div className="shrink-0 border-t border-border bg-card px-4 py-3 shadow-[0_-8px_24px_rgba(15,23,42,0.06)] sm:px-6" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
-            <div className="mb-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-              <span>{temporaryFilterCount ? `${temporaryFilterCount} filters selected` : "No additional filters"}</span>
-              {temporaryFilterCount > 0 && <span>Results update after you apply</span>}
-            </div>
+          <div className="shrink-0 border-t border-border bg-card px-4 py-3 sm:px-6" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
             <div className="grid grid-cols-2 gap-2.5">
-              <BtnDefault outline onClick={r.resetTempFilter} className="min-h-12 rounded-xl text-sm">
+              <BtnDefault outline fullWidth size="lg" onClick={r.resetTempFilter} className="rounded-lg">
                 <RotateCcw className="h-4 w-4" /> Reset
               </BtnDefault>
-              <BtnDefault onClick={r.applyFilterModal} className="min-h-12 rounded-xl text-sm">
+              <BtnDefault fullWidth size="lg" onClick={r.applyFilterModal} className="rounded-lg">
                 Apply filters
               </BtnDefault>
             </div>
@@ -524,11 +520,11 @@ export default function Index({ reports = [], areas = [], activities = [], users
             </div>
             <div className="shrink-0 border-t border-border bg-card px-4 py-3" style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}>
               <div className="grid grid-cols-2 gap-2.5">
-                <BtnDefault outline onClick={r.resetTempFilter} className="min-h-12 rounded-xl text-sm">
+                <BtnDefault outline fullWidth size="lg" onClick={r.resetTempFilter} className="rounded-lg">
                   <RotateCcw className="h-4 w-4" /> Reset
                 </BtnDefault>
-                <BtnDefault onClick={r.applyFilterSheet} className="min-h-12 rounded-xl text-sm">
-                  Apply
+                <BtnDefault fullWidth size="lg" onClick={r.applyFilterSheet} className="rounded-lg">
+                  Apply filters
                 </BtnDefault>
               </div>
             </div>

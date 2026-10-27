@@ -12,7 +12,7 @@ import { ModalBody, ModalFooter, ModalHeader, ModalPanel } from "@/Components/Mo
 import { useStatusModal } from "@/Components/Context/StatusModalContext"
 import { useAuthorization } from "@/hooks/useAuthorization"
 
-const emptyUserForm = () => ({ name: "", email: "", role: "", password: "", area_ids: [], sub_area_ids: [] })
+const emptyUserForm = () => ({ name: "", email: "", role: "", password: "", area_ids: [] })
 
 function userToForm(user) {
   return {
@@ -21,7 +21,6 @@ function userToForm(user) {
     role: user?.roles?.[0]?.name ?? "",
     password: "",
     area_ids: user?.managed_areas?.map((area) => String(area.id)) ?? [],
-    sub_area_ids: user?.supervised_sub_areas?.map((subArea) => String(subArea.id)) ?? [],
   }
 }
 
@@ -33,7 +32,6 @@ export default function UserForm({ isOpen, onClose, user, roles, areas, isSupera
   const selectedRole = roles.find((role) => role.name === form.role)
   const selectedPermissions = new Set([...(selectedRole?.permissions?.map((permission) => permission.name) ?? []), ...(user?.direct_permissions ?? [])])
   const canReview = selectedPermissions.has("reports.review.area")
-  const canCloseAssigned = selectedPermissions.has("reports.solve.own.area")
 
   const roleOptions = useMemo(
     () =>
@@ -53,19 +51,6 @@ export default function UserForm({ isOpen, onClose, user, roles, areas, isSupera
         value: String(area.id),
       })),
     [areas],
-  )
-
-  const subAreaOptions = useMemo(
-    () =>
-      areas.flatMap((area) =>
-        area.sub_areas.map((subArea) => ({
-          label: subArea.name,
-          value: String(subArea.id),
-          description: `${area.area} · ${subArea.supervisors_count}/${subArea.max_personnel} SPV`,
-          disabled: subArea.supervisors_count >= subArea.max_personnel && !form.sub_area_ids.includes(String(subArea.id)),
-        })),
-      ),
-    [areas, form.sub_area_ids],
   )
 
   useEffect(() => {
@@ -92,7 +77,7 @@ export default function UserForm({ isOpen, onClose, user, roles, areas, isSupera
       name: form.name,
       email: form.email,
       role: form.role,
-      ...(can("users.assign.area") ? { area_ids: form.area_ids.map(Number), sub_area_ids: form.sub_area_ids.map(Number) } : {}),
+      ...(can("users.assign.area") ? { area_ids: form.area_ids.map(Number) } : {}),
     }
 
     if (form.password) {
@@ -112,7 +97,7 @@ export default function UserForm({ isOpen, onClose, user, roles, areas, isSupera
         onClose()
       }
     } catch (error) {
-      showStatusModal("error", "Periksa Data Anda", getRequestErrorMessage(error))
+      showStatusModal("error", "Check your information", getRequestErrorMessage(error))
     } finally {
       setProcessing(false)
     }
@@ -123,57 +108,48 @@ export default function UserForm({ isOpen, onClose, user, roles, areas, isSupera
       <ModalPanel>
         <ModalHeader title={user ? "Edit user" : "Create user"} description={user ? `Update ${user.name}'s details and assignments.` : "Enter user details and assign a role."} onClose={onClose} />
         <ModalBody>
-        <form id="user-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <InputText label="Full Name" placeholder="Enter full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-          <InputText label="Email Address" type="email" placeholder="Enter email address" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-          <InputDropdown
-            id="user_role"
-            label="Role"
-            disabled={Boolean(user) && !can("users.promote")}
-            placeholder="Select a role"
-            object={roleOptions.find((role) => role.value === form.role) ?? null}
-            setObject={(role) => setForm((currentForm) => ({ ...currentForm, role: role.value }))}
-            itemList={roleOptions}
-            required
-          />
-          {can("users.assign.area") && canReview && (
-            <MultiSelectChecklist
-              label="Area penugasan reviewer"
-              values={form.area_ids}
-              options={areaOptions}
-              onChange={(areaIds) => setForm((currentForm) => ({ ...currentForm, area_ids: areaIds }))}
-              helperText="Tetapkan lokasi pengguna. Akses review laporan ditentukan oleh penugasan reviewer di halaman Aktivitas."
-              searchPlaceholder="Cari area..."
-              emptyText="Area tidak ditemukan."
-              selectionLabel="Area terpilih"
-              emptySelectionText="Belum ada area dipilih."
+          <form id="user-form" onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <InputText label="Full Name" placeholder="Enter full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+            <InputText label="Email Address" type="email" placeholder="Enter email address" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
+            <InputDropdown
+              id="user_role"
+              label="Role"
+              disabled={Boolean(user) && !can("users.promote")}
+              placeholder="Select a role"
+              object={roleOptions.find((role) => role.value === form.role) ?? null}
+              setObject={(role) => setForm((currentForm) => ({ ...currentForm, role: role.value }))}
+              itemList={roleOptions}
+              required
             />
-          )}
-          {can("users.assign.area") && canCloseAssigned && (
-            <MultiSelectChecklist
-              label="Sub-area penugasan penutup tiket"
-              values={form.sub_area_ids}
-              options={subAreaOptions}
-              onChange={(subAreaIds) => setForm((currentForm) => ({ ...currentForm, sub_area_ids: subAreaIds }))}
-              helperText="Untuk menutup ISSUE, pengguna juga harus ditugaskan pada Sub-aktivitas laporan."
-              searchPlaceholder="Cari area atau sub-area..."
-              emptyText="Sub-area tidak ditemukan."
-              selectionLabel="Sub-area terpilih"
-              emptySelectionText="Belum ada sub-area dipilih."
+            {can("users.assign.area") && canReview && (
+              <MultiSelectChecklist
+                label="Reviewer areas"
+                values={form.area_ids}
+                options={areaOptions}
+                onChange={(areaIds) => setForm((currentForm) => ({ ...currentForm, area_ids: areaIds }))}
+                helperText="Choose the areas this user reviews. Activity-level assignments are managed from the Activities page."
+                searchPlaceholder="Search areas..."
+                emptyText="No areas found."
+                selectionLabel="Selected areas"
+                emptySelectionText="No areas selected."
+              />
+            )}
+            <InputText
+              label={user ? "New Password (optional)" : "Password"}
+              type="password"
+              placeholder={user ? "Leave blank to keep current" : "Enter password"}
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
             />
-          )}
-          <InputText
-            label={user ? "New Password (optional)" : "Password"}
-            type="password"
-            placeholder={user ? "Leave blank to keep current" : "Enter password"}
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-          />
-        </form>
+          </form>
         </ModalBody>
         <ModalFooter>
-          <BtnDefault variant="outline" onClick={onClose} className="w-full rounded-xl">Cancel</BtnDefault>
-          <BtnDefault form="user-form" type="submit" loading={processing} className="w-full rounded-xl">{user ? "Update User" : "Create User"}</BtnDefault>
+          <BtnDefault variant="outline" onClick={onClose} className="w-full rounded-xl">
+            Cancel
+          </BtnDefault>
+          <BtnDefault form="user-form" type="submit" loading={processing} className="w-full rounded-xl">
+            {user ? "Update User" : "Create User"}
+          </BtnDefault>
         </ModalFooter>
       </ModalPanel>
     </ModalOverlay>

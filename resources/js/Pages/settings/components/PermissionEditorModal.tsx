@@ -66,7 +66,7 @@ function PermissionGroup({ group, permissions, selectedPermissions, isDisabled, 
       <div className="mb-3 flex items-center gap-3">
         <button
           aria-checked={isPartiallySelected ? "mixed" : isSelected}
-          aria-label={`Pilih semua permission ${group}`}
+          aria-label={`Select all ${group} permissions`}
           className="flex h-4 w-4 items-center justify-center rounded border border-border bg-card text-primary disabled:cursor-not-allowed disabled:opacity-50"
           disabled={isDisabled}
           role="checkbox"
@@ -79,7 +79,7 @@ function PermissionGroup({ group, permissions, selectedPermissions, isDisabled, 
         <div>
           <h3 className="text-sm font-semibold text-foreground">{group}</h3>
           <p className="text-xs text-muted-foreground">
-            {selectedCount} dari {permissionNames.length} permission dipilih
+            {selectedCount} of {permissionNames.length} permissions selected
           </p>
         </div>
       </div>
@@ -143,14 +143,14 @@ export default function PermissionEditorModal({ isOpen, onClose, role, permissio
 
     try {
       await savePermissions(role.id, selectedPermissions)
-      setStatusModalProps({ isOpen: true, type: "success", title: "Berhasil", message: "Permission role berhasil diperbarui.", button1: { text: "OK" }, button2: null })
+      setStatusModalProps({ isOpen: true, type: "success", title: "Success", message: "Role permissions were updated.", button1: { text: "OK" }, button2: null })
       onClose()
       router.reload()
     } catch (error) {
       setStatusModalProps({
         isOpen: true,
         type: "error",
-        title: "Gagal",
+        title: "Failed",
         message: getRequestErrorMessage(error as Parameters<typeof getRequestErrorMessage>[0]),
         button1: { text: "OK" },
         button2: null,
@@ -169,24 +169,22 @@ export default function PermissionEditorModal({ isOpen, onClose, role, permissio
       <ModalPanel width="wide">
         <ModalHeader title={`Permissions for ${role.name}`} description="Choose what users with this role can access and manage." onClose={onClose} />
         <ModalBody>
-          {!canManagePermissions && (
-            <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">Anda tidak memiliki izin untuk mengubah permission role ini.</p>
-          )}
+          {!canManagePermissions && <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">You do not have permission to update this role.</p>}
           <div className="mb-5 space-y-3 border-b border-border pb-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <BtnDefault disabled={!canManagePermissions} size="sm" onClick={handleToggleAll}>
-                {isAllSelected ? "Batalkan semua" : "Pilih semua"}
+                {isAllSelected ? "Clear all" : "Select all"}
               </BtnDefault>
               <span className="text-sm text-muted-foreground">
-                {selectedPermissions.length} dari {allPermissionNames.length} permission dipilih
+                {selectedPermissions.length} of {allPermissionNames.length} permissions selected
               </span>
             </div>
             <label>
-              <span className="sr-only">Cari permission</span>
+              <span className="sr-only">Search permissions</span>
               <input
                 value={search}
                 type="search"
-                placeholder="Cari permission"
+                placeholder="Search permissions"
                 className="h-10 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary"
                 onChange={handleSearchChange}
               />
@@ -200,10 +198,10 @@ export default function PermissionEditorModal({ isOpen, onClose, role, permissio
         </ModalBody>
         <ModalFooter>
           <BtnDefault variant="outline" onClick={onClose} className="w-full">
-            Batal
+            Cancel
           </BtnDefault>
           <BtnDefault disabled={!canManagePermissions} loading={isSaving} onClick={handleSave} className="w-full">
-            Simpan permission
+            Save Permissions
           </BtnDefault>
         </ModalFooter>
       </ModalPanel>

@@ -22,6 +22,7 @@ class RbacAcceptanceSeederTest extends TestCase
 
     public function test_command_seeds_thirty_reports_for_every_user_and_is_repeatable(): void
     {
+        $this->travelTo(now()->startOfDay()->addHours(12));
         Storage::fake('public');
         Storage::fake('local');
         $this->seed(RoleSeeder::class);
@@ -51,6 +52,7 @@ class RbacAcceptanceSeederTest extends TestCase
         $this->assertGreaterThan(0, Report::whereNotNull('photo_before')->whereNotNull('photo_after')->count());
         $this->assertGreaterThan(0, Report::whereNull('photo_before')->count());
         $this->assertGreaterThan(0, Report::where('status', 'closed')->count());
+        $this->assertGreaterThan(0, Report::whereDate('created_at', today())->whereNotNull('photo_before')->count());
         $count = Report::count();
         $this->artisan('app:seed-rbac-test')->assertSuccessful();
         $this->assertSame($count, Report::count());
@@ -60,6 +62,12 @@ class RbacAcceptanceSeederTest extends TestCase
             $this->assertStringStartsWith('reports/testing/commons/', $path);
             $this->assertSame(IMAGETYPE_JPEG, getimagesize(Storage::disk('public')->path($path))[2]);
         }
+        $dimensions = collect(Report::whereNotNull('photo_before')->pluck('photo_before')->unique())
+            ->map(fn ($path) => getimagesize(Storage::disk('public')->path($path)))
+            ->map(fn ($size) => [$size[0], $size[1]]);
+        $this->assertTrue($dimensions->contains(fn ($size) => $size[0] === $size[1]));
+        $this->assertTrue($dimensions->contains(fn ($size) => $size[0] > $size[1] && $size[0] <= 320));
+        $this->assertTrue($dimensions->contains(fn ($size) => $size[0] < $size[1]));
     }
 
     public function test_all_locations_and_activities_receive_reports_even_when_more_than_thirty_exist(): void

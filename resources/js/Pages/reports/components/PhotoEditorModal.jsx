@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react"
-import { ArrowUpRight, Check, Circle, Crop, Focus, LineChart, Pencil, RotateCw, Square, Type, Undo2, X } from "lucide-react"
+import { ArrowUpRight, Check, Circle, Crop, Focus, LineChart, Pencil, RotateCw, Square, Type, Undo2 } from "lucide-react"
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
+import { ModalFooter, ModalHeader, ModalPanel } from "@/Components/Modal/ModalLayout"
+import BtnDefault from "@/Components/Button/BtnDefault"
 
 const EDITOR_TOOLS = [
   { id: "draw", label: "Draw", icon: Pencil },
@@ -233,25 +235,8 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
 
   return (
     <ModalOverlay isOpen={Boolean(file)} onClose={onClose} layer="statusModal">
-      <section className="flex h-[100dvh] w-full max-w-5xl flex-col overflow-hidden bg-[#101114] text-white shadow-2xl sm:h-[min(820px,calc(100dvh-2rem))] sm:rounded-2xl sm:border sm:border-slate-700">
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-3 sm:px-5">
-          <button type="button" onClick={onClose} aria-label="Cancel photo editing" className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-white/10">
-            <X className="h-5 w-5" />
-          </button>
-          <div className="text-center">
-            <p className="text-sm font-semibold">Photo editor</p>
-            <p className="mt-0.5 text-[10px] text-white/50">Highlight the details that matter</p>
-          </div>
-          <button
-            type="button"
-            onClick={undo}
-            disabled={historyCount <= 1}
-            aria-label="Undo last change"
-            className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-white/10 disabled:opacity-30"
-          >
-            <Undo2 className="h-5 w-5" />
-          </button>
-        </header>
+      <ModalPanel width="wide" className="h-[min(820px,100dvh)]">
+        <ModalHeader title="Photo editor" description="Crop or highlight important details." onClose={onClose} />
         <main className="relative flex min-h-0 flex-1 items-center justify-center overflow-auto bg-[#050505] p-2 sm:p-6">
           <canvas
             ref={canvasRef}
@@ -263,13 +248,13 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
             onPointerCancel={handlePointerUp}
           />
         </main>
-        <footer className="shrink-0 border-t border-white/10 bg-[#18191d] px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 sm:px-5">
+        <div className="shrink-0 border-t border-border bg-card px-4 py-3 sm:px-6">
           {tool === "text" && (
             <input
               value={text}
               onChange={(event) => setText(event.target.value)}
               placeholder="Write text, then tap the photo"
-              className="mb-3 h-10 w-full rounded-xl border border-white/15 bg-white/10 px-3 text-sm text-white outline-none placeholder:text-white/45 focus:border-white/50"
+              className="mb-3 h-11 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary"
             />
           )}
           <div className="flex items-center gap-2 overflow-x-auto pb-2">
@@ -280,14 +265,16 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
                 title={label}
                 aria-label={label}
                 onClick={() => setTool(id)}
-                className={`flex h-14 min-w-[58px] flex-col items-center justify-center gap-1 rounded-xl px-2 transition ${tool === id ? "bg-blue-600 text-white" : "bg-white/10 text-white hover:bg-white/20"}`}
+                aria-pressed={tool === id}
+                className={`flex h-14 min-w-[58px] flex-col items-center justify-center gap-1 rounded-lg px-2 transition focus-visible:ring-2 focus-visible:ring-primary ${tool === id ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-slate-200"}`}
               >
                 <Icon className="h-4 w-4" />
-                <span className="text-[9px] font-semibold">{label}</span>
+                <span className="text-[11px] font-medium">{label}</span>
               </button>
             ))}
-            <span className="mx-1 h-7 w-px bg-white/15" />
-            <button type="button" title="Rotate photo" aria-label="Rotate photo" onClick={rotate} className="grid h-11 min-w-11 place-items-center rounded-full bg-white/10 transition hover:bg-white/20">
+            <span className="mx-1 h-7 w-px bg-border" />
+            <button type="button" title="Undo last change" aria-label="Undo last change" onClick={undo} disabled={historyCount <= 1} className="grid h-11 min-w-11 place-items-center rounded-lg bg-muted text-foreground hover:bg-slate-200 focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-40"><Undo2 className="h-5 w-5" /></button>
+            <button type="button" title="Rotate photo" aria-label="Rotate photo" onClick={rotate} className="grid h-11 min-w-11 place-items-center rounded-lg bg-muted text-foreground hover:bg-slate-200 focus-visible:ring-2 focus-visible:ring-primary">
               <RotateCw className="h-5 w-5" />
             </button>
             <button
@@ -295,12 +282,12 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
               title="Restore original photo"
               aria-label="Restore original photo"
               onClick={reset}
-              className="h-11 shrink-0 rounded-full bg-white/10 px-4 text-xs font-semibold transition hover:bg-white/20"
+              className="h-11 shrink-0 rounded-lg bg-muted px-4 text-xs font-semibold text-foreground hover:bg-slate-200 focus-visible:ring-2 focus-visible:ring-primary"
             >
               Reset
             </button>
           </div>
-          <div className="mt-2 grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-center">
+          <div className="mt-2 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               {COLORS.map((item) => (
                 <button
@@ -308,7 +295,7 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
                   type="button"
                   aria-label={`Choose color ${item}`}
                   onClick={() => setColor(item)}
-                  className={`h-7 w-7 shrink-0 rounded-full border-2 ${color === item ? "scale-110 border-blue-500" : "border-white/30"}`}
+                  className={`h-8 w-8 shrink-0 rounded-full border-2 ${color === item ? "border-primary ring-2 ring-primary/20" : "border-slate-300"}`}
                   style={{ backgroundColor: item }}
                 />
               ))}
@@ -324,7 +311,7 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
               <button
                 type="button"
                 onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))}
-                className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-lg text-white/80 hover:bg-white/20 hover:text-white"
+                className="grid h-11 w-11 place-items-center rounded-lg bg-muted text-lg text-foreground hover:bg-slate-200"
                 aria-label="Zoom out"
               >
                 −
@@ -333,24 +320,16 @@ export default function PhotoEditorModal({ file, onClose, onSave }) {
               <button
                 type="button"
                 onClick={() => setZoom((value) => Math.min(2, value + 0.25))}
-                className="grid h-11 w-11 place-items-center rounded-xl bg-white/10 text-lg text-white/80 hover:bg-white/20 hover:text-white"
+                className="grid h-11 w-11 place-items-center rounded-lg bg-muted text-lg text-foreground hover:bg-slate-200"
                 aria-label="Zoom in"
               >
                 +
               </button>
             </div>
-            <button
-              type="button"
-              onClick={save}
-              className="inline-flex h-11 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 text-sm font-semibold text-white transition hover:bg-blue-500 sm:w-auto"
-              aria-label="Use this photo"
-            >
-              <Check className="h-6 w-6 stroke-[3]" />
-              <span>Use photo</span>
-            </button>
           </div>
-        </footer>
-      </section>
+        </div>
+        <ModalFooter><BtnDefault outline fullWidth onClick={onClose} className="min-h-12">Cancel</BtnDefault><BtnDefault fullWidth onClick={save} className="min-h-12"><Check className="h-4 w-4" /> Use photo</BtnDefault></ModalFooter>
+      </ModalPanel>
     </ModalOverlay>
   )
 }

@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react"
-import { Camera, RefreshCw, X } from "lucide-react"
+import { Camera, RefreshCw } from "lucide-react"
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
+import { ModalFooter, ModalHeader, ModalPanel } from "@/Components/Modal/ModalLayout"
+import BtnDefault from "@/Components/Button/BtnDefault"
 
 export default function CameraCaptureModal({ isOpen, onClose, onCapture }) {
   const videoRef = useRef(null)
@@ -78,26 +80,8 @@ export default function CameraCaptureModal({ isOpen, onClose, onCapture }) {
 
   return (
     <ModalOverlay id="report-camera" isOpen={isOpen} onClose={onClose} layer="statusModal">
-      <section
-        aria-labelledby="report-camera-title"
-        className="flex h-[100dvh] w-full max-w-3xl flex-col overflow-hidden bg-slate-950 text-white sm:h-[min(760px,calc(100dvh-2rem))] sm:rounded-2xl sm:border sm:border-white/10"
-      >
-        <header className="flex min-h-16 shrink-0 items-center justify-between border-b border-white/10 px-4 sm:px-5">
-          <div>
-            <h2 id="report-camera-title" className="text-base font-semibold">
-              Take photo
-            </h2>
-            <p className="mt-0.5 text-xs text-white/60">Position the subject inside the frame.</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close camera"
-            className="flex h-11 w-11 items-center justify-center rounded-full text-white/75 outline-none transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/70"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </header>
+      <ModalPanel width="xl" className="h-[min(760px,100dvh)]">
+        <ModalHeader title="Take photo" description="Position the subject inside the frame." onClose={onClose} />
 
         <main className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-black">
           <video ref={videoRef} playsInline muted className={`h-full w-full object-contain transition-opacity ${loading || error ? "opacity-25" : "opacity-100"}`} />
@@ -109,31 +93,19 @@ export default function CameraCaptureModal({ isOpen, onClose, onCapture }) {
           )}
         </main>
 
-        <footer
-          className="grid shrink-0 grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-4 border-t border-white/10 bg-slate-950 px-4 py-4 sm:px-6"
-          style={{ paddingBottom: "max(1rem, env(safe-area-inset-bottom))" }}
-        >
+        <div className="flex shrink-0 justify-end px-4 pt-3 sm:px-6">
           <button
             type="button"
             onClick={() => setFacingMode((value) => (value === "environment" ? "user" : "environment"))}
             disabled={loading}
             aria-label="Switch camera"
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white outline-none transition-colors hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/70 disabled:opacity-40"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium text-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-40"
           >
-            <RefreshCw className="h-5 w-5" />
+            <RefreshCw className="h-4 w-4" /> Switch camera
           </button>
-          <button
-            type="button"
-            onClick={capture}
-            disabled={loading || Boolean(error)}
-            aria-label="Take photo now"
-            className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-white/20 outline-none transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40"
-          >
-            <Camera className="h-7 w-7" />
-          </button>
-          <span aria-hidden="true" />
-        </footer>
-      </section>
+        </div>
+        <ModalFooter><BtnDefault outline fullWidth onClick={onClose} className="min-h-12">Cancel</BtnDefault><BtnDefault fullWidth onClick={capture} disabled={loading || Boolean(error)} className="min-h-12"><Camera className="h-4 w-4" /> Take photo</BtnDefault></ModalFooter>
+      </ModalPanel>
     </ModalOverlay>
   )
 }

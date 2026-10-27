@@ -9,3 +9,5 @@ Ketiga foto ini adalah foto fasilitas nyata, dipakai sebagai ilustrasi pada seed
 | `warehouse.jpg` | [Warehouse (Unsplash), Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Warehouse_(Unsplash).jpg) | Alex Iby | CC0 1.0 |
 
 Foto disimpan ulang dalam ukuran pratinjau Wikimedia Commons 1280 piksel. Lisensi CC0 mengizinkan penggunaan dan perubahan tanpa atribusi wajib; tautan di atas disimpan agar asal foto tetap terlacak.
+
+Seeder pengujian juga membuat turunan kecil landscape (320 × 213), portrait (240 × 316), dan persegi (600 × 600) dari foto-foto ini untuk menguji tampilan serta ekspor pada berbagai rasio dan ukuran. Aset asli tetap disimpan terpisah.

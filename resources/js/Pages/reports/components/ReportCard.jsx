@@ -1,13 +1,17 @@
 import { formatDate as formatLocalizedDate } from "@/lib/format.ts"
 
 const formatDate = (date) => formatLocalizedDate(date, "en-US")
+export const reportDesktopGrid = "xl:grid-cols-[2rem_minmax(0,1.65fr)_minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,.85fr)_8rem_6rem] xl:gap-x-4 xl:px-5"
 
 function PhotoThumbnail({ src, label }) {
-  return src ? (
-    <span className="relative block h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border bg-muted md:h-11 md:w-11 xl:h-12 xl:w-12" title={label}>
-      <img src={`/storage/${src}`} alt={label} loading="lazy" className="h-full w-full object-cover" />
+  return (
+    <span className="flex w-11 shrink-0 flex-col items-center gap-1 text-center" title={`${label} photo${src ? "" : " unavailable"}`}>
+      <span className="grid h-11 w-11 place-items-center overflow-hidden rounded-md border border-border bg-muted/40">
+        {src ? <img src={`/storage/${src}`} alt={label} loading="lazy" className="h-full w-full object-cover" /> : <span className="text-xs text-muted-foreground" aria-label={`${label} photo unavailable`}>–</span>}
+      </span>
+      <span className="text-[11px] leading-4 text-muted-foreground">{label}</span>
     </span>
-  ) : null
+  )
 }
 
 function ReportStatus({ report }) {
@@ -30,15 +34,15 @@ function ReportStatus({ report }) {
 
 export default function ReportCard({ report, number, isSelected, onSelect }) {
   const activity = report.sub_activity?.name ?? report.activity_type?.name ?? "–"
-  const photos = [report.photo_before, report.photo_after].filter(Boolean)
+  const showAfter = report.category_snapshot !== "REPORT" || Boolean(report.photo_after)
 
   return (
     <button
       type="button"
       onClick={() => onSelect(report)}
-      aria-label={`View report ${number}: ${report.issue || activity}`}
+      aria-label={`View report ${number}: ${report.issue || activity}. Before photo ${report.photo_before ? "available" : "unavailable"}${showAfter ? `, after photo ${report.photo_after ? "available" : "unavailable"}` : ""}`}
       aria-current={isSelected ? "true" : undefined}
-      className={`group relative grid w-full min-w-0 grid-cols-2 gap-x-3 gap-y-3 border-b border-border/70 px-4 py-4 text-left outline-none transition-colors last:border-b-0 hover:bg-muted/40 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:px-5 md:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_6.5rem] md:gap-x-5 md:px-6 xl:grid-cols-[2.5rem_minmax(0,2.2fr)_minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1.1fr)_7.5rem_6.5rem] xl:items-start xl:gap-4 xl:px-5 ${isSelected ? "bg-blue-50/50" : "bg-card"}`}
+      className={`group relative grid w-full min-w-0 grid-cols-2 gap-x-4 gap-y-3 border-b border-border/70 px-4 py-4 text-left outline-none transition-colors last:border-b-0 hover:bg-muted/40 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:px-5 md:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_6.5rem] md:gap-x-4 md:px-6 xl:items-start ${reportDesktopGrid} ${isSelected ? "bg-blue-50/50" : "bg-card"}`}
     >
       <span className="hidden pt-0.5 text-xs font-semibold tabular-nums text-muted-foreground xl:block">{number}</span>
 
@@ -65,15 +69,12 @@ export default function ReportCard({ report, number, isSelected, onSelect }) {
         <span className="line-clamp-2 break-words text-[13px] leading-5 text-foreground" title={activity}>{activity}</span>
       </span>
 
-      <span className={`${photos.length ? "flex" : "hidden md:flex"} min-w-0 items-center gap-1.5 md:col-start-3 md:row-start-2 xl:col-start-auto xl:row-start-auto`}>
-        {photos.length ? (
-          <>
-            <PhotoThumbnail src={report.photo_before} label="Before photo" />
-            <PhotoThumbnail src={report.photo_after} label="After photo" />
-          </>
-        ) : (
-          <span className="text-xs text-muted-foreground">No photos</span>
-        )}
+      <span className="col-span-2 block min-w-0 md:col-span-1 md:col-start-3 md:row-start-2 xl:col-start-auto xl:row-start-auto">
+        <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-muted-foreground xl:hidden">Photos</span>
+        <span className="flex items-start gap-2">
+          <PhotoThumbnail src={report.photo_before} label="Before" />
+          {showAfter && <PhotoThumbnail src={report.photo_after} label="After" />}
+        </span>
       </span>
 
       <span className="absolute right-4 top-4 md:static md:col-start-3 md:row-start-1 md:self-start xl:col-start-auto xl:row-start-auto">
