@@ -40,7 +40,7 @@ export default function CameraCaptureModal({ isOpen, onClose, onCapture }) {
         }
       } catch (cameraError) {
         const permissionDenied = cameraError?.name === "NotAllowedError" || cameraError?.name === "SecurityError"
-        setError(permissionDenied ? "Izin kamera ditolak. Izinkan akses kamera dari pengaturan browser, lalu coba lagi." : "Kamera tidak tersedia atau sedang digunakan aplikasi lain.")
+        setError(permissionDenied ? "Camera access was denied. Allow camera access in your browser settings and try again." : "The camera is unavailable or being used by another app.")
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -85,14 +85,14 @@ export default function CameraCaptureModal({ isOpen, onClose, onCapture }) {
         <header className="flex min-h-16 shrink-0 items-center justify-between border-b border-white/10 px-4 sm:px-5">
           <div>
             <h2 id="report-camera-title" className="text-base font-semibold">
-              Ambil foto
+              Take photo
             </h2>
-            <p className="mt-0.5 text-xs text-white/60">Posisikan objek di dalam bingkai.</p>
+            <p className="mt-0.5 text-xs text-white/60">Position the subject inside the frame.</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Tutup kamera"
+            aria-label="Close camera"
             className="flex h-11 w-11 items-center justify-center rounded-full text-white/75 outline-none transition-colors hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-white/70"
           >
             <X className="h-5 w-5" />
@@ -101,7 +101,7 @@ export default function CameraCaptureModal({ isOpen, onClose, onCapture }) {
 
         <main className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-black">
           <video ref={videoRef} playsInline muted className={`h-full w-full object-contain transition-opacity ${loading || error ? "opacity-25" : "opacity-100"}`} />
-          {loading && <p className="absolute inset-0 grid place-items-center text-sm font-medium text-white/80">Menyiapkan kamera...</p>}
+          {loading && <p className="absolute inset-0 grid place-items-center text-sm font-medium text-white/80">Starting camera...</p>}
           {error && (
             <div className="absolute inset-0 grid place-items-center p-6 text-center">
               <p className="max-w-sm text-sm leading-6 text-white/80">{error}</p>
@@ -117,7 +117,7 @@ export default function CameraCaptureModal({ isOpen, onClose, onCapture }) {
             type="button"
             onClick={() => setFacingMode((value) => (value === "environment" ? "user" : "environment"))}
             disabled={loading}
-            aria-label="Ganti kamera"
+            aria-label="Switch camera"
             className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white outline-none transition-colors hover:bg-white/20 focus-visible:ring-2 focus-visible:ring-white/70 disabled:opacity-40"
           >
             <RefreshCw className="h-5 w-5" />
@@ -126,7 +126,7 @@ export default function CameraCaptureModal({ isOpen, onClose, onCapture }) {
             type="button"
             onClick={capture}
             disabled={loading || Boolean(error)}
-            aria-label="Ambil foto sekarang"
+            aria-label="Take photo now"
             className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-white/20 outline-none transition-transform active:scale-95 focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-40"
           >
             <Camera className="h-7 w-7" />

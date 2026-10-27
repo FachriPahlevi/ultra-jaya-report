@@ -2,7 +2,8 @@ import InputText from "@/Components/Input/InputText"
 import InputSelect from "@/Components/Input/InputSelect"
 import BtnDefault from "@/Components/Button/BtnDefault"
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
-import { HiOutlinePlus, HiOutlineX } from "react-icons/hi"
+import { ModalBody, ModalFooter, ModalHeader, ModalPanel } from "@/Components/Modal/ModalLayout"
+import { HiOutlinePlus } from "react-icons/hi"
 
 export default function ActivityFormModal({
   isOpen,
@@ -20,42 +21,24 @@ export default function ActivityFormModal({
   isBulkSubMode,
   canManageCategory,
 }) {
-  const isSubActivityEdit = Boolean(editTarget?.parent_id)
+  const isSubActivityEdit = Boolean(editTarget?.activity_id)
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
-      <div className="max-h-[90vh] w-full max-w-[560px] overflow-y-auto rounded-t-xl border border-border bg-card shadow-lg sm:rounded-xl">
-        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-5">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{editTarget ? "Perbarui aktivitas" : "Buat aktivitas"}</p>
-            <h2 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-foreground">{editTarget ? "Ubah Aktivitas" : "Tambah Aktivitas Baru"}</h2>
-            <p className="mt-1 text-[12.5px] leading-5 text-muted-foreground">
-              {isBulkSubMode
-                ? "Tambahkan beberapa sub-aktivitas sekaligus untuk aktivitas utama ini."
-                : isSubActivityEdit
-                  ? "Perbarui informasi sub-aktivitas yang dipilih."
-                  : form.parent_id
-                    ? "Aktivitas ini akan disimpan sebagai sub-aktivitas."
-                    : "Biarkan aktivitas utama kosong untuk membuat aktivitas tingkat utama."}
-            </p>
-          </div>
-          <button type="button" onClick={onClose} className="shrink-0 rounded-xl border border-border p-2 text-muted-foreground transition-colors hover:text-foreground" aria-label="Tutup">
-            <HiOutlineX className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="px-5 py-5">
+      <ModalPanel>
+        <ModalHeader
+          title={isSubActivityEdit ? "Edit sub-activity" : isBulkSubMode ? "Add sub-activities" : editTarget ? "Edit activity" : "Create activity"}
+          description={isBulkSubMode ? "Add one or more sub-activities to this activity." : isSubActivityEdit ? "Update the selected sub-activity." : "Enter the activity name and description."}
+          onClose={onClose}
+        />
+        <ModalBody>
           <div className="flex flex-col gap-4">
-            <InputSelect
-              id="parent_activity"
-              label="Aktivitas Utama"
-              value={form.parent_id}
-              onChange={(e) => onFieldChange("parent_id", e.target.value)}
-              options={parentOptions}
-              placeholder="Tanpa induk (aktivitas utama)"
-              helperText="Pilih aktivitas utama hanya jika item ini merupakan sub-aktivitas."
-              error={errors.parent_id}
-            />
+            {form.activity_id && (
+              <div className="rounded-xl border border-border bg-muted/40 px-3.5 py-3">
+                <p className="text-xs font-medium text-muted-foreground">Activity</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">{editTarget?.activity?.name ?? parentOptions.find((option) => option.value === form.activity_id)?.label ?? "–"}</p>
+              </div>
+            )}
 
             {!isBulkSubMode && !isSubActivityEdit && (
               <InputSelect
@@ -64,10 +47,10 @@ export default function ActivityFormModal({
                 value={String(form.is_active)}
                 onChange={(e) => onFieldChange("is_active", e.target.value === "true")}
                 options={[
-                  { value: "true", label: "Aktif" },
-                  { value: "false", label: "Tidak aktif" },
+                  { value: "true", label: "Active" },
+                  { value: "false", label: "Inactive" },
                 ]}
-                helperText="Aktivitas tidak aktif tetap tersimpan, tetapi tidak muncul dalam pilihan laporan."
+                helperText="Inactive activities remain saved but cannot be selected in new reports."
                 error={errors.is_active}
               />
             )}
@@ -75,28 +58,28 @@ export default function ActivityFormModal({
             {isBulkSubMode ? (
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-[13px] font-semibold text-foreground">Sub-aktivitas</p>
+                  <p className="text-[13px] font-semibold text-foreground">Sub-activities</p>
                   <BtnDefault type="button" variant="outline" onClick={onAddSubActivityField} size="sm">
                     <HiOutlinePlus className="h-5 w-5" />
-                    Tambah Baris
+                    Add row
                   </BtnDefault>
                 </div>
 
                 {form.sub_activities.map((item, index) => (
                   <div key={index} className="rounded-lg border border-border p-4">
                     <div className="mb-3 flex items-center justify-between gap-3">
-                      <p className="text-[12px] font-semibold text-foreground">Sub-aktivitas {index + 1}</p>
+                      <p className="text-[12px] font-semibold text-foreground">Sub-activity {index + 1}</p>
                       {form.sub_activities.length > 1 && (
                         <button type="button" onClick={() => onRemoveSubActivityField(index)} className="text-[12px] font-medium text-red-600 transition-colors hover:text-red-700">
-                          Hapus
+                          Remove
                         </button>
                       )}
                     </div>
 
                     <div className="flex flex-col gap-4">
                       <InputText
-                        label="Nama Aktivitas"
-                        placeholder="Masukkan nama sub-aktivitas"
+                        label="Sub-activity name"
+                        placeholder="Enter sub-activity name"
                         value={item.name}
                         onChange={(e) => onSubActivityChange(index, "name", e.target.value)}
                         error={errors[`sub_activities.${index}.name`]}
@@ -106,14 +89,14 @@ export default function ActivityFormModal({
                       {canManageCategory && (
                         <InputSelect
                           id={`sub_category_${index}`}
-                          label="Kategori"
+                          label="Category"
                           value={item.category}
                           onChange={(e) => onSubActivityChange(index, "category", e.target.value)}
                           options={[
                             { value: "REPORT", label: "REPORT" },
                             { value: "ISSUE", label: "ISSUE" },
                           ]}
-                          helperText="Hanya Super Admin yang dapat menentukan kategori sub-aktivitas."
+                          helperText="Only users with category permission can change this field."
                           error={errors[`sub_activities.${index}.category`]}
                           required
                         />
@@ -121,14 +104,14 @@ export default function ActivityFormModal({
 
                       <div className="flex flex-col gap-1.5">
                         <label htmlFor={`sub_description_${index}`} className="text-[13px] font-semibold text-foreground">
-                          Deskripsi
+                          Description
                         </label>
                         <textarea
                           id={`sub_description_${index}`}
                           rows={3}
                           value={item.description}
                           onChange={(e) => onSubActivityChange(index, "description", e.target.value)}
-                          placeholder="Tulis deskripsi singkat sub-aktivitas"
+                          placeholder="Write a short sub-activity description"
                           className={`w-full rounded-xl border bg-card px-3.5 py-2.5 text-[13.5px] text-foreground outline-none transition-all duration-150 ${
                             errors[`sub_activities.${index}.description`]
                               ? "border-destructive focus:border-destructive focus:ring-2 focus:ring-destructive/10"
@@ -143,19 +126,19 @@ export default function ActivityFormModal({
               </div>
             ) : (
               <>
-                <InputText label="Nama Aktivitas" placeholder="Masukkan nama aktivitas" value={form.name} onChange={(e) => onFieldChange("name", e.target.value)} error={errors.name} required />
+                <InputText label={isSubActivityEdit ? "Sub-activity name" : "Activity name"} placeholder={isSubActivityEdit ? "Enter sub-activity name" : "Enter activity name"} value={form.name} onChange={(e) => onFieldChange("name", e.target.value)} error={errors.name} required />
 
-                {canManageCategory && (Boolean(form.parent_id) || isSubActivityEdit) && (
+                {canManageCategory && (Boolean(form.activity_id) || isSubActivityEdit) && (
                   <InputSelect
                     id="activity_category"
-                    label="Kategori"
+                    label="Category"
                     value={form.category}
                     onChange={(e) => onFieldChange("category", e.target.value)}
                     options={[
                       { value: "REPORT", label: "REPORT" },
                       { value: "ISSUE", label: "ISSUE" },
                     ]}
-                    helperText="Hanya Super Admin yang dapat mengubah kategori sub-aktivitas."
+                    helperText="Changing this category does not affect existing reports."
                     error={errors.category}
                     required
                   />
@@ -163,14 +146,14 @@ export default function ActivityFormModal({
 
                 <div className="flex flex-col gap-1.5">
                   <label htmlFor="activity_description" className="text-[13px] font-semibold text-foreground">
-                    Deskripsi
+                    Description
                   </label>
                   <textarea
                     id="activity_description"
                     rows={4}
                     value={form.description}
                     onChange={(e) => onFieldChange("description", e.target.value)}
-                    placeholder="Tulis deskripsi singkat aktivitas"
+                    placeholder={isSubActivityEdit ? "Write a short sub-activity description" : "Write a short activity description"}
                     className={`w-full rounded-xl border bg-card px-3.5 py-2.5 text-[13.5px] text-foreground outline-none transition-all duration-150 ${
                       errors.description
                         ? "border-destructive focus:border-destructive focus:ring-2 focus:ring-destructive/10"
@@ -182,17 +165,13 @@ export default function ActivityFormModal({
               </>
             )}
 
-            <div className="flex flex-col-reverse gap-2 border-t border-border pt-5 sm:flex-row sm:justify-end">
-              <BtnDefault variant="outline" onClick={onClose} className="w-full rounded-xl sm:w-auto sm:min-w-[116px]">
-                Batal
-              </BtnDefault>
-              <BtnDefault onClick={onSubmit} loading={processing} className="w-full rounded-xl sm:w-auto sm:min-w-[156px]">
-                {processing ? "Menyimpan..." : editTarget ? "Simpan Perubahan" : isBulkSubMode ? "Buat Sub-aktivitas" : "Buat Aktivitas"}
-              </BtnDefault>
-            </div>
           </div>
-        </div>
-      </div>
+        </ModalBody>
+        <ModalFooter>
+          <BtnDefault variant="outline" onClick={onClose} className="w-full rounded-xl">Cancel</BtnDefault>
+          <BtnDefault onClick={onSubmit} loading={processing} className="w-full rounded-xl">{editTarget ? "Save changes" : isBulkSubMode ? "Create sub-activities" : "Create activity"}</BtnDefault>
+        </ModalFooter>
+      </ModalPanel>
     </ModalOverlay>
   )
 }

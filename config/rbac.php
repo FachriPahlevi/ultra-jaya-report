@@ -11,13 +11,15 @@ return [
         'reports.view.own' => ['group' => 'Laporan', 'label' => 'Melihat laporan sendiri', 'description' => 'Melihat laporan yang dibuat oleh pengguna sendiri.'],
         'reports.view.all' => ['group' => 'Laporan', 'label' => 'Melihat seluruh laporan', 'description' => 'Melihat laporan dari seluruh area dan pengguna.'],
         'reports.create' => ['group' => 'Laporan', 'label' => 'Membuat laporan', 'description' => 'Membuat laporan temuan baru.'],
+        'reports.export' => ['group' => 'Laporan', 'label' => 'Ekspor laporan', 'description' => 'Mengunduh Excel/PDF terbatas pada laporan yang dapat diakses pengguna.'],
         'reports.edit.own' => ['group' => 'Laporan', 'label' => 'Mengubah laporan sendiri', 'description' => 'Mengubah laporan terbuka yang dibuat sendiri.'],
         'reports.edit.all' => ['group' => 'Laporan', 'label' => 'Mengubah seluruh laporan', 'description' => 'Mengubah laporan terbuka dari seluruh pengguna.'],
         'reports.delete.own' => ['group' => 'Laporan', 'label' => 'Menghapus laporan sendiri', 'description' => 'Menghapus laporan terbuka yang dibuat sendiri.'],
         'reports.delete.all' => ['group' => 'Laporan', 'label' => 'Menghapus seluruh laporan', 'description' => 'Menghapus laporan terbuka dari seluruh pengguna.'],
-        'reports.solve.own.area' => ['group' => 'Laporan', 'label' => 'Menyelesaikan laporan area PIC', 'description' => 'Menutup laporan pada area yang menjadi tanggung jawab PIC.'],
+        'reports.solve.own.area' => ['group' => 'Laporan', 'label' => 'Menutup ISSUE sesuai penugasan', 'description' => 'Menutup ISSUE terbuka jika pengguna ditugaskan pada Sub-area dan Sub-aktivitas laporan.'],
         'reports.solve.all' => ['group' => 'Laporan', 'label' => 'Menyelesaikan seluruh laporan', 'description' => 'Menutup laporan pada seluruh area.'],
-        'reports.review.area' => ['group' => 'Laporan', 'label' => 'Review laporan area', 'description' => 'Melihat laporan pada area yang ditugaskan tanpa mengubahnya.'],
+        'reports.review.area' => ['group' => 'Laporan', 'label' => 'Review laporan Aktivitas tugasnya', 'description' => 'Melihat laporan pada Aktivitas yang ditugaskan sebagai reviewer.'],
+        'activities.category.manage' => ['group' => 'Aktivitas', 'label' => 'Mengatur kategori Sub-aktivitas', 'description' => 'Menentukan kategori ISSUE atau REPORT; memerlukan izin membuat atau mengubah Sub-aktivitas.'],
 
         'areas.view' => ['group' => 'Area', 'label' => 'Melihat area', 'description' => 'Melihat daftar area yang dapat diakses.'],
         'areas.view.all' => ['group' => 'Area', 'label' => 'Melihat seluruh area', 'description' => 'Melihat termasuk area yang diarsipkan.'],
@@ -29,8 +31,8 @@ return [
         'activities.view' => ['group' => 'Aktivitas', 'label' => 'Melihat aktivitas', 'description' => 'Melihat aktivitas utama dan subaktivitas.'],
         'activities.create' => ['group' => 'Aktivitas', 'label' => 'Membuat aktivitas', 'description' => 'Menambahkan aktivitas utama atau subaktivitas.'],
         'activities.edit' => ['group' => 'Aktivitas', 'label' => 'Mengubah aktivitas', 'description' => 'Mengubah aktivitas dan statusnya.'],
-        'activities.assign.manager' => ['group' => 'Aktivitas', 'label' => 'Menugaskan Manager reviewer', 'description' => 'Menetapkan Manager sebagai reviewer pada aktivitas utama.'],
-        'activities.assign.supervisor' => ['group' => 'Aktivitas', 'label' => 'Menugaskan SPV penutup tiket', 'description' => 'Menetapkan SPV pada sub-aktivitas untuk menutup tiket ISSUE.'],
+        'activities.assign.manager' => ['group' => 'Aktivitas', 'label' => 'Menugaskan reviewer Aktivitas', 'description' => 'Menetapkan pengguna dengan izin review sebagai reviewer Aktivitas, termasuk role custom.'],
+        'activities.assign.supervisor' => ['group' => 'Aktivitas', 'label' => 'Menugaskan penutup tiket', 'description' => 'Menetapkan pengguna dengan izin close pada Sub-aktivitas, termasuk role custom.'],
         'activities.delete' => ['group' => 'Aktivitas', 'label' => 'Menghapus aktivitas', 'description' => 'Menghapus aktivitas yang belum digunakan dalam laporan.'],
 
         'users.view' => ['group' => 'Pengguna', 'label' => 'Melihat pengguna', 'description' => 'Melihat daftar pengguna.'],
@@ -52,21 +54,21 @@ return [
     'roles' => [
         'SUPER_ADMIN' => ['label' => 'Super Admin', 'description' => 'Mengelola seluruh konfigurasi aplikasi dan RBAC.', 'permissions' => ['*']],
         'ADMIN' => ['label' => 'Admin', 'description' => 'Mengelola operasional pengguna, area, aktivitas, dan laporan.', 'permissions' => [
-            'areas.view', 'areas.create', 'areas.edit', 'areas.delete',
+            'areas.view', 'areas.view.all', 'areas.create', 'areas.edit', 'areas.delete',
             'activities.view', 'activities.create', 'activities.edit', 'activities.assign.manager', 'activities.assign.supervisor', 'activities.delete',
             'users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign.area', 'users.promote',
-            'reports.view.all', 'reports.create', 'reports.delete.all', 'reports.solve.all', 'settings.view',
+            'reports.view.all', 'reports.create', 'reports.export', 'reports.delete.all', 'reports.solve.all', 'settings.view',
             'roles.view', 'roles.create', 'roles.edit', 'roles.delete', 'permissions.manage',
         ]],
-        'MANAGER' => ['label' => 'Manager', 'description' => 'Memantau dan menangani seluruh laporan tanpa mengelola konfigurasi.', 'permissions' => [
+        'MANAGER' => ['label' => 'Manager', 'description' => 'Mereview laporan pada Aktivitas yang ditugaskan; kemampuan dapat disesuaikan melalui permission.', 'permissions' => [
             'areas.view', 'activities.view',
-            'reports.review.area',
+            'reports.review.area', 'reports.export',
         ]],
         'SUPERVISOR' => ['label' => 'Supervisor', 'description' => 'Membuat laporan dan menangani laporan pada area PIC.', 'permissions' => [
-            'reports.view.own', 'reports.create', 'reports.edit.own', 'reports.delete.own', 'reports.solve.own.area', 'areas.view', 'activities.view',
+            'reports.view.own', 'reports.create', 'reports.export', 'reports.edit.own', 'reports.delete.own', 'reports.solve.own.area', 'areas.view', 'activities.view',
         ]],
         'USER' => ['label' => 'User', 'description' => 'Membuat dan mengelola laporan miliknya sendiri.', 'permissions' => [
-            'reports.view.own', 'reports.create', 'reports.edit.own', 'reports.delete.own',
+            'reports.view.own', 'reports.create', 'reports.export', 'reports.edit.own', 'reports.delete.own',
         ]],
     ],
 ];

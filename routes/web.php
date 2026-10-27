@@ -17,7 +17,7 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::prefix('reports')->as('reports.')->group(function (): void {
         Route::get('/', [ReportController::class, 'index'])
             ->name('index')
-            ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area|reports.review.area');
+            ->middleware('permission:reports.view.own|reports.view.all|reports.create|reports.edit.own|reports.edit.all|reports.delete.own|reports.delete.all|reports.solve.all|reports.solve.own.area|reports.review.area');
 
         Route::post('/', [ReportController::class, 'store'])
             ->name('store')
@@ -26,7 +26,8 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
         Route::get('/export/{type}', [ReportController::class, 'export'])
             ->name('export')
             ->whereIn('type', ['pdf', 'excel'])
-            ->middleware('role_or_permission:reports.view.own|reports.view.all|reports.solve.own.area|reports.review.area');
+            ->middleware('can:reports.export')
+            ->middleware('permission:reports.view.own|reports.view.all|reports.create|reports.edit.own|reports.edit.all|reports.delete.own|reports.delete.all|reports.solve.all|reports.solve.own.area|reports.review.area');
 
         Route::post('/{report}/close', [ReportController::class, 'close'])
             ->name('close')
@@ -84,13 +85,22 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
             ->name('store')
             ->middleware('can:activities.create');
 
+        Route::post('/{activity}/sub-activities', [ActivityController::class, 'storeSubActivities'])
+            ->name('sub-activities.store')->middleware('can:activities.edit');
+        Route::put('/{activity}/sub-activities/{subActivity}', [ActivityController::class, 'updateSubActivity'])
+            ->name('sub-activities.update')->middleware('can:activities.edit');
+        Route::put('/{activity}/sub-activities/{subActivity}/assignees', [ActivityController::class, 'updateSubActivityAssignees'])
+            ->name('sub-activities.assignees.update')->middleware(['can:activities.view', 'can:activities.assign.supervisor']);
+        Route::delete('/{activity}/sub-activities/{subActivity}', [ActivityController::class, 'destroySubActivity'])
+            ->name('sub-activities.destroy')->middleware('can:activities.delete');
+
         Route::put('/{activity}', [ActivityController::class, 'update'])
             ->name('update')
             ->middleware('can:activities.edit');
 
         Route::put('/{activity}/assignees', [ActivityController::class, 'updateAssignees'])
             ->name('assignees.update')
-            ->middleware('can:activities.view');
+            ->middleware(['can:activities.view', 'can:activities.assign.manager']);
 
         Route::patch('/{activity}/status', [ActivityController::class, 'updateStatus'])
             ->name('status')

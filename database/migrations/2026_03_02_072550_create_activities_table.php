@@ -13,24 +13,42 @@ return new class extends Migration
             $table->string('name');
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->foreignId('parent_id')->nullable()->constrained('activities');
-            $table->string('category', 16)->default('ISSUE');
             $table->timestamps();
             $table->softDeletes();
         });
 
-        Schema::create('activity_user', function (Blueprint $table) {
+        Schema::create('sub_activities', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('activity_id')->constrained()->noActionOnDelete();
+            $table->string('name');
+            $table->text('description')->nullable();
+            $table->enum('category', ['ISSUE', 'REPORT'])->default('ISSUE');
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('activity_managers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('activity_id')->constrained()->cascadeOnDelete();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->timestamps();
             $table->unique(['activity_id', 'user_id']);
         });
+
+        Schema::create('sub_activity_supervisors', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('sub_activity_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->timestamps();
+            $table->unique(['sub_activity_id', 'user_id']);
+        });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('activity_user');
+        Schema::dropIfExists('sub_activity_supervisors');
+        Schema::dropIfExists('activity_managers');
+        Schema::dropIfExists('sub_activities');
         Schema::dropIfExists('activities');
     }
 };

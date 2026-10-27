@@ -21,13 +21,13 @@ const MobileHeader = ({ onToggleMenu }) => (
     <button
       type="button"
       onClick={onToggleMenu}
-      aria-label="Buka menu navigasi"
+      aria-label="Open navigation menu"
       className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[var(--foreground)] transition-colors hover:bg-[var(--muted)] focus-visible:ring-2 focus-visible:ring-primary"
     >
       <MenuIcon />
     </button>
 
-    <img src="/img/logo/logo_uj.svg" className="h-7 w-7 shrink-0 object-contain" alt="Logo Ultrajaya" />
+    <img src="/img/logo/logo_uj.svg" className="h-7 w-7 shrink-0 object-contain" alt="Ultrajaya logo" />
 
     <span className="truncate text-xs font-bold leading-tight text-[var(--foreground)] min-[375px]:text-[13px]">Ultrajaya</span>
   </header>

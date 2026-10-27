@@ -10,7 +10,7 @@ export function ScopeAccess({ activity, compact = false, chips = false }) {
 
   if (chips && (area || role)) {
     const labels = [
-      area && (area.toLowerCase() === "all" ? "Semua Area" : area),
+      area && (area.toLowerCase() === "all" ? "All areas" : area),
       ...(role
         ? role
             .split(",")
@@ -44,7 +44,7 @@ export function ScopeAccess({ activity, compact = false, chips = false }) {
         )}
         {role && (
           <div className="flex min-w-0 items-baseline gap-1.5">
-            <dt className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Peran</dt>
+            <dt className="shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-500">Role</dt>
             <dd className="min-w-0 text-slate-700">{role}</dd>
           </div>
         )}
@@ -54,14 +54,14 @@ export function ScopeAccess({ activity, compact = false, chips = false }) {
 
   return (
     <div className="min-w-0">
-      <p className={`${compact ? "line-clamp-2 text-xs" : "max-w-xl text-sm"} leading-5 text-slate-600`}>{description || "Belum ada cakupan yang dicatat."}</p>
+      <p className={`${compact ? "line-clamp-2 text-xs" : "max-w-xl text-sm"} leading-5 text-slate-600`}>{description || "No scope recorded yet."}</p>
     </div>
   )
 }
 
 export function ActivityActions({ activity, canEdit, canDelete, canAssignManager, canAssignSupervisor, onAddSub, onAssignUsers, onEdit, onDelete }) {
-  const canAddSub = canEdit && !activity.parent_id && activity.is_active
-  const canAssignUsers = (!activity.parent_id && canAssignManager) || (activity.parent_id && canAssignSupervisor)
+  const canAddSub = canEdit && !activity.activity_id && activity.is_active
+  const canAssignUsers = (!activity.activity_id && canAssignManager) || (activity.activity_id && canAssignSupervisor)
   const [open, setOpen] = useState(false)
   const [position, setPosition] = useState({ top: 0, right: 0 })
   const buttonRef = useRef(null)
@@ -114,7 +114,7 @@ export function ActivityActions({ activity, canEdit, canDelete, canAssignManager
         aria-expanded={open}
         aria-haspopup="menu"
         aria-controls={open ? menuId : undefined}
-        aria-label={`Aksi untuk ${activity.name}`}
+        aria-label={`Actions for ${activity.name}`}
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-400 outline-none transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-1"
       >
         <HiOutlineDotsVertical className="h-5 w-5" />
@@ -125,7 +125,7 @@ export function ActivityActions({ activity, canEdit, canDelete, canAssignManager
             ref={menuRef}
             id={menuId}
             role="menu"
-            aria-label={`Menu aksi ${activity.name}`}
+            aria-label={`Actions for ${activity.name}`}
             style={{ top: position.top, right: position.right }}
             className="fixed z-[80] min-w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl shadow-slate-950/10"
           >
@@ -137,7 +137,7 @@ export function ActivityActions({ activity, canEdit, canDelete, canAssignManager
                 className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-medium text-slate-700 outline-none hover:bg-slate-50 focus-visible:bg-blue-50 focus-visible:text-blue-800"
               >
                 <HiOutlinePlus className="h-4 w-4" />
-                Tambah sub-aktivitas
+                Add sub-activity
               </button>
             )}
             {canAssignUsers && (
@@ -148,7 +148,7 @@ export function ActivityActions({ activity, canEdit, canDelete, canAssignManager
                 className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-medium text-slate-700 outline-none hover:bg-slate-50 focus-visible:bg-blue-50 focus-visible:text-blue-800"
               >
                 <HiOutlineUserAdd className="h-4 w-4" />
-                {activity.parent_id ? "Atur SPV" : "Atur manager"}
+                {activity.activity_id ? "Assign ticket closers" : "Assign reviewers"}
               </button>
             )}
             {canEdit && (
@@ -159,7 +159,7 @@ export function ActivityActions({ activity, canEdit, canDelete, canAssignManager
                 className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-medium text-slate-700 outline-none hover:bg-slate-50 focus-visible:bg-blue-50 focus-visible:text-blue-800"
               >
                 <HiOutlinePencil className="h-4 w-4" />
-                Ubah aktivitas
+                {activity.activity_id ? "Edit sub-activity" : "Edit activity"}
               </button>
             )}
             {canDelete && (
@@ -170,7 +170,7 @@ export function ActivityActions({ activity, canEdit, canDelete, canAssignManager
                 className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-medium text-red-700 outline-none hover:bg-red-50 focus-visible:bg-red-50"
               >
                 <HiOutlineTrash className="h-4 w-4" />
-                Hapus aktivitas
+                {activity.activity_id ? "Delete sub-activity" : "Delete activity"}
               </button>
             )}
           </div>,
@@ -186,8 +186,8 @@ export function EmptyState({ hasSearch = false }) {
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500">
         <Layers3 className="h-5 w-5" />
       </div>
-      <p className="text-base font-semibold text-slate-900">{hasSearch ? "Aktivitas tidak ditemukan" : "Belum ada aktivitas"}</p>
-      <p className="mt-1.5 text-sm text-slate-500">{hasSearch ? "Coba kata kunci lain atau hapus pencarian." : "Aktivitas baru akan muncul setelah ditambahkan."}</p>
+      <p className="text-base font-semibold text-slate-900">{hasSearch ? "No activities found" : "No activities yet"}</p>
+      <p className="mt-1.5 text-sm text-slate-500">{hasSearch ? "Try a different search term or clear the search." : "New activities will appear here once added."}</p>
     </div>
   )
 }

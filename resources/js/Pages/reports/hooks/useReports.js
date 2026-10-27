@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { router, usePage } from "@inertiajs/react"
 import { useStatusModal } from "@/Components/Context/StatusModalContext"
 import { useAuthorization } from "@/hooks/useAuthorization"
@@ -14,20 +14,20 @@ export function useReports(reports = []) {
 
   const perms = {
     canCreate: can("reports.create"),
-    canViewAll: can("reports.view.all"),
+    canViewAll: can("reports.view.all") || can("reports.solve.all") || can("reports.edit.all") || can("reports.delete.all"),
     canReviewArea: can("reports.review.area"),
     canSolveOwnArea: can("reports.solve.own.area"),
-    canViewOwn: can("reports.view.own"),
+    canViewOwn: can("reports.view.own") || can("reports.create") || can("reports.edit.own") || can("reports.delete.own"),
     canSolve: can("reports.solve.all") || can("reports.solve.own.area"),
     canEditAll: can("reports.edit.all"),
     canEditOwn: can("reports.edit.own"),
     canDeleteAll: can("reports.delete.all"),
     canDeleteOwn: can("reports.delete.own"),
-    canExportAll: can("reports.view.all"),
+    canExportAll: can("reports.view.all") || can("reports.solve.all") || can("reports.edit.all") || can("reports.delete.all"),
     canExportArea: can("reports.solve.own.area") || can("reports.review.area"),
-    canExportOwn: can("reports.view.own"),
+    canExportOwn: can("reports.view.own") || can("reports.create") || can("reports.edit.own") || can("reports.delete.own"),
   }
-  perms.canExport = perms.canExportAll || perms.canExportArea || perms.canExportOwn
+  perms.canExport = can("reports.export") && (perms.canExportAll || perms.canExportArea || perms.canExportOwn)
 
   const isReportEditable = (report) => report?.can?.update === true
   const isReportDeletable = (report) => report?.can?.delete === true
@@ -48,6 +48,21 @@ export function useReports(reports = []) {
   const [page, setPage] = useState(1)
 
   const [selectedReport, setSelectedReport] = useState(null)
+  const openedDeepLink = useRef(null)
+  useEffect(() => {
+    const reportId = Number(props.initialReportId)
+    if (!reportId) {
+      openedDeepLink.current = null
+      return
+    }
+    if (openedDeepLink.current !== reportId) {
+      const report = reports.find((item) => item.id === reportId)
+      if (report) {
+        setSelectedReport(report)
+        openedDeepLink.current = reportId
+      }
+    }
+  }, [props.initialReportId, reports])
   const [editReport, setEditReport] = useState(null)
   const [isReportModalOpen, setIsReportModalOpen] = useState(false)
   const [isCloseTicketModalOpen, setIsCloseTicketModalOpen] = useState(false)
@@ -73,7 +88,8 @@ export function useReports(reports = []) {
     return reports
       .filter((r) => {
         if (myReportsOnly && r.author_id !== auth?.id) return false
-        if (statusFilter.length && !statusFilter.includes(String(r.status))) return false
+        const displayStatus = r.category_snapshot === "REPORT" ? "report" : String(r.status)
+        if (statusFilter.length && !statusFilter.includes(displayStatus)) return false
         if (typeFilter.length && !typeFilter.includes(String(r.activity_id))) return false
         if (areaFilter.length && !areaFilter.includes(String(r.area_id))) return false
         if (roleFilter.length && !roleFilter.includes(String(r.author?.role))) return false
@@ -244,9 +260,9 @@ export function useReports(reports = []) {
       isOpen: true,
       type: "warning",
       title: "Delete Report",
-      message: `Apakah Anda yakin ingin menghapus laporan #${report.id}?`,
+      message: `Delete report #${report.id}? This action cannot be undone.`,
       button1: {
-        text: "Hapus",
+        text: "Delete",
         onClick: () => {
           router.delete(route("reports.destroy", report.id), {
             preserveScroll: true,
@@ -255,8 +271,8 @@ export function useReports(reports = []) {
               setStatusModalProps({
                 isOpen: true,
                 type: "success",
-                title: "Berhasil",
-                message: "Laporan berhasil dihapus",
+                title: "Success",
+                message: "Report deleted successfully",
                 button1: { text: "OK" },
               })
             },
@@ -264,15 +280,15 @@ export function useReports(reports = []) {
               setStatusModalProps({
                 isOpen: true,
                 type: "error",
-                title: "Gagal",
-                message: "Gagal menghapus laporan.",
+                title: "Error",
+                message: "Unable to delete the report.",
                 button1: { text: "OK" },
               })
             },
           })
         },
       },
-      button2: { text: "Batal" },
+      button2: { text: "Cancel" },
     })
   }
 

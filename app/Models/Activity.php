@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -18,8 +17,6 @@ class Activity extends Model
         'name',
         'description',
         'is_active',
-        'parent_id',
-        'category',
     ];
 
     protected function casts(): array
@@ -29,29 +26,14 @@ class Activity extends Model
         ];
     }
 
-    public function parent(): BelongsTo
-    {
-        return $this->belongsTo(Activity::class, 'parent_id');
-    }
-
     public function children(): HasMany
     {
-        return $this->hasMany(Activity::class, 'parent_id');
-    }
-
-    public function assignees(): BelongsToMany
-    {
-        return $this->belongsToMany(User::class)->withTimestamps();
+        return $this->hasMany(SubActivity::class);
     }
 
     public function managers(): BelongsToMany
     {
-        return $this->assignees()->whereHas('roles', fn ($query) => $query->where('name', 'MANAGER'));
-    }
-
-    public function supervisors(): BelongsToMany
-    {
-        return $this->assignees()->whereHas('roles', fn ($query) => $query->where('name', 'SUPERVISOR'));
+        return $this->belongsToMany(User::class, 'activity_managers')->withTimestamps();
     }
 
     public function reports(): HasMany
@@ -62,10 +44,5 @@ class Activity extends Model
     public function reportsAsType(): HasMany
     {
         return $this->hasMany(Report::class, 'activity_id');
-    }
-
-    public function reportsAsSubType(): HasMany
-    {
-        return $this->hasMany(Report::class, 'sub_activity_id');
     }
 }

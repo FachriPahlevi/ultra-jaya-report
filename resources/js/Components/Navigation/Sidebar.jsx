@@ -73,15 +73,15 @@ const Sidebar = ({ sidebarOpen, closeSidebar }) => {
             `}
     >
       <div className="flex min-h-20 items-center gap-3 border-b border-[var(--sidebar-border)] px-5 py-4">
-        <img src="/img/logo/logo_uj.svg" className="h-11 w-11 shrink-0 object-contain" alt="Logo Ultrajaya" />
+        <img src="/img/logo/logo_uj.svg" className="h-11 w-11 shrink-0 object-contain" alt="Ultrajaya logo" />
         <div className="min-w-0">
           <span className="block text-[13px] font-bold leading-[1.35] text-[var(--sidebar-foreground)]">PT Ultrajaya Milk Industry</span>
-          <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">Ticketing Internal</span>
+          <span className="mt-0.5 block text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted-foreground)]">Internal Ticketing</span>
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto py-5" aria-label="Navigasi utama">
-        <p className="mb-2 px-6 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Menu utama</p>
+      <nav className="flex-1 space-y-1 overflow-y-auto py-5" aria-label="Main navigation">
+        <p className="mb-2 px-6 text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">Main menu</p>
         {navItems.map((item) => (
           <SidebarItem key={item.href} item={item} active={isActive(item.href)} onClick={closeSidebar} />
         ))}

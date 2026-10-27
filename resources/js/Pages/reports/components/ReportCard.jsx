@@ -1,201 +1,84 @@
-import { useState } from "react"
-import { formatDate } from "@/lib/format.ts"
-import ExpandableImage from "@/Components/UI/ExpandableImage"
-import { ChevronDown, ChevronUp } from "lucide-react"
+import { formatDate as formatLocalizedDate } from "@/lib/format.ts"
 
-const avatarColors = ["bg-blue-700", "bg-slate-700", "bg-blue-800", "bg-slate-600"]
+const formatDate = (date) => formatLocalizedDate(date, "en-US")
 
-function getInitials(name) {
-  if (!name) return "?"
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
+function PhotoThumbnail({ src, label }) {
+  return src ? (
+    <span className="relative block h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-border bg-muted md:h-11 md:w-11 xl:h-12 xl:w-12" title={label}>
+      <img src={`/storage/${src}`} alt={label} loading="lazy" className="h-full w-full object-cover" />
+    </span>
+  ) : null
 }
 
-function getAvatarColor(name) {
-  if (!name) return avatarColors[0]
-  return avatarColors[name.charCodeAt(0) % avatarColors.length]
-}
+function ReportStatus({ report }) {
+  const isReport = report.category_snapshot === "REPORT"
+  const isClosed = report.status === "closed"
+  const label = isReport ? "Report" : isClosed ? "Closed" : "Open"
+  const color = isReport
+    ? "border-slate-200 bg-slate-50 text-slate-700"
+    : isClosed
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : "border-blue-200 bg-blue-50 text-blue-700"
 
-function PhotoSlot({ src, label }) {
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
-      {src ? (
-        <ExpandableImage src={`/storage/${src}`} alt={label} className="h-16 w-16 cursor-pointer rounded-lg border border-border object-cover transition-opacity hover:opacity-80" />
-      ) : (
-        <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-border bg-muted">
-          <span className="text-[10px] text-muted-foreground">Tanpa foto</span>
-        </div>
-      )}
-    </div>
+    <span className="flex min-w-0 flex-col items-end gap-1.5 text-right xl:items-start xl:text-left">
+      <span className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${color}`}>{label}</span>
+      {isClosed && report.closed_at && <span className="text-[11px] leading-4 text-muted-foreground">{formatDate(report.closed_at)}</span>}
+    </span>
   )
 }
 
-function RichText({ text, maxLines = 3, stopPropagation = true }) {
-  const [expanded, setExpanded] = useState(false)
+export default function ReportCard({ report, number, isSelected, onSelect }) {
+  const activity = report.sub_activity?.name ?? report.activity_type?.name ?? "–"
+  const photos = [report.photo_before, report.photo_after].filter(Boolean)
 
-  if (!text || text.trim() === "" || text === "-") {
-    return <span className="text-[12px] text-muted-foreground">–</span>
-  }
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(report)}
+      aria-label={`View report ${number}: ${report.issue || activity}`}
+      aria-current={isSelected ? "true" : undefined}
+      className={`group relative grid w-full min-w-0 grid-cols-2 gap-x-3 gap-y-3 border-b border-border/70 px-4 py-4 text-left outline-none transition-colors last:border-b-0 hover:bg-muted/40 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:px-5 md:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_6.5rem] md:gap-x-5 md:px-6 xl:grid-cols-[2.5rem_minmax(0,2.2fr)_minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1.1fr)_7.5rem_6.5rem] xl:items-start xl:gap-4 xl:px-5 ${isSelected ? "bg-blue-50/50" : "bg-card"}`}
+    >
+      <span className="hidden pt-0.5 text-xs font-semibold tabular-nums text-muted-foreground xl:block">{number}</span>
 
-  const lines = text
-    .split(/\n/)
-    .map((l) => l.trim())
-    .filter(Boolean)
-  const isList = lines.length > 1 && lines.every((l) => /^[-•*]|^\d+[.)]\s/.test(l))
-  const cleanLine = (l) => l.replace(/^[-•*]\s*|^\d+[.)]\s*/, "")
-  const visibleLines = expanded ? lines : lines.slice(0, maxLines)
-  const hasMore = lines.length > maxLines
+      <span className="col-span-2 block min-w-0 pr-20 md:col-span-1 md:col-start-1 md:row-start-1 md:pr-0 xl:col-start-auto xl:row-start-auto">
+        <span className="mb-1 block text-[10px] font-bold uppercase tracking-wide text-muted-foreground xl:hidden">{report.category_snapshot === "REPORT" ? "Observation" : "Finding"}</span>
+        <span className="line-clamp-2 break-words text-[13px] font-semibold leading-5 text-foreground sm:text-sm">{report.issue || "No details provided"}</span>
+        <span className="mt-1 block text-xs tabular-nums text-muted-foreground">{formatDate(report.created_at)}</span>
+      </span>
 
-  const toggle = (e) => {
-    if (stopPropagation) e.stopPropagation()
-    setExpanded((v) => !v)
-  }
+      <span className="col-span-2 block min-w-0 md:col-span-1 md:col-start-2 md:row-start-1 xl:col-start-auto xl:row-start-auto">
+        <span className="block text-[10px] font-bold uppercase tracking-wide text-muted-foreground xl:hidden">Reporter</span>
+        <span className="block truncate text-[13px] font-medium text-foreground" title={report.author?.name ?? ""}>{report.author?.name ?? "–"}</span>
+        {report.author?.role && <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">{report.author.role.replaceAll("_", " ")}</span>}
+      </span>
 
-  if (isList) {
-    return (
-      <div>
-        <ul className="space-y-1 m-0 p-0 list-none">
-          {visibleLines.map((line, i) => (
-            <li key={i} className="flex items-start gap-2 text-[12.5px] leading-snug text-foreground">
-              <span className="mt-[5px] w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
-              <span>{cleanLine(line)}</span>
-            </li>
-          ))}
-        </ul>
-        {hasMore && (
-          <button type="button" onClick={toggle} className="mt-1.5 flex min-h-8 items-center gap-1 text-[11px] font-semibold text-primary">
-            {expanded ? (
-              <>
-                <ChevronUp className="w-3 h-3" /> Tampilkan lebih sedikit
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-3 h-3" /> +{lines.length - maxLines} lainnya
-              </>
-            )}
-          </button>
+      <span className="block min-w-0 md:col-start-1 md:row-start-2 xl:col-start-auto xl:row-start-auto">
+        <span className="block text-[10px] font-bold uppercase tracking-wide text-muted-foreground xl:hidden">Location</span>
+        <span className="block truncate text-[13px] text-foreground" title={`${report.area?.area ?? ""}${report.sub_area?.name ? ` / ${report.sub_area.name}` : ""}`}>{report.area?.area ?? "–"}</span>
+        {report.sub_area?.name && <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">{report.sub_area.name}</span>}
+      </span>
+
+      <span className="block min-w-0 md:col-start-2 md:row-start-2 xl:col-start-auto xl:row-start-auto">
+        <span className="block text-[10px] font-bold uppercase tracking-wide text-muted-foreground xl:hidden">Activity</span>
+        <span className="line-clamp-2 break-words text-[13px] leading-5 text-foreground" title={activity}>{activity}</span>
+      </span>
+
+      <span className={`${photos.length ? "flex" : "hidden md:flex"} min-w-0 items-center gap-1.5 md:col-start-3 md:row-start-2 xl:col-start-auto xl:row-start-auto`}>
+        {photos.length ? (
+          <>
+            <PhotoThumbnail src={report.photo_before} label="Before photo" />
+            <PhotoThumbnail src={report.photo_after} label="After photo" />
+          </>
+        ) : (
+          <span className="text-xs text-muted-foreground">No photos</span>
         )}
-      </div>
-    )
-  }
+      </span>
 
-  const fullText = lines.join(" ")
-  const isLong = fullText.length > 100
-
-  return (
-    <div>
-      <p className="whitespace-pre-wrap break-words text-[12.5px] leading-snug text-foreground">{expanded || !isLong ? fullText : fullText.slice(0, 100) + "…"}</p>
-      {isLong && (
-        <button type="button" onClick={toggle} className="mt-1 flex min-h-8 items-center gap-1 text-[11px] font-semibold text-primary">
-          {expanded ? (
-            <>
-              <ChevronUp className="w-3 h-3" /> Lebih sedikit
-            </>
-          ) : (
-            <>
-              <ChevronDown className="w-3 h-3" /> Selengkapnya
-            </>
-          )}
-        </button>
-      )}
-    </div>
-  )
-}
-
-function ContentSection({ label, children }) {
-  return (
-    <div>
-      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
-      <div className="mt-1">{children}</div>
-    </div>
-  )
-}
-
-export default function ReportCard({ report, isSelected, onSelect }) {
-  const isSolved = report.status === "closed"
-  const activityLabel = report.sub_activity?.name ?? report.activity_type?.name ?? "-"
-  const hasPhotos = report.photo_before || report.photo_after
-  const hasActivity = report.activity && report.activity !== "-"
-  const hasIssue = report.issue && report.issue !== "-"
-  const handleKeyDown = (event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault()
-      onSelect(report)
-    }
-  }
-
-  return (
-    <>
-      <div
-        onClick={() => onSelect(report)}
-        onKeyDown={handleKeyDown}
-        role="button"
-        tabIndex={0}
-        className={`cursor-pointer overflow-hidden rounded-xl border bg-card transition-colors duration-150 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
-                    ${isSelected ? "border-primary bg-blue-50/20" : "border-border hover:border-slate-300"}`}
-      >
-        <div className="p-4">
-          <div className="flex items-start gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-white text-[13px] font-bold ${getAvatarColor(report.author?.name)}`}>
-              {getInitials(report.author?.name)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="truncate text-[15px] font-semibold leading-tight text-foreground">{report.author?.name ?? "-"}</p>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                    {report.author?.role && <span>{report.author.role}</span>}
-                    <span>{formatDate(report.created_at)}</span>
-                    {report.updated_at && report.updated_at !== report.created_at && <span className="text-gray-300">↑ {formatDate(report.updated_at)}</span>}
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full border border-gray-200 bg-white text-slate-600">{report.area?.area ?? "-"}</span>
-                  </div>
-                </div>
-                <div className="shrink-0 flex items-center gap-2">
-                  {isSolved ? (
-                    <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">Selesai</span>
-                  ) : (
-                    <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">Terbuka</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {(hasActivity || hasIssue) && (
-            <div className="mt-3 flex flex-col gap-3">
-              {hasActivity && (
-                <ContentSection label="Aktivitas">
-                  <RichText text={`${activityLabel}${report.activity ? `\n${report.activity}` : ""}`} maxLines={3} />
-                </ContentSection>
-              )}
-              {hasIssue && (
-                <ContentSection label="Kendala">
-                  <RichText text={report.issue} maxLines={3} />
-                </ContentSection>
-              )}
-            </div>
-          )}
-
-          {hasPhotos && (
-            <div className="mt-3 pt-3 border-t border-gray-100 flex gap-4">
-              <PhotoSlot src={report.photo_before} label="Sebelum" />
-              <PhotoSlot src={report.photo_after} label="Sesudah" />
-            </div>
-          )}
-
-          {isSolved && report.closed_at && (
-            <div className="mt-2.5 pt-2.5 border-t border-gray-100 flex items-center justify-between">
-              <span className="text-[10.5px] text-muted-foreground">Ditutup pada</span>
-              <span className="text-[11px] font-semibold text-slate-700">{formatDate(report.closed_at)}</span>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
+      <span className="absolute right-4 top-4 md:static md:col-start-3 md:row-start-1 md:self-start xl:col-start-auto xl:row-start-auto">
+        <ReportStatus report={report} />
+      </span>
+    </button>
   )
 }

@@ -9,28 +9,28 @@ import FilterChoiceGroup from "@/Components/Table/FilterChoiceGroup"
 import FilterSelectField from "@/Components/Table/FilterSelectField"
 
 const SORT_OPTIONS = [
-  ["latest", "Terbaru"],
-  ["name-asc", "Nama A–Z"],
-  ["name-desc", "Nama Z–A"],
-  ["sub-area-desc", "Sub-area terbanyak"],
-  ["sub-area-asc", "Sub-area tersedikit"],
-  ["manager-desc", "Manager terbanyak"],
-  ["manager-asc", "Manager tersedikit"],
+  ["latest", "Newest"],
+  ["name-asc", "Name A–Z"],
+  ["name-desc", "Name Z–A"],
+  ["sub-area-desc", "Most sub-areas"],
+  ["sub-area-asc", "Fewest sub-areas"],
+  ["manager-desc", "Most managers"],
+  ["manager-asc", "Fewest managers"],
 ]
 const MANAGER_OPTIONS = [
-  ["all", "Semua"],
-  ["assigned", "Ada manager"],
-  ["unassigned", "Belum ada manager"],
+  ["all", "All"],
+  ["assigned", "Has manager"],
+  ["unassigned", "No manager"],
 ]
 const SUB_AREA_OPTIONS = [
-  ["all", "Semua"],
-  ["available", "Ada sub-area"],
-  ["empty", "Tanpa sub-area"],
+  ["all", "All"],
+  ["available", "Has sub-areas"],
+  ["empty", "No sub-areas"],
 ]
 const ARCHIVE_OPTIONS = [
-  ["all", "Semua"],
-  ["active", "Aktif"],
-  ["archived", "Diarsipkan"],
+  ["all", "All"],
+  ["active", "Active"],
+  ["archived", "Archived"],
 ]
 
 function initials(name = "") {
@@ -49,7 +49,7 @@ function ExpandButton({ expanded, onClick, label, emphasized = false }) {
       type="button"
       onClick={onClick}
       aria-expanded={expanded}
-      aria-label={`${expanded ? "Tutup" : "Buka"} detail ${label}`}
+      aria-label={`${expanded ? "Collapse" : "Expand"} details for ${label}`}
       className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 ${emphasized ? "text-slate-500 hover:bg-slate-100 xl:bg-blue-50 xl:text-blue-600 xl:hover:bg-blue-100" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}
     >
       {expanded ? <HiChevronDown className="h-5 w-5" /> : <HiChevronRight className="h-5 w-5" />}
@@ -91,10 +91,10 @@ function AreaActions({ area, canEdit, canDelete, onEdit, onArchive, onRestore, o
       <div className="flex shrink-0">
         {canDelete && (
           <>
-            <IconAction label="Pulihkan area" onClick={() => onRestore(area)}>
+            <IconAction label="Restore area" onClick={() => onRestore(area)}>
               <RotateCcw className="h-4 w-4" />
             </IconAction>
-            <IconAction label="Hapus permanen" danger onClick={() => onForceDelete(area)}>
+            <IconAction label="Delete permanently" danger onClick={() => onForceDelete(area)}>
               <Trash2 className="h-4 w-4" />
             </IconAction>
           </>
@@ -104,12 +104,12 @@ function AreaActions({ area, canEdit, canDelete, onEdit, onArchive, onRestore, o
   return (
     <div className="flex shrink-0">
       {canEdit && (
-        <IconAction label="Ubah area" onClick={() => onEdit(area)}>
+        <IconAction label="Edit area" onClick={() => onEdit(area)}>
           <HiOutlinePencil className="h-4 w-4" />
         </IconAction>
       )}
       {canDelete && (
-        <IconAction label="Hapus area" danger onClick={() => onArchive(area)}>
+        <IconAction label="Archive area" danger onClick={() => onArchive(area)}>
           <HiOutlineTrash className="h-4 w-4" />
         </IconAction>
       )}
@@ -121,10 +121,10 @@ function SubActions({ area, subArea, canEdit, onEditSubArea, onDeleteSubArea }) 
   if (!canEdit) return null
   return (
     <div className="flex shrink-0">
-      <IconAction label={`Ubah ${subArea.name}`} onClick={() => onEditSubArea(area, subArea)}>
+      <IconAction label={`Edit ${subArea.name}`} onClick={() => onEditSubArea(area, subArea)}>
         <HiOutlinePencil className="h-4 w-4" />
       </IconAction>
-      <IconAction label={`Hapus ${subArea.name}`} danger onClick={() => onDeleteSubArea(area, subArea)}>
+      <IconAction label={`Delete ${subArea.name}`} danger onClick={() => onDeleteSubArea(area, subArea)}>
         <HiOutlineTrash className="h-4 w-4" />
       </IconAction>
     </div>
@@ -136,8 +136,8 @@ function AreaTree({ areas, expandedIds, onToggle, onAddSubArea, ...actions }) {
     <div>
       <div className="hidden grid-cols-[minmax(320px,45%)_minmax(240px,1fr)_auto] border-b border-slate-200 bg-slate-50/80 px-6 py-3 xl:grid">
         <p className="text-xs font-semibold text-slate-600">Area</p>
-        <p className="text-xs font-semibold text-slate-600">Penanggung Jawab</p>
-        <span className="sr-only">Aksi</span>
+        <p className="text-xs font-semibold text-slate-600">Assignees</p>
+        <span className="sr-only">Actions</span>
       </div>
       <div className="divide-y divide-slate-200">
         {areas.map((area) => {
@@ -149,7 +149,7 @@ function AreaTree({ areas, expandedIds, onToggle, onAddSubArea, ...actions }) {
                   <ExpandButton expanded={expanded} onClick={() => onToggle(area.id)} label={area.area} emphasized />
                   <div className="min-w-0 pt-1.5 pr-1">
                     <h3 className="text-[15px] font-semibold leading-5 text-slate-900">{area.area}</h3>
-                    <p className="mt-1 text-xs font-medium text-slate-500">{area.sub_areas.length} sub-area</p>
+                    <p className="mt-1 text-xs font-medium text-slate-500">{area.sub_areas.length} {area.sub_areas.length === 1 ? "sub-area" : "sub-areas"}</p>
                   </div>
                 </div>
                 <div className="hidden xl:block">
@@ -160,13 +160,13 @@ function AreaTree({ areas, expandedIds, onToggle, onAddSubArea, ...actions }) {
                 </div>
               </div>
               {expanded && (
-                <section aria-label={`Sub-area ${area.area}`} className="border-t border-slate-200 bg-slate-50/60">
+                <section aria-label={`Sub-areas for ${area.area}`} className="border-t border-slate-200 bg-slate-50/60">
                   <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-slate-200 px-4 py-2.5 text-xs text-slate-600 sm:px-6 xl:hidden">
                     <span className="shrink-0">Manager</span>
                     <People people={area.managers} emptyText="-" compact />
                   </div>
                   {!area.sub_areas.length ? (
-                    <p className="px-6 py-4 text-sm text-slate-500">Belum ada sub-area.</p>
+                    <p className="px-6 py-4 text-sm text-slate-500">No sub-areas yet.</p>
                   ) : (
                     area.sub_areas.map((subArea, index) => {
                       const isLast = index === area.sub_areas.length - 1
@@ -210,7 +210,7 @@ function AreaTree({ areas, expandedIds, onToggle, onAddSubArea, ...actions }) {
                         className="inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-primary outline-none hover:text-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                       >
                         <HiOutlinePlus className="h-4 w-4" />
-                        Tambah sub-area
+                        Add sub-area
                       </button>
                     </div>
                   )}
@@ -237,27 +237,27 @@ function FilterSheet({ open, onClose, active, onApply, canViewArchived, allExpan
         </div>
         <header className="flex items-center justify-between border-b border-border px-4 py-3.5">
           <div>
-            <h2 className="text-lg font-bold">Atur tampilan</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Temukan area yang ingin diperiksa.</p>
+            <h2 className="text-lg font-bold">Filter areas</h2>
+            <p className="mt-1 text-xs text-muted-foreground">Choose how areas are displayed.</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Tutup" className="flex h-11 w-11 items-center justify-center rounded-full bg-muted">
+          <button type="button" onClick={onClose} aria-label="Close filters" className="flex h-11 w-11 items-center justify-center rounded-full bg-muted">
             <X className="h-5 w-5" />
           </button>
         </header>
         <div className="flex-1 space-y-5 overflow-y-auto bg-slate-50/50 px-4 py-5">
-          <FilterSelectField label="Susun area" value={draft.sort} onChange={(sort) => setDraft({ ...draft, sort })} options={SORT_OPTIONS} />
-          <FilterChoiceGroup legend="Penanggung jawab" value={draft.manager} onChange={(manager) => setDraft({ ...draft, manager })} options={MANAGER_OPTIONS} variant="chips" />
-          <FilterChoiceGroup legend="Ketersediaan sub-area" value={draft.subArea} onChange={(subArea) => setDraft({ ...draft, subArea })} options={SUB_AREA_OPTIONS} variant="chips" />
-          {canViewArchived && <FilterChoiceGroup legend="Kondisi data" value={draft.archive} onChange={(archive) => setDraft({ ...draft, archive })} options={ARCHIVE_OPTIONS} variant="chips" />}
+          <FilterSelectField label="Sort areas" value={draft.sort} onChange={(sort) => setDraft({ ...draft, sort })} options={SORT_OPTIONS} />
+          <FilterChoiceGroup legend="Manager assignment" value={draft.manager} onChange={(manager) => setDraft({ ...draft, manager })} options={MANAGER_OPTIONS} variant="chips" />
+          <FilterChoiceGroup legend="Sub-areas" value={draft.subArea} onChange={(subArea) => setDraft({ ...draft, subArea })} options={SUB_AREA_OPTIONS} variant="chips" />
+          {canViewArchived && <FilterChoiceGroup legend="Record status" value={draft.archive} onChange={(archive) => setDraft({ ...draft, archive })} options={ARCHIVE_OPTIONS} variant="chips" />}
           <FilterSelectField
-            label="Baris per halaman"
+            label="Rows per page"
             value={String(draft.perPage)}
             onChange={(perPage) => setDraft({ ...draft, perPage: Number(perPage) })}
-            options={[10, 25, 50, 100, -1].map((value) => [String(value), value === -1 ? "Tampilkan semua" : `${value} baris`])}
+            options={[10, 25, 50, 100, -1].map((value) => [String(value), value === -1 ? "Show all" : `${value} rows`])}
           />
           {hasData && (
             <button type="button" onClick={onToggleAll} className="min-h-11 border-t border-border pt-4 text-sm font-semibold text-primary">
-              {allExpanded ? "Tutup semua detail" : "Buka semua detail"}
+              {allExpanded ? "Collapse all details" : "Expand all details"}
             </button>
           )}
         </div>
@@ -266,7 +266,7 @@ function FilterSheet({ open, onClose, active, onApply, canViewArchived, allExpan
             Reset
           </button>
           <button type="button" onClick={() => onApply(draft)} className="min-h-12 rounded-xl bg-primary font-semibold text-primary-foreground">
-            Tampilkan hasil
+            Show results
           </button>
         </footer>
       </section>
@@ -333,22 +333,24 @@ export default function AreaListSection(props) {
       <DataTableToolbar
         search={props.search}
         onSearchChange={props.onSearchChange}
-        searchPlaceholder="Cari area atau sub-area..."
+        searchPlaceholder="Search areas or sub-areas..."
         perPage={props.perPage}
         onPerPageChange={props.onPerPageChange}
-        resultText={`${areas.length}${active ? ` dari ${props.areas.data.length}` : ""} area`}
+        resultText={`${areas.length}${active ? ` of ${props.areas.data.length}` : ""} areas`}
+        language="en"
         onMobileFilter={() => setFilterOpen(true)}
         mobileFilterActive={active}
       />
       {!areas.length ? (
         <div className="px-6 py-16 text-center">
           <Building2 className="mx-auto h-7 w-7 text-muted-foreground" />
-          <p className="mt-3 font-semibold">Area tidak ditemukan</p>
+          <p className="mt-3 font-semibold">No areas found</p>
         </div>
       ) : (
         <AreaTree areas={areas} expandedIds={expandedIds} onToggle={toggle} onAddSubArea={props.onAddSubArea} {...actions} />
       )}
       <ServerPagination
+        language="en"
         links={props.areas.links}
         from={props.areas.meta?.from}
         to={props.areas.meta?.to}

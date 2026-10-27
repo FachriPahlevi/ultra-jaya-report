@@ -8,20 +8,25 @@ use App\Exceptions\BusinessException;
 use App\Models\Activity;
 use App\Models\Area;
 use App\Models\Report;
+use App\Models\SubActivity;
 use App\Models\SubArea;
 use App\Models\User;
+use App\Services\ReportCapabilities;
 use App\Services\ReportPhotoService;
+use App\Services\ReportSelectionScope;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -29,20 +34,28 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ReportController extends Controller
 {
-    public function __construct(private readonly ReportPhotoService $reportPhotos) {}
+    public function __construct(private readonly ReportPhotoService $reportPhotos, private readonly ReportSelectionScope $selectionScope) {}
 
-    public function index(): Response
+    public function index(Request $request): Response
     {
         $user = Auth::user();
         $managedAreaIds = $user->managedAreas()->pluck('areas.id')->all();
         $supervisedSubAreaIds = $user->supervisedSubAreas()->pluck('sub_areas.id')->all();
-        $managedActivityIds = $user->assignedActivities()->whereNull('parent_id')->pluck('activities.id')->all();
-        $supervisedActivityIds = $user->assignedActivities()->whereNotNull('parent_id')->pluck('activities.id')->all();
+        $managedActivityIds = $user->assignedActivities()->pluck('activities.id')->all();
+        $supervisedActivityIds = $user->assignedSubActivities()->pluck('sub_activities.id')->all();
 
         $query = $this->visibleReportsFor($user)
-            ->with(['author.roles', 'area', 'subArea', 'activityType.parent', 'subActivity', 'closer.roles']);
+            ->with(['author.roles', 'area.pics', 'subArea', 'activityType', 'subActivity', 'closer.roles']);
 
-        $reports = $query->latest()->get()->map(function ($report) {
+        $canUseForm = $user->hasAnyPermission(['reports.create', 'reports.edit.own', 'reports.edit.all']);
+        $visibleAreaIds = (clone $query)->pluck('area_id')->unique();
+        $visibleActivityIds = (clone $query)->pluck('activity_id')->unique();
+        $visibleAuthorIds = (clone $query)->pluck('author_id')->unique();
+        $visibleSubAreaIds = (clone $query)->pluck('sub_area_id')->unique();
+        $visibleSubActivityIds = (clone $query)->pluck('sub_activity_id')->unique();
+
+        $access = new ReportCapabilities($user);
+        $reports = $query->latest()->get()->map(function ($report) use ($access) {
             return [
                 'id' => $report->id,
                 'author_id' => $report->author_id,
@@ -50,6 +63,7 @@ class ReportController extends Controller
                 'sub_area_id' => $report->sub_area_id,
                 'activity_id' => $report->activity_id,
                 'sub_activity_id' => $report->sub_activity_id,
+                'category_snapshot' => $report->category_snapshot,
                 'activity' => $report->activity,
                 'issue' => $report->issue,
                 'status' => $report->status,
@@ -59,11 +73,7 @@ class ReportController extends Controller
                 'closed_at' => $report->closed_at,
                 'created_at' => $report->created_at,
                 'updated_at' => $report->updated_at,
-                'can' => [
-                    'update' => Gate::allows('update', $report),
-                    'delete' => Gate::allows('delete', $report),
-                    'close' => Gate::allows('close', $report),
-                ],
+                'can' => $access->actions($report),
                 'author' => $report->author ? [
                     'id' => $report->author->id,
                     'name' => $report->author->name,
@@ -85,13 +95,12 @@ class ReportController extends Controller
                     'id' => $report->activityType->id,
                     'name' => $report->activityType->name,
                     'description' => $report->activityType->description,
-                    'parent_id' => $report->activityType->parent_id,
-                    'parent_name' => $report->activityType->parent?->name,
                 ] : null,
                 'sub_activity' => $report->subActivity ? [
                     'id' => $report->subActivity->id,
                     'name' => $report->subActivity->name,
                     'description' => $report->subActivity->description,
+                    'category' => $report->category_snapshot,
                 ] : null,
                 'closer' => $report->closer ? [
                     'id' => $report->closer->id,
@@ -102,28 +111,30 @@ class ReportController extends Controller
         });
 
         return Inertia::render('reports/Index', [
+            'initialReportId' => $request->integer('selected_report') ?: null,
             'reports' => $reports,
-            'areas' => Area::with(['managers:id,name', 'subAreas' => fn ($query) => $query->where('is_active', true)])->where('is_active', true)->select('id', 'area')->get()->map(function (Area $area) use ($managedAreaIds, $supervisedSubAreaIds) {
-                return [
-                    'id' => $area->id,
-                    'area' => $area->area,
-                    'managers' => $area->managers->map(fn (User $manager) => ['id' => $manager->id, 'name' => $manager->name])->values(),
-                    'is_in_current_user_scope' => in_array($area->id, $managedAreaIds, true)
-                        || $area->subAreas->contains(fn ($subArea) => in_array($subArea->id, $supervisedSubAreaIds, true)),
-                    'sub_areas' => $area->subAreas->map(fn ($subArea) => [
-                        'id' => $subArea->id,
-                        'name' => $subArea->name,
-                        'is_in_current_user_scope' => in_array($subArea->id, $supervisedSubAreaIds, true),
-                    ])->values(),
-                ];
-            }),
+            'areas' => Area::with(['managers:id,name', 'subAreas' => fn ($query) => $query->where('is_active', true)->when(! $canUseForm, fn ($subAreas) => $subAreas->whereIn('id', $visibleSubAreaIds))])
+                ->when(! $canUseForm, fn ($query) => $query->whereIn('id', $visibleAreaIds))
+                ->where('is_active', true)->select('id', 'area')->get()->map(function (Area $area) use ($managedAreaIds, $supervisedSubAreaIds) {
+                    return [
+                        'id' => $area->id,
+                        'area' => $area->area,
+                        'is_in_review_scope' => in_array($area->id, $managedAreaIds, true),
+                        'managers' => $area->managers->map(fn (User $manager) => ['id' => $manager->id, 'name' => $manager->name])->values(),
+                        'is_in_current_user_scope' => in_array($area->id, $managedAreaIds, true)
+                            || $area->subAreas->contains(fn ($subArea) => in_array($subArea->id, $supervisedSubAreaIds, true)),
+                        'sub_areas' => $area->subAreas->map(fn ($subArea) => [
+                            'id' => $subArea->id,
+                            'name' => $subArea->name,
+                            'is_in_current_user_scope' => in_array($subArea->id, $supervisedSubAreaIds, true),
+                        ])->values(),
+                    ];
+                }),
             'activities' => Activity::with([
-                'children' => fn ($query) => $query
-                    ->where('is_active', true)
-                    ->select('id', 'name', 'description', 'parent_id', 'category'),
+                'children' => fn ($query) => $query->select('id', 'name', 'description', 'activity_id', 'category')->when(! $canUseForm, fn ($children) => $children->whereIn('id', $visibleSubActivityIds)),
             ])
                 ->where('is_active', true)
-                ->whereNull('parent_id')
+                ->when(! $canUseForm, fn ($query) => $query->whereIn('id', $visibleActivityIds))
                 ->orderBy('name')
                 ->get()
                 ->map(function (Activity $activity) use ($managedActivityIds, $supervisedActivityIds) {
@@ -138,13 +149,13 @@ class ReportController extends Controller
                             'name' => $child->name,
                             'description' => $child->description,
                             'category' => $child->category,
-                            'parent_id' => $child->parent_id,
-                            'is_active' => $child->is_active,
+                            'activity_id' => $child->activity_id,
+                            'is_active' => $activity->is_active,
                             'is_in_current_user_scope' => in_array($child->id, $supervisedActivityIds, true),
                         ])->values(),
                     ];
                 }),
-            'users' => $user->can('reports.view.all') ? User::select('id', 'name')->orderBy('name')->get() : collect(),
+            'users' => $user->hasAnyPermission(['reports.view.all', 'reports.solve.all', 'reports.edit.all', 'reports.delete.all']) ? User::whereIn('id', $visibleAuthorIds)->select('id', 'name')->orderBy('name')->get() : collect(),
         ]);
     }
 
@@ -153,7 +164,7 @@ class ReportController extends Controller
         $user = Auth::user();
 
         if (! $user->can('reports.create')) {
-            throw new BusinessException('Anda tidak memiliki izin untuk membuat laporan', 403);
+            throw new BusinessException('You do not have permission to create reports.', 403);
         }
 
         $validated = $request->validate($this->storeRules());
@@ -161,16 +172,18 @@ class ReportController extends Controller
         $this->validateSubArea((int) $validated['sub_area_id'], (int) $validated['area_activity']);
 
         if (! empty($validated['sub_activity_id'])) {
-            $subActivityBelongsToParent = Activity::whereKey($validated['sub_activity_id'])
-                ->where('parent_id', $validated['type_activity'])
+            $subActivityBelongsToParent = SubActivity::whereKey($validated['sub_activity_id'])
+                ->where('activity_id', $validated['type_activity'])
                 ->exists();
 
             if (! $subActivityBelongsToParent) {
                 throw ValidationException::withMessages([
-                    'sub_activity_id' => 'Subaktivitas tidak sesuai dengan aktivitas utama yang dipilih.',
+                    'sub_activity_id' => 'The sub-activity does not belong to the selected activity.',
                 ]);
             }
         }
+
+        $this->selectionScope->validate($user, (int) $validated['area_activity'], (int) $validated['sub_area_id'], (int) $validated['type_activity'], (int) $validated['sub_activity_id']);
 
         $report = Report::create([
             'author_id' => $user->id,
@@ -188,13 +201,13 @@ class ReportController extends Controller
             $report->update(['photo_before' => $this->reportPhotos->store($request->file('photo'), $report, 'before')]);
         }
 
-        return back()->with('success', 'Laporan berhasil dibuat');
+        return back()->with('success', 'Report created successfully.');
     }
 
     public function update(Request $request, Report $report): RedirectResponse
     {
         Gate::authorize('update', $report);
-        $this->ensureReportIsOpen($report, 'diubah');
+        $this->ensureReportIsOpen($report, 'edited');
 
         $validated = $request->validate($this->updateRules());
 
@@ -203,16 +216,24 @@ class ReportController extends Controller
         }
 
         $selectedParentId = $validated['type_activity'] ?? $report->activity_id;
-        if (! empty($validated['sub_activity_id'])) {
-            $subActivityBelongsToParent = Activity::whereKey($validated['sub_activity_id'])
-                ->where('parent_id', $selectedParentId)
+        $selectedSubActivityId = $validated['sub_activity_id'] ?? $report->sub_activity_id;
+        if ($selectedSubActivityId) {
+            $subActivityBelongsToParent = SubActivity::whereKey($selectedSubActivityId)
+                ->where('activity_id', $selectedParentId)
                 ->exists();
 
             if (! $subActivityBelongsToParent) {
                 throw ValidationException::withMessages([
-                    'sub_activity_id' => 'Subaktivitas tidak sesuai dengan aktivitas utama yang dipilih.',
+                    'sub_activity_id' => 'The sub-activity does not belong to the selected activity.',
                 ]);
             }
+        }
+
+        $selectionChanged = (int) ($validated['area_activity'] ?? $report->area_id) !== $report->area_id
+            || (int) ($validated['sub_area_id'] ?? $report->sub_area_id) !== $report->sub_area_id
+            || (int) $selectedParentId !== $report->activity_id || (int) $selectedSubActivityId !== $report->sub_activity_id;
+        if ($selectionChanged) {
+            $this->selectionScope->validate(Auth::user(), (int) ($validated['area_activity'] ?? $report->area_id), (int) ($validated['sub_area_id'] ?? $report->sub_area_id), (int) $selectedParentId, (int) $selectedSubActivityId);
         }
 
         $data = ['is_content_edited' => true];
@@ -242,7 +263,7 @@ class ReportController extends Controller
 
         $report->update($data);
 
-        return back()->with('success', 'Laporan berhasil diupdate');
+        return back()->with('success', 'Report updated successfully.');
     }
 
     public function close(Request $request, Report $report): RedirectResponse
@@ -250,7 +271,7 @@ class ReportController extends Controller
         $user = Auth::user();
 
         Gate::authorize('close', $report);
-        $this->ensureReportIsOpen($report, 'ditutup');
+        $this->ensureReportIsOpen($report, 'closed');
 
         $validated = $request->validate([
             'close_comment' => ['required', 'string'],
@@ -270,7 +291,7 @@ class ReportController extends Controller
 
         $report->update($data);
 
-        return back()->with('success', 'Tiket berhasil ditutup');
+        return back()->with('success', 'Ticket closed successfully.');
     }
 
     public function destroy(Report $report): RedirectResponse
@@ -282,20 +303,27 @@ class ReportController extends Controller
 
         $report->delete();
 
-        return back()->with('success', 'Laporan berhasil dihapus');
+        return back()->with('success', 'Report deleted successfully.');
     }
 
-    public function show(Report $report): Response
+    public function show(Report $report): RedirectResponse
     {
         Gate::authorize('view', $report);
 
-        return Inertia::render('reports/Show', [
-            'report' => $report->load(['author', 'area.managers', 'subArea', 'activityType.parent', 'subActivity', 'closer']),
-        ]);
+        return redirect()->route('reports.index', ['selected_report' => $report->id]);
     }
 
     public function export(Request $request, string $type): \Symfony\Component\HttpFoundation\Response
     {
+        $request->validate([
+            'start_date' => ['nullable', 'date_format:Y-m-d'],
+            'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:start_date'],
+            'area_ids' => ['sometimes', 'array'], 'area_ids.*' => ['integer'],
+            'activity_ids' => ['sometimes', 'array'], 'activity_ids.*' => ['integer'],
+            'author_ids' => ['sometimes', 'array'], 'author_ids.*' => ['integer'],
+            'status' => ['nullable', Rule::in(['open', 'closed', 'report'])],
+            'my_reports_only' => ['nullable', Rule::in(['true', 'false', '1', '0'])],
+        ]);
         $user = Auth::user();
         $query = $this->visibleReportsFor($user)
             ->with(['author', 'area', 'activityType', 'subActivity']);
@@ -315,8 +343,10 @@ class ReportController extends Controller
         if ($request->filled('activity_ids')) {
             $query->whereIn('activity_id', $request->activity_ids);
         }
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
+        if ($request->status === 'report') {
+            $query->where('category_snapshot', 'REPORT');
+        } elseif ($request->filled('status')) {
+            $query->where('status', $request->status)->where('category_snapshot', 'ISSUE');
         }
         if ($request->filled('author_ids')) {
             $query->whereIn('author_id', $request->author_ids);
@@ -330,22 +360,29 @@ class ReportController extends Controller
     private function exportExcel($reports): BinaryFileResponse
     {
         $sheet = (new Spreadsheet)->getActiveSheet();
-        $sheet->fromArray(['No', 'Pelapor', 'Area', 'Aktivitas', 'Temuan', 'Foto Sebelum', 'Foto Sesudah', 'Status', 'Dibuat'], null, 'A1');
+        $sheet->fromArray(['No', 'Reporter', 'Area', 'Activity', 'Finding', 'Before Photo', 'After Photo', 'Status', 'Created At'], null, 'A1');
         $sheet->getStyle('A1:I1')->getFont()->setBold(true);
-        $sheet->getColumnDimension('E')->setWidth(36);
-        $sheet->getColumnDimension('F')->setWidth(18);
-        $sheet->getColumnDimension('G')->setWidth(18);
+        $sheet->getColumnDimension('E')->setWidth(42);
+        $sheet->getColumnDimension('F')->setWidth(29);
+        $sheet->getColumnDimension('G')->setWidth(29);
+        $sheet->getStyle('E:I')->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+        $sheet->getStyle('E:E')->getAlignment()->setWrapText(true);
         foreach ($reports as $index => $report) {
             $row = $index + 2;
-            $sheet->fromArray([$index + 1, $report->author?->name, $report->area?->area, $report->subActivity?->name ?? $report->activityType?->name, $report->issue, '', '', strtoupper($report->status), $report->created_at?->format('d-m-Y H:i')], null, "A{$row}");
-            $sheet->getRowDimension($row)->setRowHeight(70);
+            $displayStatus = $report->category_snapshot === 'REPORT' ? 'REPORT' : strtoupper($report->status);
+            $sheet->fromArray([$index + 1, $report->author?->name, $report->area?->area, $report->subActivity?->name ?? $report->activityType?->name, $report->issue, '', '', $displayStatus, $report->created_at?->format('d-m-Y H:i')], null, "A{$row}");
+            $sheet->getRowDimension($row)->setRowHeight(120);
             foreach (['photo_before' => 'F', 'photo_after' => 'G'] as $field => $column) {
-                $path = $report->{$field} ? storage_path('app/public/'.$report->{$field}) : null;
-                if ($path && file_exists($path)) {
+                $path = $report->{$field} && Storage::disk('public')->exists($report->{$field})
+                    ? Storage::disk('public')->path($report->{$field})
+                    : null;
+                if ($path) {
                     $drawing = new Drawing;
                     $drawing->setPath($path);
-                    $drawing->setHeight(65);
+                    $drawing->setWidthAndHeight(184, 144);
                     $drawing->setCoordinates("{$column}{$row}");
+                    $drawing->setOffsetX(8);
+                    $drawing->setOffsetY(8);
                     $drawing->setWorksheet($sheet);
                 }
             }
@@ -353,7 +390,7 @@ class ReportController extends Controller
         $file = storage_path('app/reports-'.uniqid().'.xlsx');
         (new Xlsx($sheet->getParent()))->save($file);
 
-        return response()->download($file, 'laporan-'.now()->format('Y-m-d_H-i-s').'.xlsx')->deleteFileAfterSend();
+        return response()->download($file, 'reports-'.now()->format('Y-m-d_H-i-s').'.xlsx')->deleteFileAfterSend();
     }
 
     private function exportCsv($reports): StreamedResponse
@@ -361,7 +398,7 @@ class ReportController extends Controller
         return response()->streamDownload(function () use ($reports): void {
             $handle = fopen('php://output', 'w');
 
-            fputcsv($handle, ['No', 'ID', 'Author', 'Area', 'Jenis Aktivitas', 'Aktivitas', 'Temuan', 'Foto Sebelum', 'Foto Sesudah', 'Status', 'Dibuat Pada']);
+            fputcsv($handle, ['No', 'ID', 'Reporter', 'Area', 'Activity Type', 'Activity Notes', 'Finding', 'Before Photo', 'After Photo', 'Status', 'Created At']);
 
             foreach ($reports as $index => $report) {
                 fputcsv($handle, [
@@ -372,15 +409,15 @@ class ReportController extends Controller
                     $report->subActivity?->name ?? $report->activityType?->name ?? '-',
                     $report->activity ?? '-',
                     $report->issue,
-                    $report->photo_before ? 'Ada' : 'Tidak ada',
-                    $report->photo_after ? 'Ada' : 'Tidak ada',
-                    strtoupper($report->status ?? Report::STATUS_OPEN),
+                    $report->photo_before ? 'Yes' : 'No',
+                    $report->photo_after ? 'Yes' : 'No',
+                    $report->category_snapshot === 'REPORT' ? 'REPORT' : strtoupper($report->status ?? Report::STATUS_OPEN),
                     $report->created_at?->format('d-m-Y H:i:s'),
                 ]);
             }
 
             fclose($handle);
-        }, 'laporan-'.now()->format('Y-m-d_H-i-s').'.csv');
+        }, 'reports-'.now()->format('Y-m-d_H-i-s').'.csv');
     }
 
     private function exportPdf($reports): \Illuminate\Http\Response
@@ -394,14 +431,14 @@ class ReportController extends Controller
             'isPhpEnabled' => false,
         ]);
 
-        return $pdf->download('Laporan_Ticket_Report_'.date('Y-m-d').'.pdf');
+        return $pdf->download('Reports_'.date('Y-m-d').'.pdf');
     }
 
     private function storeRules(): array
     {
         return [
-            'type_activity' => [$this->activeParentActivityRule()],
-            'sub_activity_id' => ['nullable', $this->activeSubActivityRule()],
+            'type_activity' => ['required', $this->activeParentActivityRule()],
+            'sub_activity_id' => ['required', $this->activeSubActivityRule()],
             'area_activity' => ['required', $this->activeAreaRule()],
             'sub_area_id' => ['required', $this->activeSubAreaRule()],
             'activity' => ['nullable', 'string', 'max:255'],
@@ -414,7 +451,7 @@ class ReportController extends Controller
     {
         return [
             'type_activity' => ['sometimes', $this->activeParentActivityRule()],
-            'sub_activity_id' => ['nullable', $this->activeSubActivityRule()],
+            'sub_activity_id' => ['sometimes', 'required', $this->activeSubActivityRule()],
             'area_activity' => ['sometimes', $this->activeAreaRule()],
             'sub_area_id' => ['sometimes', $this->activeSubAreaRule()],
             'activity' => ['nullable', 'string', 'max:255'],
@@ -427,16 +464,14 @@ class ReportController extends Controller
     {
         return Rule::exists('activities', 'id')
             ->whereNull('deleted_at')
-            ->whereNull('parent_id')
             ->where('is_active', true);
     }
 
     private function activeSubActivityRule()
     {
-        return Rule::exists('activities', 'id')
+        return Rule::exists('sub_activities', 'id')
             ->whereNull('deleted_at')
-            ->whereNotNull('parent_id')
-            ->where('is_active', true);
+            ->where(fn ($query) => $query->whereIn('activity_id', Activity::where('is_active', true)->select('id')));
     }
 
     private function activeAreaRule()
@@ -453,39 +488,19 @@ class ReportController extends Controller
     private function validateSubArea(int $subAreaId, int $areaId): void
     {
         if (! SubArea::query()->whereKey($subAreaId)->where('area_id', $areaId)->exists()) {
-            throw ValidationException::withMessages(['sub_area_id' => 'Sub-area harus berada pada area yang dipilih.']);
+            throw ValidationException::withMessages(['sub_area_id' => 'The sub-area must belong to the selected area.']);
         }
     }
 
     private function visibleReportsFor(User $user): Builder
     {
-        $query = Report::query();
-
-        if ($user->can('reports.view.all')) {
-            return $query;
-        }
-
-        if ($user->can('reports.review.area')) {
-            return $query->whereHas('activityType.managers', fn (Builder $managers) => $managers->whereKey($user->id));
-        }
-
-        if ($user->can('reports.view.own') && $user->can('reports.solve.own.area')) {
-            return $query->where(fn (Builder $visible) => $visible
-                ->where('author_id', $user->id)
-                ->orWhereHas('subArea.supervisors', fn (Builder $supervisors) => $supervisors->whereKey($user->id)));
-        }
-
-        if ($user->can('reports.solve.own.area')) {
-            return $query->whereHas('subArea.supervisors', fn (Builder $supervisors) => $supervisors->whereKey($user->id));
-        }
-
-        return $query->where('author_id', $user->id);
+        return Report::query()->visibleTo($user);
     }
 
     private function ensureReportIsOpen(Report $report, string $action): void
     {
         if (! $report->isOpen()) {
-            throw new BusinessException("Hanya laporan dengan status terbuka yang dapat {$action}.");
+            throw new BusinessException("Only open reports can be {$action}.");
         }
     }
 }

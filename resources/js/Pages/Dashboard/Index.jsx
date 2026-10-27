@@ -1,16 +1,18 @@
 import { Head, Link, router, usePage } from "@inertiajs/react"
 import AppLayout from "@/Layouts/AppLayout"
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
+import InputDropdown from "@/Components/Input/InputDropdown"
+import InputDate from "@/Components/Input/InputDate"
 import { HiArrowRight, HiOutlineCheckCircle, HiOutlineClock, HiOutlineDocumentReport, HiOutlineInbox, HiOutlineLocationMarker } from "react-icons/hi"
 import { CalendarDays, ChevronDown, X } from "lucide-react"
 import { useEffect, useState } from "react"
 
 const PERIOD_OPTIONS = [
-  ["today", "Hari ini"],
-  ["last_7_days", "7 hari terakhir"],
-  ["this_month", "Bulan ini"],
-  ["last_month", "Bulan lalu"],
-  ["all", "Semua waktu"],
+  ["today", "Today"],
+  ["last_7_days", "Last 7 days"],
+  ["this_month", "This month"],
+  ["last_month", "Last month"],
+  ["all", "All time"],
 ]
 
 const statusConfig = {
@@ -20,10 +22,10 @@ const statusConfig = {
 
 const formatRelative = (dateStr) => {
   if (!dateStr) return "-"
-  const diffMinutes = Math.floor((new Date() - new Date(dateStr)) / 1000 / 60)
-  if (diffMinutes < 60) return `${Math.max(diffMinutes, 0)} menit lalu`
-  if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)} jam lalu`
-  return `${Math.floor(diffMinutes / 1440)} hari lalu`
+  const diffMinutes = Math.max(0, Math.floor((new Date() - new Date(dateStr)) / 1000 / 60))
+  if (diffMinutes < 60) return `${diffMinutes} min ago`
+  if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)} hr ago`
+  return `${Math.floor(diffMinutes / 1440)} d ago`
 }
 
 function StatusBadge({ status }) {
@@ -31,7 +33,7 @@ function StatusBadge({ status }) {
   return (
     <span className={`inline-flex items-center whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-semibold ${className}`}>
       <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
-      {status === "closed" ? "Selesai" : status === "open" ? "Terbuka" : status}
+      {status === "closed" ? "Closed" : status === "open" ? "Open" : status}
     </span>
   )
 }
@@ -67,7 +69,7 @@ function TicketRow({ report }) {
       <div className="flex min-w-0 items-start gap-3">
         <span className="flex h-10 min-w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-background px-2 text-xs font-bold text-foreground">#{report.id}</span>
         <div className="min-w-0">
-          <p className="line-clamp-1 text-sm font-semibold text-foreground">{report.issue || "Tanpa judul kendala"}</p>
+          <p className="line-clamp-1 text-sm font-semibold text-foreground">{report.issue || "No finding provided"}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <HiOutlineLocationMarker className="h-3.5 w-3.5" />
@@ -94,8 +96,8 @@ function EmptyTickets() {
       <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
         <HiOutlineInbox className="h-6 w-6" />
       </span>
-      <p className="text-sm font-semibold text-foreground">Belum ada laporan</p>
-      <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">Laporan operasional yang dibuat akan muncul di bagian ini.</p>
+      <p className="text-sm font-semibold text-foreground">No reports yet</p>
+      <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">New reports will appear here.</p>
     </div>
   )
 }
@@ -105,15 +107,15 @@ function ProgressPanel({ stats, completionPct, topArea }) {
     <section className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold text-foreground">Progress Penyelesaian</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Perbandingan tiket selesai dari seluruh tiket.</p>
+          <h2 className="text-base font-semibold text-foreground">Ticket completion</h2>
+          <p className="mt-1 text-xs text-muted-foreground">Closed tickets as a share of all tickets.</p>
         </div>
         <p className="text-2xl font-bold text-foreground tabular-nums">{completionPct}%</p>
       </div>
       <div
         className="mt-5 h-2.5 overflow-hidden rounded-full bg-slate-200"
         role="progressbar"
-        aria-label="Progress penyelesaian tiket"
+        aria-label="Ticket completion progress"
         aria-valuemin="0"
         aria-valuemax="100"
         aria-valuenow={completionPct}
@@ -122,13 +124,13 @@ function ProgressPanel({ stats, completionPct, topArea }) {
       </div>
       <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>
-          {stats.closed} dari {stats.total} tiket selesai
+          {stats.closed} of {stats.total} tickets closed
         </span>
-        <span>{stats.open} masih terbuka</span>
+        <span>{stats.open} still open</span>
       </div>
       <div className="mt-5 border-t border-border pt-4">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Area dengan tiket terbanyak</p>
-        <p className="mt-1.5 text-sm font-semibold text-foreground">{topArea || "Belum ada data area"}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Area with most tickets</p>
+        <p className="mt-1.5 text-sm font-semibold text-foreground">{topArea || "No area data yet"}</p>
       </div>
     </section>
   )
@@ -139,14 +141,14 @@ function AttentionPanel({ ticket }) {
     <section className="rounded-xl border border-border bg-card p-5">
       <div className="flex items-center gap-2">
         <HiOutlineClock className="h-5 w-5 text-amber-600" />
-        <h2 className="text-base font-semibold text-foreground">Perlu Perhatian</h2>
+        <h2 className="text-base font-semibold text-foreground">Needs attention</h2>
       </div>
       {!ticket ? (
         <div className="mt-4 flex items-start gap-3 rounded-lg bg-emerald-50 p-3 text-emerald-700">
           <HiOutlineCheckCircle className="mt-0.5 h-5 w-5 shrink-0" />
           <div>
-            <p className="text-sm font-semibold">Tidak ada tiket terbuka</p>
-            <p className="mt-0.5 text-xs">Seluruh tiket dalam cakupan Anda telah ditangani.</p>
+            <p className="text-sm font-semibold">No open tickets</p>
+            <p className="mt-0.5 text-xs">All tickets in your scope have been handled.</p>
           </div>
         </div>
       ) : (
@@ -161,11 +163,11 @@ function AttentionPanel({ ticket }) {
             {ticket.area} · {ticket.activity}
           </p>
           <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-            <span className="text-xs text-muted-foreground">Terbuka selama</span>
-            <span className={`text-sm font-bold tabular-nums ${ticket.age_in_days >= 30 ? "text-red-600" : "text-amber-700"}`}>{ticket.age_in_days} hari</span>
+            <span className="text-xs text-muted-foreground">Open for</span>
+            <span className={`text-sm font-bold tabular-nums ${ticket.age_in_days >= 30 ? "text-red-600" : "text-amber-700"}`}>{ticket.age_in_days} days</span>
           </div>
           <Link href="/reports?status=open" className="mt-3 inline-flex min-h-9 items-center gap-1.5 text-xs font-semibold text-primary">
-            Tinjau tiket <HiArrowRight className="h-4 w-4" />
+            Review ticket <HiArrowRight className="h-4 w-4" />
           </Link>
         </div>
       )}
@@ -206,7 +208,7 @@ function DashboardPeriod({ filters, areas }) {
     setIsOpen(false)
   }
 
-  const selectedLabel = period === "custom" ? "Rentang tanggal" : (PERIOD_OPTIONS.find(([value]) => value === period)?.[1] ?? "Pilih periode")
+  const selectedLabel = period === "custom" ? "Custom range" : (PERIOD_OPTIONS.find(([value]) => value === period)?.[1] ?? "Select period")
 
   return (
     <>
@@ -230,14 +232,14 @@ function DashboardPeriod({ filters, areas }) {
           <header className="flex items-center justify-between border-b border-border px-4 py-3.5 sm:px-5">
             <div>
               <h2 id="dashboard-period-title" className="text-lg font-bold tracking-tight text-foreground">
-                Atur periode dashboard
+                Dashboard period
               </h2>
-              <p className="mt-1 text-xs text-muted-foreground">Pilih periode data yang ingin ditampilkan.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Choose which dates to include.</p>
             </div>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              aria-label="Tutup pengaturan periode"
+              aria-label="Close period settings"
               className="flex h-11 w-11 items-center justify-center rounded-full bg-muted text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
             >
               <X className="h-5 w-5" />
@@ -245,7 +247,7 @@ function DashboardPeriod({ filters, areas }) {
           </header>
           <div className="flex-1 space-y-5 overflow-y-auto bg-slate-50/50 px-4 py-5 sm:px-5">
             <fieldset>
-              <legend className="text-sm font-semibold text-foreground">Periode</legend>
+              <legend className="text-sm font-semibold text-foreground">Period</legend>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 {PERIOD_OPTIONS.map(([value, label]) => (
                   <button
@@ -260,39 +262,19 @@ function DashboardPeriod({ filters, areas }) {
               </div>
             </fieldset>
             <fieldset className="grid grid-cols-1 gap-3 border-t border-border pt-5 sm:grid-cols-2">
-              <legend className="col-span-full text-sm font-semibold text-foreground">Atau pilih rentang tanggal</legend>
-              <label className="grid gap-1.5 text-sm font-semibold text-foreground">
-                Tanggal mulai
-                <input
-                  type="date"
-                  value={draft.dateFrom}
-                  onChange={(event) => setDraft((current) => ({ ...current, period: "custom", dateFrom: event.target.value }))}
-                  className="ui-field min-h-11 text-sm"
-                />
-              </label>
-              <label className="grid gap-1.5 text-sm font-semibold text-foreground">
-                Tanggal akhir
-                <input
-                  type="date"
-                  value={draft.dateTo}
-                  min={draft.dateFrom || undefined}
-                  onChange={(event) => setDraft((current) => ({ ...current, period: "custom", dateTo: event.target.value }))}
-                  className="ui-field min-h-11 text-sm"
-                />
-              </label>
+              <legend className="col-span-full text-sm font-semibold text-foreground">Or choose a date range</legend>
+              <InputDate label="Start date" value={draft.dateFrom} onChange={(event) => setDraft((current) => ({ ...current, period: "custom", dateFrom: event.target.value }))} />
+              <InputDate label="End date" value={draft.dateTo} min={draft.dateFrom || undefined} onChange={(event) => setDraft((current) => ({ ...current, period: "custom", dateTo: event.target.value }))} />
             </fieldset>
             {areas.length > 0 && (
-              <label className="grid gap-1.5 border-t border-border pt-5 text-sm font-semibold text-foreground">
-                Area
-                <select value={draft.areaId} onChange={(event) => setDraft((current) => ({ ...current, areaId: event.target.value }))} className="ui-field min-h-11 text-sm">
-                  <option value="">Semua area</option>
-                  {areas.map((area) => (
-                    <option key={area.id} value={area.id}>
-                      {area.area}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <div className="border-t border-border pt-5">
+                <InputDropdown
+                  label="Area"
+                  itemList={[{ value: "", label: "All areas" }, ...areas.map((area) => ({ value: String(area.id), label: area.area }))]}
+                  object={{ value: draft.areaId, label: areas.find((area) => String(area.id) === draft.areaId)?.area ?? "All areas" }}
+                  setObject={(item) => setDraft((current) => ({ ...current, areaId: String(item.value) }))}
+                />
+              </div>
             )}
           </div>
           <footer
@@ -304,15 +286,15 @@ function DashboardPeriod({ filters, areas }) {
               onClick={() => setDraft({ period: "this_month", dateFrom: "", dateTo: "", areaId: "" })}
               className="min-h-12 rounded-xl border border-border bg-card text-sm font-semibold text-foreground outline-none transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary"
             >
-              Atur ulang
+              Reset
             </button>
             <button
               type="button"
               onClick={apply}
-              disabled={draft.period === "custom" && (!draft.dateFrom || !draft.dateTo)}
+              disabled={draft.period === "custom" && (!draft.dateFrom || !draft.dateTo || draft.dateFrom > draft.dateTo)}
               className="min-h-12 rounded-xl bg-primary text-sm font-semibold text-primary-foreground shadow-sm outline-none transition-colors hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
             >
-              Terapkan
+              Apply
             </button>
           </footer>
         </section>
@@ -324,7 +306,7 @@ function DashboardPeriod({ filters, areas }) {
 export default function Dashboard({ stats = { total: 0, open: 0, closed: 0, myReports: 0 }, recentReports = [], topArea = null, oldestOpenTicket = null, filters = {}, filterAreas = [] }) {
   const { auth } = usePage().props
   const userName = auth?.user?.name || "User"
-  const roleName = (auth?.user?.roles?.[0] || "PENGGUNA")
+  const roleName = (auth?.user?.roles?.[0] || "USER")
     .toLowerCase()
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -343,26 +325,26 @@ export default function Dashboard({ stats = { total: 0, open: 0, closed: 0, myRe
             <div>
               <h1 className="text-[22px] font-bold tracking-tight text-foreground sm:text-[26px]">Dashboard</h1>
               <p className="mt-0.5 text-xs text-muted-foreground sm:mt-1 sm:text-[13px]">
-                Selamat datang, {roleName} {userName}.
+                Welcome, {roleName} {userName}.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 xl:justify-end">
               <DashboardPeriod filters={filters} areas={filterAreas} />
               <span className="inline-flex min-h-10 items-center rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground">
-                {new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                {new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
               </span>
             </div>
           </div>
         </header>
 
-        <section aria-label="Ringkasan tiket" className="grid grid-cols-1 gap-3 min-[375px]:grid-cols-2 xl:grid-cols-4">
-          <StatCard title="Total Tiket" value={stats.total} note="Seluruh tiket" href="/reports" icon={<HiOutlineDocumentReport className="h-5 w-5" />} />
-          <StatCard title="Perlu Tindakan" value={stats.open} note="Tiket masih terbuka" href="/reports?status=open" icon={<HiOutlineClock className="h-5 w-5" />} tone="amber" />
-          <StatCard title="Selesai" value={stats.closed} note="Tiket telah ditutup" href="/reports?status=closed" icon={<HiOutlineCheckCircle className="h-5 w-5" />} tone="emerald" />
+        <section aria-label="Ticket summary" className="grid grid-cols-1 gap-3 min-[375px]:grid-cols-2 xl:grid-cols-4">
+          <StatCard title="Total tickets" value={stats.total} note="All tickets" href="/reports" icon={<HiOutlineDocumentReport className="h-5 w-5" />} />
+          <StatCard title="Needs action" value={stats.open} note="Still open" href="/reports?status=open" icon={<HiOutlineClock className="h-5 w-5" />} tone="amber" />
+          <StatCard title="Closed" value={stats.closed} note="Tickets resolved" href="/reports?status=closed" icon={<HiOutlineCheckCircle className="h-5 w-5" />} tone="emerald" />
           <StatCard
             title="Completion"
             value={`${completionPct}%`}
-            note={`${stats.closed} dari ${stats.total} tiket`}
+            note={`${stats.closed} of ${stats.total} tickets`}
             href="/reports"
             icon={<HiOutlineCheckCircle className="h-5 w-5" />}
             tone="slate"
@@ -374,10 +356,10 @@ export default function Dashboard({ stats = { total: 0, open: 0, closed: 0, myRe
             <div className="flex items-center justify-between gap-4 border-b border-border px-4 py-4 sm:px-5">
               <div>
                 <h2 className="text-base font-semibold text-foreground">Tickets Overview</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">{recentReports.length ? `${recentReports.length} laporan terbaru` : "Belum ada aktivitas laporan"}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{recentReports.length ? `${recentReports.length} recent reports` : "No report activity yet"}</p>
               </div>
               <Link href="/reports" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-primary hover:bg-blue-50">
-                Lihat semua <HiArrowRight className="h-4 w-4" />
+                View all <HiArrowRight className="h-4 w-4" />
               </Link>
             </div>
             {recentReports.length === 0 ? (

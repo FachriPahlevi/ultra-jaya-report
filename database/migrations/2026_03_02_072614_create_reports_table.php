@@ -14,7 +14,8 @@ return new class extends Migration
             $table->foreignId('area_id')->constrained();
             $table->foreignId('sub_area_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('activity_id')->constrained();
-            $table->foreignId('sub_activity_id')->nullable()->constrained('activities')->nullOnDelete();
+            $table->foreignId('sub_activity_id')->constrained('sub_activities')->noActionOnDelete();
+            $table->enum('category_snapshot', ['ISSUE', 'REPORT']);
             $table->string('activity')->nullable();
             $table->text('issue');
             $table->string('status', 20)->default('open');

@@ -14,15 +14,26 @@ class RoleSeeder extends Seeder
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         $permissionCatalog = config('rbac.permissions');
+        $newPermissions = [];
 
         foreach (array_keys($permissionCatalog) as $permission) {
-            Permission::firstOrCreate(['name' => $permission]);
+            $record = Permission::firstOrCreate(['name' => $permission]);
+            if ($record->wasRecentlyCreated) {
+                $newPermissions[] = $permission;
+            }
         }
 
         foreach (config('rbac.roles') as $roleName => $roleDefinition) {
             $role = Role::firstOrCreate(['name' => $roleName]);
 
             if (! $role->wasRecentlyCreated) {
+                if (in_array('reports.export', $newPermissions, true) && $role->permissions->contains(fn ($permission) => str_starts_with($permission->name, 'reports.') && $permission->name !== 'reports.export')) {
+                    $role->givePermissionTo('reports.export');
+                }
+                if ($roleDefinition['permissions'] === ['*'] && $newPermissions !== []) {
+                    $role->givePermissionTo($newPermissions);
+                }
+
                 continue;
             }
 

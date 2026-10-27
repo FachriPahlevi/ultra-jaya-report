@@ -25,7 +25,7 @@ class AreaController extends Controller
         $perPage = $this->resolvePerPage($request);
         $search = trim($request->string('search')->toString());
 
-        if ($user->can('areas.view.all') || $user->hasRole('SUPER_ADMIN') || $user->hasRole('ADMIN')) {
+        if ($user->can('areas.view.all')) {
             $areas = Area::withTrashed()
                 ->with(['managers:id,name', 'subAreas.supervisors:id,name'])
                 ->when($search !== '', fn ($query) => $query->where('area', 'like', "%{$search}%"))
@@ -35,7 +35,8 @@ class AreaController extends Controller
         } else {
             $areas = Area::with(['managers:id,name', 'subAreas.supervisors:id,name'])
                 ->where('is_active', true)
-                ->whereHas('pics', fn ($query) => $query->where('users.id', $user->id))
+                ->where(fn ($query) => $query->whereHas('pics', fn ($users) => $users->whereKey($user->id))
+                    ->orWhereHas('subAreas.supervisors', fn ($users) => $users->whereKey($user->id)))
                 ->when($search !== '', fn ($query) => $query->where('area', 'like', "%{$search}%"))
                 ->latest()
                 ->paginate($perPage === -1 ? 2147483647 : $perPage)
@@ -86,7 +87,7 @@ class AreaController extends Controller
                 'is_active' => true,
             ]);
 
-            $area->subAreas()->create(['name' => 'Umum', 'max_personnel' => 1]);
+            $area->subAreas()->create(['name' => 'General', 'max_personnel' => 1]);
 
             return $area;
         });
@@ -119,13 +120,13 @@ class AreaController extends Controller
         $this->ensureSubAreaBelongsToArea($area, $subArea);
 
         if ($subArea->reports()->exists()) {
-            throw new BusinessException('Sub-area yang sudah memiliki laporan tidak dapat dihapus.');
+            throw new BusinessException('A sub-area with existing reports cannot be deleted.');
         }
 
         $subArea->supervisors()->detach();
         $subArea->delete();
 
-        return response()->json(['message' => 'Sub-area berhasil dihapus.']);
+        return response()->json(['message' => 'Sub-area deleted successfully.']);
     }
 
     public function update(Request $request, Area $area): JsonResponse|RedirectResponse
@@ -162,14 +163,14 @@ class AreaController extends Controller
         $area = Area::withTrashed()->findOrFail($areaId);
 
         if (! $area->trashed()) {
-            throw new BusinessException('Area ini tidak berada di arsip.');
+            throw new BusinessException('This area is not archived.');
         }
 
         $area->restore();
 
         return response()->json([
             'success' => true,
-            'message' => 'Area berhasil dipulihkan.',
+            'message' => 'Area restored successfully.',
         ]);
 
     }
@@ -179,7 +180,7 @@ class AreaController extends Controller
         $area = Area::withTrashed()->findOrFail($areaId);
 
         if ($area->hasHistoricalReports()) {
-            throw new BusinessException('Area yang sudah memiliki riwayat laporan tidak dapat dihapus permanen.');
+            throw new BusinessException('An area with report history cannot be permanently deleted.');
         }
 
         DB::transaction(function () use ($area): void {
@@ -189,7 +190,7 @@ class AreaController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'Area berhasil dihapus permanen.',
+            'message' => 'Area permanently deleted.',
         ]);
 
     }
