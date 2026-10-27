@@ -5,7 +5,7 @@ Baseline kode workspace: 27 Oktober 2026
 
 Dokumen ini adalah panduan handover teknis berdasarkan implementasi repository pada tanggal di atas, termasuk perubahan yang masih berada di working tree. Dokumen ini bukan bukti bahwa aplikasi sudah siap production. Tim IT perlu menetapkan infrastruktur, menguji release yang akan dipasang, dan menyelesaikan temuan pada bagian 12 sebelum go-live.
 
-Dokumen pendamping: [fitur dan matriks RBAC](modul-fitur-dan-matriks-rbac.md), [teknis per role](dokumentasi-teknis-per-role.md), [model Activity](activity-data-model.md), dan [pengujian RBAC](pengujian-rbac.md).
+Dokumen pendamping: [panduan deployment](panduan-deploy.md), [fitur dan matriks RBAC](modul-fitur-dan-matriks-rbac.md), [teknis per role](dokumentasi-teknis-per-role.md), [model Activity](activity-data-model.md), dan [pengujian RBAC](pengujian-rbac.md).
 
 ## 1. Ringkasan sistem
 
