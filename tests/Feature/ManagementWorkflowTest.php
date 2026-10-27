@@ -142,7 +142,7 @@ class ManagementWorkflowTest extends TestCase
         $this->assertDatabaseCount('reports', 3);
     }
 
-    public function test_admin_creates_manager_and_supervisor_with_required_scope(): void
+    public function test_admin_can_create_manager_and_supervisor_before_assigning_scope(): void
     {
         $this->seed(RoleSeeder::class);
         $admin = $this->roleUser('ADMIN');
@@ -153,7 +153,7 @@ class ManagementWorkflowTest extends TestCase
             'email' => 'manager-tanpa-scope@example.test',
             'password' => 'password',
             'role' => 'MANAGER',
-        ])->assertUnprocessable()->assertJsonValidationErrors('area_ids');
+        ])->assertCreated();
 
         $this->actingAs($admin)->postJson(route('settings.users.store'), [
             'name' => 'Manager Area',

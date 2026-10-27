@@ -316,12 +316,6 @@ class SettingController extends Controller
                 throw new BusinessException('Anda tidak memiliki izin untuk mengubah penugasan lokasi.', 403);
             }
         }
-        if ($user->can('reports.review.area') && $areaIds === []) {
-            throw ValidationException::withMessages(['area_ids' => 'Pengguna dengan izin review wajib ditugaskan ke minimal satu area.']);
-        }
-        if ($user->can('reports.solve.own.area') && $subAreaIds === []) {
-            throw ValidationException::withMessages(['sub_area_ids' => 'Pengguna dengan izin close sesuai penugasan wajib memiliki minimal satu sub-area.']);
-        }
         foreach (SubArea::whereIn('id', $subAreaIds)->lockForUpdate()->withCount('supervisors')->get() as $subArea) {
             if (! $subArea->supervisors()->whereKey($user->id)->exists() && $subArea->supervisors_count >= $subArea->max_personnel) {
                 throw ValidationException::withMessages(['sub_area_ids' => "Kapasitas sub-area {$subArea->name} sudah penuh."]);

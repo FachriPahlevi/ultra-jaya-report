@@ -79,10 +79,10 @@ class DynamicPermissionTest extends TestCase
         $role->syncPermissions(['reports.review.area', 'reports.solve.own.area', 'activities.view', 'activities.edit', 'activities.category.manage']);
         [$area, $subArea, $activity, $child] = $this->context('Quality');
         $payload = ['name' => 'Quality Lead', 'email' => 'quality@example.test', 'password' => 'password', 'role' => $role->name];
-        $this->actingAs($admin)->postJson(route('settings.users.store'), $payload)->assertUnprocessable();
-        $this->assertDatabaseMissing('users', ['email' => $payload['email']]);
-        $this->actingAs($admin)->postJson(route('settings.users.store'), [...$payload, 'area_ids' => [$area->id], 'sub_area_ids' => [$subArea->id]])->assertCreated();
+        $this->actingAs($admin)->postJson(route('settings.users.store'), $payload)->assertCreated();
         $quality = User::where('email', $payload['email'])->firstOrFail();
+        $this->actingAs($admin)->putJson(route('areas.assignees.update', $area), ['user_ids' => [$quality->id]])->assertOk();
+        $this->actingAs($admin)->putJson(route('areas.sub-areas.assignees.update', [$area, $subArea]), ['user_ids' => [$quality->id]])->assertOk();
         $this->assertTrue($quality->managedAreas()->whereKey($area->id)->exists());
         $this->assertTrue($quality->supervisedSubAreas()->whereKey($subArea->id)->exists());
         $this->actingAs($quality)->get(route('activities.index'))->assertInertia(fn (Assert $page) => $page->where('canManageActivityCategory', true)->has('managerOptions', 0));

@@ -3,7 +3,6 @@ import InputSelect from "@/Components/Input/InputSelect"
 import BtnDefault from "@/Components/Button/BtnDefault"
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
 import { ModalBody, ModalFooter, ModalHeader, ModalPanel } from "@/Components/Modal/ModalLayout"
-import { HiOutlinePlus } from "react-icons/hi"
 
 export default function ActivityFormModal({
   isOpen,
@@ -16,8 +15,6 @@ export default function ActivityFormModal({
   parentOptions,
   onFieldChange,
   onSubActivityChange,
-  onAddSubActivityField,
-  onRemoveSubActivityField,
   isBulkSubMode,
   canManageCategory,
 }) {
@@ -27,17 +24,14 @@ export default function ActivityFormModal({
     <ModalOverlay isOpen={isOpen} onClose={onClose}>
       <ModalPanel>
         <ModalHeader
-          title={isSubActivityEdit ? "Edit sub-activity" : isBulkSubMode ? "Add sub-activities" : editTarget ? "Edit activity" : "Create activity"}
-          description={isBulkSubMode ? "Add one or more sub-activities to this activity." : isSubActivityEdit ? "Update the selected sub-activity." : "Enter the activity name and description."}
+          title={isSubActivityEdit ? "Edit sub-activity" : isBulkSubMode ? "Add sub-activity" : editTarget ? "Edit activity" : "Create activity"}
+          description={isBulkSubMode ? "Add a sub-activity to this activity." : isSubActivityEdit ? "Update the selected sub-activity." : "Enter the activity name and description."}
           onClose={onClose}
         />
         <ModalBody>
           <div className="flex flex-col gap-4">
             {form.activity_id && (
-              <div className="rounded-xl border border-border bg-muted/40 px-3.5 py-3">
-                <p className="text-xs font-medium text-muted-foreground">Activity</p>
-                <p className="mt-1 text-sm font-semibold text-foreground">{editTarget?.activity?.name ?? parentOptions.find((option) => option.value === form.activity_id)?.label ?? "–"}</p>
-              </div>
+              <InputText id="parent_activity" label="Activity" value={editTarget?.activity?.name ?? parentOptions.find((option) => String(option.value) === String(form.activity_id))?.label ?? "–"} disabled />
             )}
 
             {!isBulkSubMode && !isSubActivityEdit && (
@@ -57,25 +51,8 @@ export default function ActivityFormModal({
 
             {isBulkSubMode ? (
               <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[13px] font-semibold text-foreground">Sub-activities</p>
-                  <BtnDefault type="button" variant="outline" onClick={onAddSubActivityField} size="sm">
-                    <HiOutlinePlus className="h-5 w-5" />
-                    Add row
-                  </BtnDefault>
-                </div>
-
-                {form.sub_activities.map((item, index) => (
-                  <div key={index} className="rounded-lg border border-border p-4">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <p className="text-[12px] font-semibold text-foreground">Sub-activity {index + 1}</p>
-                      {form.sub_activities.length > 1 && (
-                        <button type="button" onClick={() => onRemoveSubActivityField(index)} className="text-[12px] font-medium text-red-600 transition-colors hover:text-red-700">
-                          Remove
-                        </button>
-                      )}
-                    </div>
-
+                {form.sub_activities.slice(0, 1).map((item, index) => (
+                  <div key={index}>
                     <div className="flex flex-col gap-4">
                       <InputText
                         label="Sub-activity name"
@@ -169,7 +146,7 @@ export default function ActivityFormModal({
         </ModalBody>
         <ModalFooter>
           <BtnDefault variant="outline" onClick={onClose} className="w-full rounded-xl">Cancel</BtnDefault>
-          <BtnDefault onClick={onSubmit} loading={processing} className="w-full rounded-xl">{editTarget ? "Save changes" : isBulkSubMode ? "Create sub-activities" : "Create activity"}</BtnDefault>
+          <BtnDefault onClick={onSubmit} loading={processing} className="w-full rounded-xl">{editTarget ? "Save changes" : isBulkSubMode ? "Create sub-activity" : "Create activity"}</BtnDefault>
         </ModalFooter>
       </ModalPanel>
     </ModalOverlay>

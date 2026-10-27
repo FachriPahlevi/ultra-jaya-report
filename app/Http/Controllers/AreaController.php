@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -67,7 +68,58 @@ class AreaController extends Controller
         return Inertia::render('areas/Index', [
             'areas' => $areas,
             'filters' => ['search' => $search, 'per_page' => $perPage],
+            'managerOptions' => $user->can('users.assign.area') ? User::permission('reports.review.area')->where('is_active', true)->orderBy('name')->get(['id', 'name']) : [],
+            'supervisorOptions' => $user->can('users.assign.area') ? User::permission(['reports.solve.own.area', 'reports.solve.all'])->where('is_active', true)->orderBy('name')->get(['id', 'name']) : [],
         ]);
+    }
+
+    public function updateAssignees(Request $request, Area $area): JsonResponse
+    {
+        $this->ensureAreaAccessible($request, $area);
+        $area->managers()->sync($this->assigneeIds($request, ['reports.review.area']));
+
+        return response()->json(['message' => 'Area assignees updated successfully.']);
+    }
+
+    public function updateSubAreaAssignees(Request $request, Area $area, SubArea $subArea): JsonResponse
+    {
+        $this->ensureAreaAccessible($request, $area);
+        $this->ensureSubAreaBelongsToArea($area, $subArea);
+        $ids = $this->assigneeIds($request, ['reports.solve.own.area', 'reports.solve.all']);
+
+        DB::transaction(function () use ($subArea, $ids): void {
+            $locked = SubArea::whereKey($subArea->id)->lockForUpdate()->firstOrFail();
+            if (count($ids) > $locked->max_personnel) {
+                throw ValidationException::withMessages(['user_ids' => "This sub-area allows up to {$locked->max_personnel} assignees."]);
+            }
+            $locked->supervisors()->sync($ids);
+        });
+
+        return response()->json(['message' => 'Sub-area assignees updated successfully.']);
+    }
+
+    private function ensureAreaAccessible(Request $request, Area $area): void
+    {
+        $user = $request->user();
+        if ($user->can('areas.view.all')) {
+            return;
+        }
+        abort_unless($area->is_active && ($area->pics()->whereKey($user->id)->exists()
+            || $area->subAreas()->whereHas('supervisors', fn ($query) => $query->whereKey($user->id))->exists()), 403);
+    }
+
+    private function assigneeIds(Request $request, array $permissions): array
+    {
+        $validated = $request->validate([
+            'user_ids' => ['present', 'array'],
+            'user_ids.*' => ['integer', 'distinct', Rule::exists('users', 'id')->whereNull('deleted_at')->where('is_active', true)],
+        ]);
+        $ids = $validated['user_ids'];
+        if (User::permission($permissions)->whereIn('id', $ids)->count() !== count($ids)) {
+            throw ValidationException::withMessages(['user_ids' => 'Select active users with permission for this assignment.']);
+        }
+
+        return $ids;
     }
 
     private function resolvePerPage(Request $request): int
@@ -109,8 +161,14 @@ class AreaController extends Controller
     public function updateSubArea(Request $request, Area $area, SubArea $subArea): JsonResponse
     {
         $this->ensureSubAreaBelongsToArea($area, $subArea);
-
-        $subArea->update($request->validate($this->subAreaRules($area, $subArea)));
+        $validated = $request->validate($this->subAreaRules($area, $subArea));
+        DB::transaction(function () use ($subArea, $validated): void {
+            $locked = SubArea::whereKey($subArea->id)->lockForUpdate()->firstOrFail();
+            if ($validated['max_personnel'] < $locked->supervisors()->count()) {
+                throw ValidationException::withMessages(['max_personnel' => 'Capacity cannot be lower than the number of assigned users.']);
+            }
+            $locked->update($validated);
+        });
 
         return response()->json(['data' => $subArea->fresh()]);
     }

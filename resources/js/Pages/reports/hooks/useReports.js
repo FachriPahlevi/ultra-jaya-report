@@ -83,6 +83,7 @@ export function useReports(reports = []) {
   const [tempSubArea, setTempSubArea] = useState([])
   const [tempPhoto, setTempPhoto] = useState("")
   const [tempSort, setTempSort] = useState("latest")
+  const [tempPerPage, setTempPerPage] = useState(DEFAULT_PER_PAGE)
   const [tempDateFrom, setTempDateFrom] = useState("")
   const [tempDateTo, setTempDateTo] = useState("")
   const [tempMyReportsOnly, setTempMyReportsOnly] = useState(false)
@@ -150,6 +151,7 @@ export function useReports(reports = []) {
     setTempSubArea(subAreaFilter)
     setTempPhoto(photoFilter)
     setTempSort(sortBy)
+    setTempPerPage(perPage)
     setTempDateFrom(dateFrom)
     setTempDateTo(dateTo)
     setTempMyReportsOnly(myReportsOnly)
@@ -165,6 +167,7 @@ export function useReports(reports = []) {
     setTempSubArea(subAreaFilter)
     setTempPhoto(photoFilter)
     setTempSort(sortBy)
+    setTempPerPage(perPage)
     setTempDateFrom(dateFrom)
     setTempDateTo(dateTo)
     setTempMyReportsOnly(myReportsOnly)
@@ -180,6 +183,7 @@ export function useReports(reports = []) {
     setSubAreaFilter(tempSubArea)
     setPhotoFilter(tempPhoto)
     setSortBy(tempSort)
+    setPerPage(tempPerPage)
     setDateFrom(tempDateFrom)
     setDateTo(tempDateTo)
     setMyReportsOnly(tempMyReportsOnly)
@@ -204,6 +208,7 @@ export function useReports(reports = []) {
     setTempSubArea([])
     setTempPhoto("")
     setTempSort("latest")
+    setTempPerPage(DEFAULT_PER_PAGE)
     setTempDateFrom("")
     setTempDateTo("")
     setTempMyReportsOnly(false)
@@ -219,6 +224,7 @@ export function useReports(reports = []) {
     setSubAreaFilter([])
     setPhotoFilter("")
     setSortBy("latest")
+    setPerPage(DEFAULT_PER_PAGE)
     setDateFrom("")
     setDateTo("")
     setMyReportsOnly(false)
@@ -313,6 +319,8 @@ export function useReports(reports = []) {
     setTempPhoto,
     tempSort,
     setTempSort,
+    tempPerPage,
+    setTempPerPage,
     tempDateFrom,
     setTempDateFrom,
     tempDateTo,

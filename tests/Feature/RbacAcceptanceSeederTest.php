@@ -9,6 +9,7 @@ use App\Models\Area;
 use App\Models\Report;
 use App\Models\SubArea;
 use App\Models\User;
+use App\Services\ReportCapabilities;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\Testing\RbacAcceptanceSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -19,6 +20,52 @@ use Tests\TestCase;
 class RbacAcceptanceSeederTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_test_seeder_assigns_managers_and_creates_visible_reports_from_other_users(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $this->seed(RoleSeeder::class);
+        $reporter = User::factory()->create()->assignRole('USER');
+        $manager = User::factory()->create()->assignRole('MANAGER');
+        $area = Area::create(['area' => 'Area', 'is_active' => true]);
+        SubArea::create(['area_id' => $area->id, 'name' => 'Sub-area', 'is_active' => true]);
+        $activity = Activity::create(['name' => 'Activity', 'is_active' => true]);
+        $activity->children()->create(['name' => 'Issue', 'category' => 'ISSUE']);
+
+        $this->artisan('app:seed-rbac-test')->assertSuccessful();
+        $this->assertTrue($manager->managedAreas()->whereKey($area->id)->exists());
+        $this->assertTrue($manager->assignedActivities()->whereKey($activity->id)->exists());
+        $this->assertTrue(Report::visibleTo($manager)->where('author_id', $reporter->id)->where('activity_id', $activity->id)->exists());
+        $count = Report::count();
+        $this->artisan('app:seed-rbac-test')->assertSuccessful();
+        $this->assertSame($count, Report::count());
+        $this->assertSame(1, $manager->managedAreas()->count());
+        $this->assertSame(1, $manager->assignedActivities()->count());
+    }
+
+    public function test_test_seeder_assigns_supervisors_and_creates_closable_reports_from_other_users(): void
+    {
+        Storage::fake('public');
+        Storage::fake('local');
+        $this->seed(RoleSeeder::class);
+        $reporter = User::factory()->create()->assignRole('USER');
+        $supervisor = User::factory()->create()->assignRole('SUPERVISOR');
+        $area = Area::create(['area' => 'Area', 'is_active' => true]);
+        $location = SubArea::create(['area_id' => $area->id, 'name' => 'Sub-area', 'max_personnel' => 1, 'is_active' => true]);
+        $activity = Activity::create(['name' => 'Activity', 'is_active' => true]);
+        $child = $activity->children()->create(['name' => 'Issue', 'category' => 'ISSUE']);
+
+        $this->artisan('app:seed-rbac-test')->assertSuccessful();
+        $this->assertTrue($supervisor->supervisedSubAreas()->whereKey($location->id)->exists());
+        $this->assertTrue($supervisor->assignedSubActivities()->whereKey($child->id)->exists());
+        $capabilities = new ReportCapabilities($supervisor->fresh());
+        $this->assertTrue(Report::visibleTo($supervisor)->where('author_id', $reporter->id)->get()->contains(fn (Report $report) => $capabilities->close($report)));
+        $count = Report::count();
+        $this->artisan('app:seed-rbac-test')->assertSuccessful();
+        $this->assertSame($count, Report::count());
+        $this->assertSame(1, $location->supervisors()->count());
+    }
 
     public function test_command_seeds_thirty_reports_for_every_user_and_is_repeatable(): void
     {

@@ -9,6 +9,7 @@ import { HiOutlinePlus } from "react-icons/hi"
 import AreaListSection from "./components/AreaListSection"
 import AreaFormModal from "./components/AreaFormModal"
 import SubAreaFormModal from "./components/SubAreaFormModal"
+import AreaAssignmentModal from "./components/AreaAssignmentModal"
 import { useAuthorization } from "@/hooks/useAuthorization"
 import PageHeader from "@/Components/Layout/PageHeader"
 
@@ -22,7 +23,7 @@ function buildAreaForm(area) {
   }
 }
 
-export default function Index({ areas = { data: [], links: [], meta: {} }, filters = {} }) {
+export default function Index({ areas = { data: [], links: [], meta: {} }, filters = {}, managerOptions = [], supervisorOptions = [] }) {
   const { can } = useAuthorization()
   const { setStatusModalProps } = useStatusModal()
   const [showModal, setShowModal] = useState(false)
@@ -34,12 +35,19 @@ export default function Index({ areas = { data: [], links: [], meta: {} }, filte
   const [subAreaArea, setSubAreaArea] = useState(null)
   const [subAreaName, setSubAreaName] = useState("")
   const [subAreaError, setSubAreaError] = useState("")
+  const [assignmentTarget, setAssignmentTarget] = useState(null)
+  const [assignmentValues, setAssignmentValues] = useState([])
+  const [assignmentError, setAssignmentError] = useState("")
   const [listSearch, setListSearch] = useState(filters.search ?? "")
 
   const canAdd = can("areas.create")
   const canEdit = can("areas.edit")
   const canDelete = can("areas.delete")
+  const canAssign = can("users.assign.area")
   const perPage = Number(filters.per_page ?? 10)
+  const assignmentCandidates = assignmentTarget?.subArea ? supervisorOptions : managerOptions
+  const currentAssignees = assignmentTarget?.subArea ? assignmentTarget.subArea.supervisors : (assignmentTarget?.area.managers ?? [])
+  const assignmentOptions = [...new Map([...currentAssignees, ...assignmentCandidates].map((user) => [String(user.id), { value: String(user.id), label: user.name }])).values()]
 
   useEffect(() => {
     if (listSearch === (filters.search ?? "")) return undefined
@@ -215,7 +223,31 @@ export default function Index({ areas = { data: [], links: [], meta: {} }, filte
       router.reload()
       closeSubAreaModal()
     } catch (error) {
-      setSubAreaError(error.response?.data?.errors?.name?.[0] ?? getRequestErrorMessage(error))
+      setSubAreaError(error.response?.data?.errors?.name?.[0] ?? error.response?.data?.errors?.max_personnel?.[0] ?? getRequestErrorMessage(error))
+    } finally {
+      setProcessing(false)
+    }
+  }
+
+  const openAssignment = (area, subArea = null) => {
+    setAssignmentTarget({ area, subArea })
+    setAssignmentValues((subArea ? subArea.supervisors : area.managers).map((user) => String(user.id)))
+    setAssignmentError("")
+  }
+
+  const submitAssignment = async (event) => {
+    event.preventDefault()
+    if (!assignmentTarget || processing) return
+    setProcessing(true)
+    setAssignmentError("")
+    const { area, subArea } = assignmentTarget
+    const url = subArea ? `/areas/${area.id}/sub-areas/${subArea.id}/assignees` : `/areas/${area.id}/assignees`
+    try {
+      await http.put(url, { user_ids: assignmentValues.map(Number) })
+      setAssignmentTarget(null)
+      router.reload({ preserveScroll: true })
+    } catch (error) {
+      setAssignmentError(error.response?.data?.errors?.user_ids?.[0] ?? getRequestErrorMessage(error))
     } finally {
       setProcessing(false)
     }
@@ -326,6 +358,9 @@ export default function Index({ areas = { data: [], links: [], meta: {} }, filte
           areas={areas}
           canEdit={canEdit}
           canDelete={canDelete}
+          canAssign={canAssign}
+          onAssignArea={(area) => openAssignment(area)}
+          onAssignSubArea={openAssignment}
           canViewArchived={can("areas.view.all") || canDelete}
           onEdit={openEdit}
           onAddSubArea={openSubAreaModal}
@@ -353,6 +388,7 @@ export default function Index({ areas = { data: [], links: [], meta: {} }, filte
         processing={processing}
         onNameChange={setSubAreaName}
       />
+      <AreaAssignmentModal target={assignmentTarget} values={assignmentValues} options={assignmentOptions} onChange={setAssignmentValues} onClose={() => setAssignmentTarget(null)} onSubmit={submitAssignment} processing={processing} error={assignmentError} />
     </AppLayout>
   )
 }

@@ -62,11 +62,15 @@ class DashboardController extends Controller
             ->with('area:id,area')->groupBy('area_id')->orderByDesc('total')->orderBy('area_id')->get()
             ->map(fn ($row) => ['id' => $row->area_id, 'name' => $row->area?->area ?? 'Area tidak tersedia', 'total' => (int) $row->total]);
         $activityBreakdown = (clone $query)->whereNotNull('activity_id')->select('activity_id', DB::raw('count(*) as total'))
-            ->with('activityType:id,name')->groupBy('activity_id')->orderByDesc('total')->orderBy('activity_id')->get()
-            ->map(fn ($row) => ['id' => $row->activity_id, 'name' => $row->activityType?->name ?? 'Aktivitas tidak tersedia', 'total' => (int) $row->total]);
+            ->selectRaw("SUM(CASE WHEN category_snapshot = 'ISSUE' THEN 1 ELSE 0 END) as issue_total")
+            ->selectRaw("SUM(CASE WHEN category_snapshot = 'ISSUE' AND status = 'closed' THEN 1 ELSE 0 END) as issue_closed")
+            ->with('activityType:id,name')->groupBy('activity_id')->orderByDesc('issue_total')->orderBy('activity_id')->get()
+            ->map(fn ($row) => ['id' => $row->activity_id, 'name' => $row->activityType?->name ?? 'Aktivitas tidak tersedia', 'total' => (int) $row->total, 'issue_total' => (int) $row->issue_total, 'issue_closed' => (int) $row->issue_closed]);
         $subActivityBreakdown = (clone $query)->whereNotNull('sub_activity_id')->select('sub_activity_id', DB::raw('count(*) as total'))
+            ->selectRaw("SUM(CASE WHEN category_snapshot = 'ISSUE' THEN 1 ELSE 0 END) as issue_total")
+            ->selectRaw("SUM(CASE WHEN category_snapshot = 'ISSUE' AND status = 'closed' THEN 1 ELSE 0 END) as issue_closed")
             ->with('subActivity:id,name,activity_id', 'subActivity.activity:id,name')->groupBy('sub_activity_id')->orderByDesc('total')->orderBy('sub_activity_id')->get()
-            ->map(fn ($row) => ['id' => $row->sub_activity_id, 'name' => $row->subActivity?->name ?? 'Sub-aktivitas tidak tersedia', 'detail' => $row->subActivity?->activity?->name, 'total' => (int) $row->total]);
+            ->map(fn ($row) => ['id' => $row->sub_activity_id, 'activity_id' => $row->subActivity?->activity_id, 'name' => $row->subActivity?->name ?? 'Sub-aktivitas tidak tersedia', 'detail' => $row->subActivity?->activity?->name, 'total' => (int) $row->total, 'issue_total' => (int) $row->issue_total, 'issue_closed' => (int) $row->issue_closed]);
         $closerBreakdown = (clone $query)->where('category_snapshot', 'ISSUE')->where('status', 'closed')->whereNotNull('closed_by')
             ->select('closed_by', DB::raw('count(*) as total'))->with('closer:id,name')->groupBy('closed_by')->orderByDesc('total')->orderBy('closed_by')->get()
             ->map(fn ($row) => ['id' => $row->closed_by, 'name' => $row->closer?->name ?? 'Pengguna tidak tersedia', 'total' => (int) $row->total]);

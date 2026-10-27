@@ -33,6 +33,61 @@ class RbacAcceptanceSeeder extends Seeder
             throw new RuntimeException('Siapkan pengguna, Area/Sub-area aktif, dan Aktivitas/Sub-aktivitas terlebih dahulu. Seeder laporan tidak membuat atau mengubah data master.');
         }
 
+        $issueChildren = $children->where('category', 'ISSUE')->values();
+        $scenarios = [];
+        $unassigned = [];
+        DB::transaction(function () use ($users, $subAreas, $issueChildren, &$scenarios, &$unassigned): void {
+            foreach ($users->filter(fn (User $user) => $user->is_active && $user->can('reports.solve.own.area')) as $supervisor) {
+                $reporter = $users->first(fn (User $user) => $user->id !== $supervisor->id);
+                if (! $reporter || $issueChildren->isEmpty()) {
+                    $unassigned[] = $supervisor->name;
+
+                    continue;
+                }
+                $location = $subAreas->first(fn (SubArea $area) => $supervisor->supervisedSubAreas->contains('id', $area->id));
+                if (! $location) {
+                    foreach ($subAreas as $candidate) {
+                        $locked = SubArea::whereKey($candidate->id)->lockForUpdate()->firstOrFail();
+                        if ($locked->supervisors()->count() < $locked->max_personnel) {
+                            $locked->supervisors()->syncWithoutDetaching([$supervisor->id]);
+                            $location = $candidate;
+                            break;
+                        }
+                    }
+                }
+                if (! $location) {
+                    $unassigned[] = $supervisor->name;
+
+                    continue;
+                }
+                $child = $issueChildren->first(fn (SubActivity $item) => $supervisor->assignedSubActivities->contains('id', $item->id)) ?? $issueChildren->get($supervisor->id % $issueChildren->count());
+                $supervisor->assignedSubActivities()->syncWithoutDetaching([$child->id]);
+                $supervisor->load('supervisedSubAreas', 'assignedSubActivities');
+                $scenarios[$reporter->id][] = ['location' => $location, 'child' => $child];
+            }
+        });
+
+        $reviewScenarios = [];
+        $reviewersWithoutReporter = [];
+        DB::transaction(function () use ($users, $subAreas, $children, &$reviewScenarios, &$reviewersWithoutReporter): void {
+            $activities = $children->pluck('activity_id')->unique()->values();
+            foreach ($users->filter(fn (User $user) => $user->is_active && $user->hasRole('MANAGER') && $user->can('reports.review.area')) as $index => $manager) {
+                $location = $subAreas->first(fn (SubArea $item) => $manager->managedAreas->contains('id', $item->area_id)) ?? $subAreas->get($index % $subAreas->count());
+                $activityId = $activities->first(fn ($id) => $manager->assignedActivities->contains('id', $id)) ?? $activities->get($index % $activities->count());
+                $child = $children->first(fn (SubActivity $item) => $item->activity_id === $activityId);
+                $manager->managedAreas()->syncWithoutDetaching([$location->area_id]);
+                $manager->assignedActivities()->syncWithoutDetaching([$activityId]);
+
+                $reporter = $users->first(fn (User $user) => $user->id !== $manager->id);
+                if (! $reporter) {
+                    $reviewersWithoutReporter[] = $manager->name;
+
+                    continue;
+                }
+                $reviewScenarios[$reporter->id][] = ['location' => $location, 'child' => $child];
+            }
+        });
+
         $globalCloser = $users->first(fn (User $user) => $user->is_active && $user->can('reports.solve.all'));
         $scopedClosers = [];
         foreach ($users as $user) {
@@ -50,7 +105,7 @@ class RbacAcceptanceSeeder extends Seeder
         $manifest = $disk->exists($manifestPath) ? json_decode($disk->get($manifestPath), true, 512, JSON_THROW_ON_ERROR) : [];
         $total = max($users->count() * $this->reportsPerUser, $subAreas->count(), $children->count());
         $extra = $total - $users->count() * $this->reportsPerUser;
-        DB::transaction(function () use ($users, $subAreas, $children, $globalCloser, $scopedClosers, $photos, $manifest, $manifestPath, $disk, $extra): void {
+        DB::transaction(function () use ($users, $subAreas, $children, $globalCloser, $scopedClosers, $photos, $manifest, $manifestPath, $disk, $extra, $scenarios, $reviewScenarios): void {
             $ordinal = 0;
             foreach ($users as $userIndex => $user) {
                 $fixtures = [];
@@ -64,12 +119,18 @@ class RbacAcceptanceSeeder extends Seeder
                         $fixtures[(int) $match[1]] = $existing;
                     }
                 }
-                $count = $this->reportsPerUser + intdiv($extra, $users->count()) + ($userIndex < $extra % $users->count() ? 1 : 0);
-                for ($index = 0; $index < $count; $index++, $ordinal++) {
-                    $location = $subAreas->get($ordinal % $subAreas->count());
-                    $child = $children->get($ordinal % $children->count());
+                $baseCount = $this->reportsPerUser + intdiv($extra, $users->count()) + ($userIndex < $extra % $users->count() ? 1 : 0);
+                $userScenarios = array_merge($scenarios[$user->id] ?? [], $reviewScenarios[$user->id] ?? []);
+                $count = $baseCount + count($userScenarios);
+                for ($index = 0; $index < $count; $index++) {
+                    $scenario = $userScenarios[$index - $baseCount] ?? null;
+                    $location = $scenario['location'] ?? $subAreas->get($ordinal % $subAreas->count());
+                    $child = $scenario['child'] ?? $children->get($ordinal % $children->count());
+                    if ($scenario === null) {
+                        $ordinal++;
+                    }
                     $closerId = $globalCloser?->id ?? $scopedClosers[$location->id.':'.$child->id] ?? null;
-                    $closed = $child->category === 'ISSUE' && $index % 4 === 0 && $closerId !== null;
+                    $closed = $scenario === null && $child->category === 'ISSUE' && $index % 4 === 0 && $closerId !== null;
                     $photoIndex = $ordinal + $userIndex;
                     $createdAt = now()->subDays([0, 2, 10, 35, 65, 110][$index % 6])->subHours(3)->subMinutes($index);
                     $fixture = $fixtures[$index + 1] ?? new Report;
@@ -106,7 +167,14 @@ class RbacAcceptanceSeeder extends Seeder
                 throw new RuntimeException('Gagal menyimpan penanda internal laporan uji.');
             }
         });
-        $this->command?->info(sprintf('%d laporan untuk %d pengguna disiapkan, mencakup seluruh Sub-area dan Sub-aktivitas aktif yang tersedia. Data master, akun, permission, password, dan penugasan tidak diubah.', $total, $users->count()));
+        $this->command?->info(sprintf('%d laporan dasar untuk %d pengguna dan %d skenario close SPV disiapkan. Assignment uji ditambahkan tanpa menghapus assignment yang ada.', $total, $users->count(), array_sum(array_map('count', $scenarios))));
+        if ($unassigned !== []) {
+            $this->command?->warn('SPV tanpa skenario close (kapasitas Sub-area, ISSUE, atau reporter lain tidak tersedia): '.implode(', ', $unassigned));
+        }
+        $this->command?->info(sprintf('%d skenario review Manager disiapkan.', array_sum(array_map('count', $reviewScenarios))));
+        if ($reviewersWithoutReporter !== []) {
+            $this->command?->warn('Manager tanpa laporan dari pengguna lain karena reporter lain tidak tersedia: '.implode(', ', $reviewersWithoutReporter));
+        }
     }
 
     private function samplePhotos(): array

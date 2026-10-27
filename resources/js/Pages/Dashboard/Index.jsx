@@ -137,9 +137,9 @@ function StatusBreakdown({ stats }) {
   const total = values.reduce((sum, item) => sum + item.value, 0)
   return (
     <Panel title="Ticket Status Breakdown" subtitle="Distribution of tickets by status." className="flex min-h-0 flex-col">
-      <div className="flex min-h-[190px] flex-1 flex-col items-center gap-3 px-4 pb-3 sm:flex-row sm:gap-5 sm:px-5">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 pb-5 pt-2 sm:flex-row sm:gap-6 sm:px-5 sm:pb-4">
         <div
-          className="relative h-[clamp(150px,19dvh,220px)] w-[clamp(150px,19dvh,220px)] shrink-0"
+          className="relative h-[clamp(160px,22dvh,240px)] w-[clamp(160px,22dvh,240px)] shrink-0"
           role="img"
           aria-label={`${number(stats.open)} open, ${number(stats.closed)} closed, ${number(stats.reports)} reports`}
         >
@@ -162,17 +162,18 @@ function StatusBreakdown({ stats }) {
               <Tooltip contentStyle={chartTooltip} formatter={(value) => [`${number(value)} tickets`, ""]} />
             </PieChart>
           </ResponsiveContainer>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-xl font-semibold tabular-nums text-[#1c2740]">{number(total)}</span>
             <span className="text-[11px] text-[#8b98ae]">Total Tickets</span>
           </div>
         </div>
-        <ul className="w-full min-w-0 max-w-xs flex-1 divide-y divide-[#e9edf4] text-xs" aria-label="Status totals">
+        <ul className="w-full min-w-0 flex-1 divide-y divide-[#e9edf4] text-xs" aria-label="Status totals">
           {values.map((item) => (
-            <li key={item.label} className="flex items-center gap-2 py-2">
+            <li key={item.label} className="flex items-center gap-2 py-3">
               <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} aria-hidden="true" />
               <span className="min-w-0 flex-1 text-[#52617d]">{item.label}</span>
               <span className="font-semibold tabular-nums text-[#1c2740]">{number(item.value)}</span>
+              <span className="w-10 text-right tabular-nums text-[#73809a]">{total ? Math.round((Number(item.value || 0) / total) * 100) : 0}%</span>
             </li>
           ))}
         </ul>
@@ -220,28 +221,50 @@ function AreaBars({ items }) {
   )
 }
 
-function TopActivities({ items }) {
-  const shown = items.slice(0, 5)
-  const max = Math.max(1, ...items.map((item) => Number(item.total || 0)))
+function TopActivities({ items, subActivities }) {
+  const activities = items.filter((item) => Number(item.issue_total) > 0)
+  const subItems = activities.length === 1
+    ? subActivities.filter((item) => item.activity_id === activities[0].id && Number(item.issue_total) > 0).sort((a, b) => Number(b.issue_total) - Number(a.issue_total))
+    : []
+  const singleSubActivity = activities.length === 1 && subItems.length === 1
+  const shown = (activities.length === 1 && subItems.length ? subItems : activities).slice(0, 5)
+  const title = activities.length === 1 && subItems.length > 1 ? "Sub-activity progress" : singleSubActivity ? "Issue progress" : "Top Activities"
+  const subtitle = activities.length === 1 ? `${activities[0].name} · Closed issues / total issues` : "Closed issues / total issues in this period."
+  const single = singleSubActivity ? subItems[0] : null
+  const percentage = single ? Math.round((Number(single.issue_closed) / Number(single.issue_total)) * 100) : 0
   return (
-    <Panel title="Top Activities" subtitle="Number of tickets per activity in this period." className="flex min-h-0 flex-col">
-      {items.length === 0 ? (
-        <p className="px-5 py-8 text-sm text-muted-foreground">No activity data in this period.</p>
+    <Panel title={title} subtitle={subtitle} className="flex min-h-0 flex-col">
+      {activities.length === 0 ? (
+        <p className="px-5 py-8 text-sm text-muted-foreground">No issues in this period.</p>
+      ) : single ? (
+        <div className="flex flex-1 flex-col justify-center gap-4 px-5 py-5">
+          <p className="break-words text-sm font-medium text-[#35445f]">{single.name}</p>
+          <div className="flex items-baseline justify-between gap-4">
+            <span className="text-2xl font-semibold tabular-nums text-[#243049]">{percentage}% <span className="text-sm font-medium text-slate-500">completed</span></span>
+            <span className="text-sm font-semibold tabular-nums text-[#243049]">{number(single.issue_closed)} / {number(single.issue_total)} closed</span>
+          </div>
+          <div className="h-4 overflow-hidden bg-[#f0f3f8]" role="img" aria-label={`${single.name}: ${number(single.issue_closed)} closed out of ${number(single.issue_total)} issues`}>
+            <div className="h-full bg-[#3d79ec]" style={{ width: `${percentage}%` }} />
+          </div>
+          <p className="text-xs text-slate-500">{number(Number(single.issue_total) - Number(single.issue_closed))} open issues</p>
+        </div>
       ) : (
-        <ol className="flex flex-1 flex-col justify-evenly px-4 pb-3 sm:px-5">
+        <ol className="flex flex-col px-4 pb-3 sm:px-5">
           {shown.map((item) => (
-            <li
-              key={item.id}
-              className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 py-2 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)_3.5rem] sm:gap-x-4"
-            >
+            <li key={item.id} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 py-2 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)_5.5rem] sm:gap-x-4">
               <span className="min-w-0 break-words text-[13px] font-medium leading-5 text-[#35445f]">{item.name}</span>
-              <span className="col-start-1 row-start-2 h-4 overflow-hidden bg-[#f0f3f8] sm:col-start-2 sm:row-start-1" role="img" aria-label={`${item.name}: ${number(item.total)} tickets`}>
-                <span className="block h-full bg-[#3d79ec]" style={{ width: `${Math.max(0, Math.min(100, (Number(item.total || 0) / max) * 100))}%` }} />
+              <span
+                className="col-start-1 row-start-2 h-4 overflow-hidden bg-[#f0f3f8] sm:col-start-2 sm:row-start-1"
+                role="img"
+                aria-label={`${item.name}: ${number(item.issue_closed)} closed out of ${number(item.issue_total)} issues`}
+              >
+                <span className="block h-full bg-[#3d79ec]" style={{ width: `${item.issue_total ? Math.max(0, Math.min(100, (Number(item.issue_closed) / Number(item.issue_total)) * 100)) : 0}%` }} />
               </span>
-              <span className="col-start-2 row-span-2 text-right text-[13px] font-semibold tabular-nums text-[#243049] sm:col-start-3 sm:row-span-1">{number(item.total)}</span>
+              <span className="col-start-2 row-span-2 whitespace-nowrap text-right text-[13px] font-semibold tabular-nums text-[#243049] sm:col-start-3 sm:row-span-1">
+                {number(item.issue_closed)} / {number(item.issue_total)}
+              </span>
             </li>
           ))}
-          <li aria-hidden="true" className="hidden grid-cols-[minmax(0,1.1fr)_minmax(0,1.6fr)_3.5rem] gap-x-4 sm:grid"><span /><span className="flex justify-between border-t border-[#dbe3ef] pt-1 text-[11px] tabular-nums text-[#73809a]"><span>0</span><span>{number(max)} tickets</span></span></li>
         </ol>
       )}
     </Panel>
@@ -362,8 +385,7 @@ function DashboardPeriod({ filters }) {
                 ))}
               </div>
             </fieldset>
-            <fieldset className="grid grid-cols-1 gap-3 border-t border-border pt-5 sm:grid-cols-2">
-              <legend className="col-span-full text-sm font-semibold text-foreground">Or choose a date range</legend>
+            <fieldset className="flex gap-2">
               <InputDate label="Start date" value={draft.dateFrom} onChange={(event) => setDraft((current) => ({ ...current, period: "custom", dateFrom: event.target.value }))} />
               <InputDate
                 label="End date"
@@ -430,9 +452,9 @@ export default function Dashboard({ stats = { total: 0, reports: 0, open: 0, clo
         <div className="grid min-h-0 min-w-0 gap-3 xl:h-[calc(100dvh-214px)] xl:min-h-[570px] xl:flex-none xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
           <div className="grid min-h-0 min-w-0 gap-3 xl:grid-rows-[minmax(330px,1fr)_minmax(210px,1.1fr)]">
             <RecentTickets reports={recentReports} canViewReports={canViewReports} />
-            <TopActivities items={analytics.activities || []} />
+            <TopActivities items={analytics.activities || []} subActivities={analytics.subActivities || []} />
           </div>
-          <div className="grid min-h-0 min-w-0 gap-3 xl:grid-rows-[minmax(210px,1.1fr)_minmax(200px,1fr)_minmax(160px,.8fr)]">
+          <div className="order-first grid min-h-0 min-w-0 gap-3 md:order-none xl:grid-rows-[minmax(210px,1.1fr)_minmax(200px,1fr)_minmax(160px,.8fr)]">
             <StatusBreakdown stats={stats} />
             <AreaBars items={analytics.areas || []} />
             <TicketTrend items={analytics.dailyTrend || []} />

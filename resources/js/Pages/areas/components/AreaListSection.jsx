@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react"
 import { router } from "@inertiajs/react"
-import { HiChevronDown, HiChevronRight, HiOutlinePencil, HiOutlinePlus, HiOutlineTrash } from "react-icons/hi"
+import { HiChevronDown, HiChevronRight, HiOutlinePencil, HiOutlinePlus, HiOutlineTrash, HiOutlineUserAdd } from "react-icons/hi"
 import { Building2, RotateCcw, Trash2, X } from "lucide-react"
 import ServerPagination from "@/Components/Navigation/ServerPagination"
 import ModalOverlay from "@/Components/Modal/ModalOverlay"
 import DataTableToolbar from "@/Components/Table/DataTableToolbar"
 import FilterChoiceGroup from "@/Components/Table/FilterChoiceGroup"
 import FilterSelectField from "@/Components/Table/FilterSelectField"
+import AreaActionMenu from "./AreaActionMenu"
 
 const SORT_OPTIONS = [
   ["latest", "Newest"],
@@ -71,64 +72,24 @@ function People({ people = [], emptyText, compact = false }) {
   )
 }
 
-function IconAction({ label, danger = false, children, ...props }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      {...props}
-      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg outline-none transition-colors focus-visible:ring-2 focus-visible:ring-slate-400 ${danger ? "text-red-600 hover:bg-red-50" : "text-slate-500 hover:bg-slate-100 hover:text-slate-900"}`}
-    >
-      {children}
-    </button>
-  )
+function AreaActions({ area, canEdit, canDelete, canAssign, onAssignArea, onEdit, onArchive, onRestore, onForceDelete }) {
+  const items = []
+  if (area.deleted_at) {
+    if (canDelete) items.push({ label: "Restore area", icon: RotateCcw, action: () => onRestore(area) }, { label: "Delete permanently", icon: Trash2, danger: true, action: () => onForceDelete(area) })
+  } else {
+    if (canAssign) items.push({ label: "Assign reviewers", icon: HiOutlineUserAdd, action: () => onAssignArea(area) })
+    if (canEdit) items.push({ label: "Edit area", icon: HiOutlinePencil, action: () => onEdit(area) })
+    if (canDelete) items.push({ label: "Archive area", icon: HiOutlineTrash, danger: true, action: () => onArchive(area) })
+  }
+  return <AreaActionMenu label={area.area} items={items} />
 }
 
-function AreaActions({ area, canEdit, canDelete, onEdit, onArchive, onRestore, onForceDelete }) {
-  if (area.deleted_at)
-    return (
-      <div className="flex shrink-0">
-        {canDelete && (
-          <>
-            <IconAction label="Restore area" onClick={() => onRestore(area)}>
-              <RotateCcw className="h-4 w-4" />
-            </IconAction>
-            <IconAction label="Delete permanently" danger onClick={() => onForceDelete(area)}>
-              <Trash2 className="h-4 w-4" />
-            </IconAction>
-          </>
-        )}
-      </div>
-    )
-  return (
-    <div className="flex shrink-0">
-      {canEdit && (
-        <IconAction label="Edit area" onClick={() => onEdit(area)}>
-          <HiOutlinePencil className="h-4 w-4" />
-        </IconAction>
-      )}
-      {canDelete && (
-        <IconAction label="Archive area" danger onClick={() => onArchive(area)}>
-          <HiOutlineTrash className="h-4 w-4" />
-        </IconAction>
-      )}
-    </div>
-  )
-}
-
-function SubActions({ area, subArea, canEdit, onEditSubArea, onDeleteSubArea }) {
-  if (!canEdit) return null
-  return (
-    <div className="flex shrink-0">
-      <IconAction label={`Edit ${subArea.name}`} onClick={() => onEditSubArea(area, subArea)}>
-        <HiOutlinePencil className="h-4 w-4" />
-      </IconAction>
-      <IconAction label={`Delete ${subArea.name}`} danger onClick={() => onDeleteSubArea(area, subArea)}>
-        <HiOutlineTrash className="h-4 w-4" />
-      </IconAction>
-    </div>
-  )
+function SubActions({ area, subArea, canEdit, canAssign, onAssignSubArea, onEditSubArea, onDeleteSubArea }) {
+  if (area.deleted_at) return null
+  const items = []
+  if (canAssign) items.push({ label: "Assign ticket closers", icon: HiOutlineUserAdd, action: () => onAssignSubArea(area, subArea) })
+  if (canEdit) items.push({ label: "Edit sub-area", icon: HiOutlinePencil, action: () => onEditSubArea(area, subArea) }, { label: "Delete sub-area", icon: HiOutlineTrash, danger: true, action: () => onDeleteSubArea(area, subArea) })
+  return <AreaActionMenu label={subArea.name} items={items} />
 }
 
 function AreaTree({ areas, expandedIds, onToggle, onAddSubArea, ...actions }) {
@@ -316,6 +277,9 @@ export default function AreaListSection(props) {
   const actions = {
     canEdit: props.canEdit,
     canDelete: props.canDelete,
+    canAssign: props.canAssign,
+    onAssignArea: props.onAssignArea,
+    onAssignSubArea: props.onAssignSubArea,
     onEdit: props.onEdit,
     onArchive: props.onArchive,
     onRestore: props.onRestore,

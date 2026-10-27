@@ -179,20 +179,6 @@ export default function Index({
     }
   }
 
-  const addSubActivityField = () => {
-    setForm((prev) => ({
-      ...prev,
-      sub_activities: [...prev.sub_activities, { name: "", description: "", category: "ISSUE" }],
-    }))
-  }
-
-  const removeSubActivityField = (index) => {
-    setForm((prev) => ({
-      ...prev,
-      sub_activities: prev.sub_activities.filter((_, itemIndex) => itemIndex !== index),
-    }))
-  }
-
   const submit = async (e) => {
     e.preventDefault()
     if (processing) return
@@ -221,7 +207,7 @@ export default function Index({
         showStatusModal("success", "Success", `Activity “${form.name}” updated successfully.`)
       } else {
         await http.post(isBulkSubMode ? `/activities/${form.activity_id}/sub-activities` : "/activities", submitData)
-        showStatusModal("success", "Success", `Activity “${form.name}” created successfully.`)
+        showStatusModal("success", "Success", isBulkSubMode ? `Sub-activity “${form.sub_activities[0].name}” created successfully.` : `Activity “${form.name}” created successfully.`)
       }
 
       reloadActivities()
@@ -336,8 +322,6 @@ export default function Index({
         parentOptions={parentOptions}
         onFieldChange={handleFormChange}
         onSubActivityChange={handleSubActivityChange}
-        onAddSubActivityField={addSubActivityField}
-        onRemoveSubActivityField={removeSubActivityField}
         isBulkSubMode={isBulkSubMode}
         canManageCategory={canManageActivityCategory}
       />
