@@ -107,33 +107,41 @@ export default function RolesTable({ roles, onEdit, onDelete, onManagePermission
           setAccessFilter("all")
         }}
       />
-      <div className="hidden grid-cols-[minmax(220px,.8fr)_minmax(300px,1.25fr)_minmax(280px,1fr)] border-y border-border bg-muted/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground xl:grid">
+      <div className="hidden grid-cols-[48px_minmax(180px,.75fr)_120px_minmax(260px,1.2fr)_minmax(250px,1fr)] border-y border-border bg-muted/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground lg:grid">
+        <span>No.</span>
         <span>Role</span>
+        <span>Type</span>
         <span>Permissions</span>
         <span>Actions</span>
       </div>
-      <div className="grid grid-cols-1 divide-y divide-border bg-card md:grid-cols-2 md:gap-3 md:divide-y-0 md:bg-background/60 md:p-3 xl:block xl:bg-card xl:p-0">
+      <div className="grid grid-cols-1 divide-y divide-border bg-card md:grid-cols-2 md:gap-3 md:divide-y-0 md:bg-background/60 md:p-3 lg:block lg:bg-card lg:p-0">
         {displayed.length === 0 ? (
           <div className="px-4 py-12 text-center text-[13px] text-muted-foreground md:col-span-2">No roles found.</div>
         ) : (
-          displayed.map((role) => (
+          displayed.map((role, index) => (
             <article
               key={role.id}
-              className="flex min-w-0 flex-col p-4 transition-colors hover:bg-muted/10 md:rounded-xl md:border md:border-border md:bg-card xl:grid xl:grid-cols-[minmax(220px,.8fr)_minmax(300px,1.25fr)_minmax(280px,1fr)] xl:items-center xl:rounded-none xl:border-x-0 xl:border-b xl:border-t-0 xl:px-5 xl:py-4"
+              className="flex min-w-0 flex-col p-4 transition-colors hover:bg-muted/10 md:rounded-xl md:border md:border-border md:bg-card lg:grid lg:grid-cols-[48px_minmax(180px,.75fr)_120px_minmax(260px,1.2fr)_minmax(250px,1fr)] lg:items-center lg:rounded-none lg:border-x-0 lg:border-b lg:border-t-0 lg:px-5 lg:py-4"
             >
-              <div className="flex items-start justify-between gap-3 xl:pr-4">
+              <span className="mb-2 text-[11px] font-semibold text-muted-foreground lg:mb-0 lg:text-[13px] lg:text-foreground">
+                <span className="lg:hidden">#</span>
+                {index + 1}
+              </span>
+              <div className="min-w-0 lg:pr-4">
                 <div className="min-w-0">
                   <h3 className="break-words text-sm font-semibold leading-5 text-foreground">{role.name}</h3>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {role.permissions.length} {role.permissions.length === 1 ? "permission" : "permissions"}
                   </p>
                 </div>
-                <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground xl:hidden">{systemRoles.includes(role.name) ? "System" : "Custom"}</span>
               </div>
-              <div className="mt-3 xl:mt-0 xl:pr-4">
+              <div className="mt-3 lg:mt-0">
+                <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-[10px] font-semibold text-muted-foreground">{systemRoles.includes(role.name) ? "System" : "Custom"}</span>
+              </div>
+              <div className="mt-3 lg:mt-0 lg:pr-4">
                 <PermissionPreview permissions={role.permissions} />
               </div>
-              <div className="mt-4 flex flex-wrap gap-2 border-t border-border pt-3 md:mt-auto xl:mt-0 xl:border-0 xl:p-0 max-sm:[&>button]:flex-1">
+              <div className="mt-4 flex flex-wrap justify-end gap-1 border-t border-border pt-3 md:mt-auto lg:mt-0 lg:border-0 lg:p-0">
                 <Can permission="permissions.manage">
                   <Action onClick={() => onManagePermissions(role)} title="Manage Permissions">
                     <HiOutlineShieldCheck className="mr-1.5 h-4 w-4" />

@@ -331,7 +331,7 @@ class ReportController extends Controller
             throw ValidationException::withMessages(['category' => 'Open and closed statuses apply only to issues.']);
         }
         $query = $this->visibleReportsFor($user)
-            ->with(['author', 'area', 'activityType', 'subActivity']);
+            ->with(['author.roles', 'area', 'subArea', 'activityType', 'subActivity', 'closer.roles']);
 
         if ($request->boolean('my_reports_only')) {
             $query->where('author_id', $user->id);
@@ -385,19 +385,45 @@ class ReportController extends Controller
     private function exportExcel($reports): BinaryFileResponse
     {
         $sheet = (new Spreadsheet)->getActiveSheet();
-        $sheet->fromArray(['No', 'Reporter', 'Area', 'Activity', 'Finding', 'Before Photo', 'After Photo', 'Status', 'Created At'], null, 'A1');
-        $sheet->getStyle('A1:I1')->getFont()->setBold(true);
-        $sheet->getColumnDimension('E')->setWidth(42);
-        $sheet->getColumnDimension('F')->setWidth(40);
-        $sheet->getColumnDimension('G')->setWidth(40);
-        $sheet->getStyle('E:I')->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
-        $sheet->getStyle('E:E')->getAlignment()->setWrapText(true);
+        $sheet->fromArray([
+            'No', 'Reporter', 'Reporter Role', 'Area', 'Sub-area', 'Activity', 'Sub-activity',
+            'Category', 'Finding / Observation', 'Additional Notes', 'Before Photo', 'After Photo',
+            'Status', 'Reported At', 'Closed At', 'Closed By', 'Closed By Role', 'Resolution',
+        ], null, 'A1');
+        $sheet->getStyle('A1:R1')->getFont()->setBold(true);
+        $sheet->freezePane('A2');
+        $sheet->setAutoFilter('A1:R1');
+        foreach (['B' => 24, 'C' => 18, 'D' => 22, 'E' => 24, 'F' => 26, 'G' => 26, 'H' => 14, 'I' => 42, 'J' => 36, 'K' => 40, 'L' => 40, 'M' => 14, 'N' => 22, 'O' => 22, 'P' => 24, 'Q' => 18, 'R' => 40] as $column => $width) {
+            $sheet->getColumnDimension($column)->setWidth($width);
+        }
+        $sheet->getStyle('A:R')->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+        $sheet->getStyle('I:J')->getAlignment()->setWrapText(true);
+        $sheet->getStyle('R:R')->getAlignment()->setWrapText(true);
         foreach ($reports as $index => $report) {
             $row = $index + 2;
             $displayStatus = $report->category_snapshot === 'REPORT' ? 'REPORT' : strtoupper($report->status);
-            $sheet->fromArray([$index + 1, $report->author?->name, $report->area?->area, $report->subActivity?->name ?? $report->activityType?->name, $report->issue, '', '', $displayStatus, $report->created_at?->format('d-m-Y H:i')], null, "A{$row}");
+            $sheet->fromArray([
+                $index + 1,
+                $report->author?->name ?? '-',
+                $report->author?->roles?->first()?->name ?? '-',
+                $report->area?->area ?? '-',
+                $report->subArea?->name ?? '-',
+                $report->activityType?->name ?? '-',
+                $report->subActivity?->name ?? '-',
+                $report->category_snapshot ?? '-',
+                $report->issue ?? '-',
+                $report->activity ?? '-',
+                '',
+                '',
+                $displayStatus,
+                $report->created_at?->format('d-m-Y H:i') ?? '-',
+                $report->closed_at?->format('d-m-Y H:i') ?? '-',
+                $report->closer?->name ?? '-',
+                $report->closer?->roles?->first()?->name ?? '-',
+                $report->close_comment ?? '-',
+            ], null, "A{$row}");
             $sheet->getRowDimension($row)->setRowHeight(165);
-            foreach (['photo_before' => 'F', 'photo_after' => 'G'] as $field => $column) {
+            foreach (['photo_before' => 'K', 'photo_after' => 'L'] as $field => $column) {
                 $photoDisk = Storage::disk(config('reports.photos.disk', 'public'));
                 $contents = $report->{$field} && $photoDisk->exists($report->{$field})
                     ? $photoDisk->get($report->{$field})

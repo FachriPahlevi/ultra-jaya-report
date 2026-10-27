@@ -26,10 +26,10 @@ const MobileHeader = ({ onToggleMenu }) => (
     >
       <MenuIcon />
     </button>
-
-    <img src="/img/logo/logo_uj.svg" className="h-7 w-7 shrink-0 object-contain" alt="Ultrajaya logo" />
-
-    <span className="truncate text-xs font-bold leading-tight text-[var(--foreground)] min-[375px]:text-[13px]">Ultrajaya</span>
+    <div className="ml-auto flex min-w-0 items-center justify-end gap-2">
+      <span className="truncate text-right text-xs font-bold leading-tight text-[var(--foreground)] min-[375px]:text-[13px]">PT Ultrajaya Milk Industry</span>
+      <img src="/img/logo/logo_uj.svg" className="h-7 w-7 shrink-0 object-contain" alt="Ultrajaya logo" />
+    </div>
   </header>
 )
 

@@ -148,47 +148,48 @@ export default function UsersTable({ users, onEdit, onDelete, auth, usersPerPage
           setScope("all")
         }}
       />
-      <div className="hidden grid-cols-[56px_minmax(230px,1.25fr)_minmax(190px,1fr)_minmax(140px,.65fr)_minmax(190px,.8fr)] border-y border-border bg-muted/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground xl:grid">
+      <div className="hidden grid-cols-[48px_minmax(210px,1.15fr)_minmax(180px,1fr)_minmax(120px,.6fr)_100px_minmax(170px,.75fr)] border-y border-border bg-muted/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground lg:grid">
         <span>No.</span>
         <span>User</span>
         <span>Email</span>
         <span>Role</span>
+        <span>Status</span>
         <span>Actions</span>
       </div>
-      <div className="grid grid-cols-1 divide-y divide-border bg-card md:grid-cols-2 md:gap-3 md:divide-y-0 md:bg-background/60 md:p-3 xl:block xl:bg-card xl:p-0">
+      <div className="grid grid-cols-1 divide-y divide-border bg-card md:grid-cols-2 md:gap-3 md:divide-y-0 md:bg-background/60 md:p-3 lg:block lg:bg-card lg:p-0">
         {filtered.length === 0 ? (
           <div className="px-4 py-12 text-center text-[13px] text-muted-foreground md:col-span-2">No users found.</div>
         ) : (
           filtered.map((user, index) => (
             <article
               key={user.id}
-              className="flex min-w-0 flex-col p-4 transition-colors hover:bg-muted/10 md:rounded-xl md:border md:border-border md:bg-card xl:grid xl:grid-cols-[56px_minmax(230px,1.25fr)_minmax(190px,1fr)_minmax(140px,.65fr)_minmax(190px,.8fr)] xl:items-center xl:rounded-none xl:border-x-0 xl:border-b xl:border-t-0 xl:px-5 xl:py-4"
+              className="flex min-w-0 flex-col p-4 transition-colors hover:bg-muted/10 md:rounded-xl md:border md:border-border md:bg-card lg:grid lg:grid-cols-[48px_minmax(210px,1.15fr)_minmax(180px,1fr)_minmax(120px,.6fr)_100px_minmax(170px,.75fr)] lg:items-center lg:rounded-none lg:border-x-0 lg:border-b lg:border-t-0 lg:px-5 lg:py-4"
             >
-              <span className="mb-2 text-[11px] font-semibold text-muted-foreground xl:mb-0 xl:text-[13px] xl:text-foreground">
-                <span className="xl:hidden">#</span>
+              <span className="mb-2 text-[11px] font-semibold text-muted-foreground lg:mb-0 lg:text-[13px] lg:text-foreground">
+                <span className="lg:hidden">#</span>
                 {start + index}
               </span>
-              <div className="flex min-w-0 items-start gap-3 xl:items-center">
+              <div className="flex min-w-0 items-start gap-3 lg:items-center">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">{initials(user.name)}</div>
                 <div className="min-w-0">
                   <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-foreground">{user.name}</h3>
                   <ScopeChips user={user} />
                 </div>
               </div>
-              <div className="mt-3 min-w-0 xl:mt-0 xl:px-1">
-                <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground xl:hidden">Email</span>
-                <p className="break-all text-xs leading-5 text-muted-foreground xl:break-normal">{user.email}</p>
+              <div className="mt-3 min-w-0 lg:mt-0 lg:px-1">
+                <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground lg:hidden">Email</span>
+                <p className="break-all text-xs leading-5 text-muted-foreground lg:break-normal">{user.email}</p>
               </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2 xl:mt-0">
+              <div className="mt-3 flex flex-wrap items-center gap-2 lg:mt-0">
                 <span className="inline-flex max-w-full truncate rounded-md border border-border bg-background px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.05em] text-foreground">
                   {user.roles[0]?.name || "No role"}
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground xl:hidden">
-                  <span className={`h-1.5 w-1.5 rounded-full ${user.is_active === false ? "bg-slate-400" : "bg-emerald-500"}`} />
-                  {user.is_active === false ? "Inactive" : "Active"}
-                </span>
               </div>
-              <div className="mt-4 flex gap-2 border-t border-border pt-3 md:mt-auto xl:mt-0 xl:border-0 xl:p-0 max-sm:[&>button]:flex-1">
+              <span className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground lg:mt-0">
+                <span className={`h-1.5 w-1.5 rounded-full ${user.is_active === false ? "bg-slate-400" : "bg-emerald-500"}`} />
+                {user.is_active === false ? "Inactive" : "Active"}
+              </span>
+              <div className="mt-4 flex justify-end gap-1 border-t border-border pt-3 md:mt-auto lg:mt-0 lg:border-0 lg:p-0">
                 {user.can?.update && (
                   <Can permission="users.edit">
                     <Action onClick={() => onEdit(user)} title="Edit User">

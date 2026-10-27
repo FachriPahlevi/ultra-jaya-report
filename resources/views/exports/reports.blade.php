@@ -20,8 +20,8 @@
     }
 
     .page {
-      width: 190mm;
-      padding: 8mm 0 10mm;
+      width: 100%;
+      padding: 0;
       margin: 0 auto;
     }
 
@@ -74,6 +74,11 @@
     .card-row,
     .card-cell {
       page-break-inside: avoid;
+    }
+
+    .report-page-break {
+      page-break-before: always;
+      height: 24pt;
     }
 
     .card-cell {
@@ -131,7 +136,7 @@
 
     @page {
       size: A4;
-      margin: 0;
+      margin: 28pt 28pt 34pt;
     }
   </style>
 </head>
@@ -222,6 +227,9 @@
 
     {{-- CARDS --}}
     @foreach($reports as $report)
+    @if($loop->index > 0 && $loop->index % 2 === 1)
+    <div class="report-page-break"></div>
+    @endif
     @php
     $photoBefore=$report->photo_before ? ($photos[$report->photo_before] ?? null) : null;
     $photoAfter=$report->photo_after ? ($photos[$report->photo_after] ?? null) : null;
@@ -244,7 +252,7 @@
               <tr>
                 <td class="l">Reporter</td>
                 <td class="c">:</td>
-                <td class="v">{{ $report->author?->name ?? '-' }}</td>
+                <td class="v">{{ $report->author?->name ?? '-' }}{{ $report->author?->roles?->first()?->name ? ' · '.$report->author->roles->first()->name : '' }}</td>
               </tr>
               <tr>
                 <td class="l">Area</td>
@@ -252,14 +260,19 @@
                 <td class="v">{{ $report->area?->area ?? '-' }}</td>
               </tr>
               <tr>
-                <td class="l">Activity Type</td>
+                <td class="l">Sub-area</td>
                 <td class="c">:</td>
-                <td class="v">{{ $report->subActivity?->name ?? $report->activityType?->name ?? '-' }}</td>
+                <td class="v">{{ $report->subArea?->name ?? '-' }}</td>
               </tr>
               <tr>
-                <td class="l">Activity Notes</td>
+                <td class="l">Activity</td>
                 <td class="c">:</td>
-                <td class="v">{{ $report->activity ?? '-' }}</td>
+                <td class="v">{{ $report->activityType?->name ?? '-' }}</td>
+              </tr>
+              <tr>
+                <td class="l">Sub-activity</td>
+                <td class="c">:</td>
+                <td class="v">{{ $report->subActivity?->name ?? '-' }}</td>
               </tr>
               <tr>
                 <td class="l">Reported At</td>
@@ -272,6 +285,11 @@
                 <td class="v">{{ $report->issue ?? '-' }}</td>
               </tr>
               <tr>
+                <td class="l">Additional Notes</td>
+                <td class="c">:</td>
+                <td class="v">{{ $report->activity ?? '-' }}</td>
+              </tr>
+              <tr>
                 <td class="l">Status</td>
                 <td class="c">:</td>
                 @if($report->category_snapshot === 'REPORT')
@@ -282,6 +300,18 @@
                 <td class="v" style="color:#000000">Open</td>
                 @endif
               </tr>
+              @if($done)
+              <tr>
+                <td class="l">Closed By</td>
+                <td class="c">:</td>
+                <td class="v">{{ $report->closer?->name ?? '-' }}{{ $report->closer?->roles?->first()?->name ? ' · '.$report->closer->roles->first()->name : '' }}</td>
+              </tr>
+              <tr>
+                <td class="l">Resolution</td>
+                <td class="c">:</td>
+                <td class="v">{{ $report->close_comment ?? '-' }}</td>
+              </tr>
+              @endif
             </table>
           </td>
           <td style="width:200px;vertical-align:top;padding-left:8px">

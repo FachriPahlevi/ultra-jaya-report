@@ -36,7 +36,7 @@ class PermissionSurfaceTest extends TestCase
         $response = $this->actingAs($owner)->get(route('reports.export', 'excel'))->assertOk();
         $sheet = IOFactory::load($response->baseResponse->getFile()->getPathname())->getActiveSheet();
         $this->assertSame(2, $sheet->getHighestRow());
-        $this->assertSame($own->issue, $sheet->getCell('E2')->getValue());
+        $this->assertSame($own->issue, $sheet->getCell('I2')->getValue());
         $response = $this->actingAs($owner)->get(route('reports.export', ['type' => 'excel', 'author_ids' => [$other->id], 'my_reports_only' => 'false']))->assertOk();
         $this->assertSame(1, IOFactory::load($response->baseResponse->getFile()->getPathname())->getActiveSheet()->getHighestRow());
         $this->actingAs($owner)->getJson(route('reports.export', ['type' => 'excel', 'area_ids' => 'invalid']))->assertUnprocessable();
@@ -87,7 +87,7 @@ class PermissionSurfaceTest extends TestCase
             $sheet = IOFactory::load($response->baseResponse->getFile()->getPathname())->getActiveSheet();
             $issues = [];
             for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
-                $issues[] = $sheet->getCell("E{$row}")->getValue();
+                $issues[] = $sheet->getCell("I{$row}")->getValue();
             }
             $this->assertEqualsCanonicalizing($expected, $issues);
         }
@@ -106,13 +106,33 @@ class PermissionSurfaceTest extends TestCase
         Storage::disk('public')->put('test/photos/before.jpg', $photo);
         Storage::disk('public')->put('test/photos/after.jpg', $photo);
         $ticket = $this->report($owner, $area, $subArea, $issue, 'Inspection finding');
-        $ticket->update(['status' => 'closed', 'photo_before' => 'test/photos/before.jpg', 'photo_after' => 'test/photos/after.jpg']);
+        $ticket->update([
+            'status' => 'closed',
+            'activity' => 'Inspection performed during the morning shift.',
+            'photo_before' => 'test/photos/before.jpg',
+            'photo_after' => 'test/photos/after.jpg',
+            'closed_at' => now(),
+            'closed_by' => $owner->id,
+            'close_comment' => 'The affected area was cleaned and verified.',
+        ]);
         $this->report($owner, $area, $subArea, $reportActivity, 'Routine inspection');
 
         $response = $this->actingAs($owner)->get(route('reports.export', 'excel'))->assertOk();
         $sheet = IOFactory::load($response->baseResponse->getFile()->getPathname())->getActiveSheet();
-        $this->assertEqualsCanonicalizing(['REPORT', 'CLOSED'], [$sheet->getCell('H2')->getValue(), $sheet->getCell('H3')->getValue()]);
-        $photoRow = $sheet->getCell('H2')->getValue() === 'CLOSED' ? 2 : 3;
+        $this->assertEqualsCanonicalizing(['REPORT', 'CLOSED'], [$sheet->getCell('M2')->getValue(), $sheet->getCell('M3')->getValue()]);
+        $photoRow = $sheet->getCell('M2')->getValue() === 'CLOSED' ? 2 : 3;
+        $this->assertSame($owner->name, $sheet->getCell("B{$photoRow}")->getValue());
+        $this->assertSame('SUPER_ADMIN', $sheet->getCell("C{$photoRow}")->getValue());
+        $this->assertSame($area->area, $sheet->getCell("D{$photoRow}")->getValue());
+        $this->assertSame($subArea->name, $sheet->getCell("E{$photoRow}")->getValue());
+        $this->assertSame($activity->name, $sheet->getCell("F{$photoRow}")->getValue());
+        $this->assertSame($issue->name, $sheet->getCell("G{$photoRow}")->getValue());
+        $this->assertSame('ISSUE', $sheet->getCell("H{$photoRow}")->getValue());
+        $this->assertSame('Inspection finding', $sheet->getCell("I{$photoRow}")->getValue());
+        $this->assertSame('Inspection performed during the morning shift.', $sheet->getCell("J{$photoRow}")->getValue());
+        $this->assertSame($owner->name, $sheet->getCell("P{$photoRow}")->getValue());
+        $this->assertSame('SUPER_ADMIN', $sheet->getCell("Q{$photoRow}")->getValue());
+        $this->assertSame('The affected area was cleaned and verified.', $sheet->getCell("R{$photoRow}")->getValue());
         $this->assertSame(165.0, $sheet->getRowDimension($photoRow)->getRowHeight());
         $drawings = iterator_to_array($sheet->getDrawingCollection());
         $this->assertCount(2, $drawings);
@@ -126,19 +146,28 @@ class PermissionSurfaceTest extends TestCase
         }
         $archive->close();
         $this->assertSame(2, $embeddedPhotos);
-        $this->assertEqualsCanonicalizing(["F{$photoRow}", "G{$photoRow}"], array_map(fn ($drawing) => $drawing->getCoordinates(), $drawings));
+        $this->assertEqualsCanonicalizing(["K{$photoRow}", "L{$photoRow}"], array_map(fn ($drawing) => $drawing->getCoordinates(), $drawings));
         foreach ($drawings as $drawing) {
             $this->assertLessThanOrEqual(250, $drawing->getWidth());
             $this->assertLessThanOrEqual(200, $drawing->getHeight());
             $this->assertSame(8, $drawing->getOffsetX());
             $this->assertSame(8, $drawing->getOffsetY());
         }
+        $pdfHtml = view('exports.reports', [
+            'reports' => collect([$ticket->fresh()->load(['author.roles', 'area', 'subArea', 'activityType', 'subActivity', 'closer.roles'])]),
+            'photos' => [],
+        ])->render();
+        foreach ([$owner->name, $area->area, $subArea->name, $activity->name, $issue->name, 'Inspection finding', 'Inspection performed during the morning shift.', 'The affected area was cleaned and verified.'] as $detail) {
+            $this->assertStringContainsString($detail, $pdfHtml);
+        }
+        $this->assertStringContainsString('margin: 28pt 28pt 34pt', $pdfHtml);
+        $this->assertStringContainsString('.report-page-break', $pdfHtml);
         $pdf = $this->actingAs($owner)->get(route('reports.export', ['type' => 'pdf', 'batch' => 1]))->assertOk();
         $this->assertStringStartsWith('%PDF-', $pdf->getContent());
         $reportOnly = $this->actingAs($owner)->get(route('reports.export', ['type' => 'excel', 'status' => 'report']))->assertOk();
         $reportSheet = IOFactory::load($reportOnly->baseResponse->getFile()->getPathname())->getActiveSheet();
         $this->assertSame(2, $reportSheet->getHighestRow());
-        $this->assertSame('REPORT', $reportSheet->getCell('H2')->getValue());
+        $this->assertSame('REPORT', $reportSheet->getCell('M2')->getValue());
         $openOnly = $this->actingAs($owner)->get(route('reports.export', ['type' => 'excel', 'status' => 'open']))->assertOk();
         $this->assertSame(1, IOFactory::load($openOnly->baseResponse->getFile()->getPathname())->getActiveSheet()->getHighestRow());
     }
