@@ -238,7 +238,7 @@ function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onD
           )}
 
           {report.status === "closed" && (
-            <section className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-4 sm:p-5">
+            <section className="rounded-2xl border border border-border bg-card p-4 sm:p-5">
               <DetailField icon={UserRound} label="Resolution">
                 <p className="font-medium">Closed at {formatDate(report.closed_at)}</p>
                 {report.closer && (
@@ -355,12 +355,22 @@ export default function Index({ reports = [], areas = [], activities = [], users
             r.perms.canCreate || r.perms.canExport ? (
               <div className="flex items-center gap-2">
                 {r.perms.canExport && (
-                  <button type="button" onClick={() => r.setIsExportModalOpen(true)} aria-label="Export reports" className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary">
+                  <button
+                    type="button"
+                    onClick={() => r.setIsExportModalOpen(true)}
+                    aria-label="Export reports"
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card text-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary"
+                  >
                     <File className="h-5 w-5" />
                   </button>
                 )}
                 {r.perms.canCreate && (
-                  <button type="button" onClick={r.openCreateModal} aria-label="Create report" className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm outline-none hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                  <button
+                    type="button"
+                    onClick={r.openCreateModal}
+                    aria-label="Create report"
+                    className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm outline-none hover:bg-blue-700 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                  >
                     <HiOutlinePlus className="h-5 w-5" />
                   </button>
                 )}
@@ -406,7 +416,13 @@ export default function Index({ reports = [], areas = [], activities = [], users
           />
           <div className="border-b border-border/70 px-4 py-2 text-xs text-muted-foreground sm:hidden">{r.filtered.length} results</div>
           <div className="hidden grid-cols-[2.5rem_minmax(0,2.2fr)_minmax(0,1.15fr)_minmax(0,1fr)_minmax(0,1.1fr)_7.5rem_6.5rem] gap-4 border-b border-border bg-muted/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground xl:grid">
-            <span>No</span><span>Finding</span><span>Reporter</span><span>Location</span><span>Activity</span><span>Photos</span><span>Status</span>
+            <span>No</span>
+            <span>Finding</span>
+            <span>Reporter</span>
+            <span>Location</span>
+            <span>Activity</span>
+            <span>Photos</span>
+            <span>Status</span>
           </div>
           {r.paginated.length === 0 ? (
             <div className="px-5 py-16 text-center text-sm text-muted-foreground">No reports found</div>

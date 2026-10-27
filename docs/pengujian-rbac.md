@@ -2,7 +2,17 @@
 
 Seeder pengujian hanya menyiapkan laporan dan foto contoh. Pengguna, role, permission, Area, Sub-area, Aktivitas, Sub-aktivitas, kategori, kapasitas, password, dan penugasan yang sudah ada tidak dibuat, diubah, atau dihapus.
 
-## Command terpisah
+## Mulai dari database pengujian bersih
+
+Jalankan hanya pada environment `local` atau `testing`, dengan koneksi database yang memang boleh dikosongkan:
+
+```bash
+php artisan app:reset-rbac-test
+```
+
+Command ini menjalankan `migrate:fresh` (semua tabel pada koneksi aktif dihapus), kemudian memanggil `RoleSeeder` beserta permission, `UserSeeder`, `AreaSeeder`, `ActivitySeeder`, dan terakhir `RbacAcceptanceSeeder` untuk membuat minimal 30 laporan per pengguna. Seeder utama tidak disalin atau diubah; `DatabaseSeeder` production tetap terpisah dan tidak memanggil seeder laporan tes. Pastikan `DB_CONNECTION` dan `DB_DATABASE` mengarah ke database pengujian sebelum menjalankannya.
+
+## Menambah laporan pada database yang sudah ada
 
 ```bash
 php artisan app:seed-rbac-test
@@ -46,9 +56,11 @@ Laporan uji dengan pengguna dan nomor yang sama diperbarui, bukan digandakan. Id
 
 ## Isolasi production
 
-- Command: `app/Console/Commands/SeedRbacTestData.php`.
-- Seeder: `database/seeders/Testing/RbacAcceptanceSeeder.php`.
-- Keduanya hanya menerima environment `local` atau `testing`.
+- Command reset: `app/Console/Commands/ResetRbacTestDatabase.php`.
+- Seeder reset: `database/seeders/Testing/RbacTestDatabaseSeeder.php`.
+- Command tambahan laporan: `app/Console/Commands/SeedRbacTestData.php`.
+- Seeder laporan: `database/seeders/Testing/RbacAcceptanceSeeder.php`.
+- Kedua command dan kedua seeder hanya menerima environment `local` atau `testing`.
 - Seeder tidak dipanggil oleh `DatabaseSeeder`, sehingga `php artisan db:seed` normal tidak menambahkan laporan uji.
 - Pemanggilan langsung kelas seeder di production juga ditolak.
 
