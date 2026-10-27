@@ -42,6 +42,59 @@ class PermissionSurfaceTest extends TestCase
         $this->actingAs($owner)->getJson(route('reports.export', ['type' => 'excel', 'area_ids' => 'invalid']))->assertUnprocessable();
     }
 
+    public function test_pdf_export_is_split_into_safe_batches_without_a_report_limit(): void
+    {
+        $this->seed(RoleSeeder::class);
+        $owner = User::factory()->create()->assignRole('SUPER_ADMIN');
+        [$area, $subArea, $activity, $issue] = $this->context('PDF limit');
+        foreach (range(1, 101) as $index) {
+            $this->report($owner, $area, $subArea, $issue, "Report {$index}");
+        }
+        $first = $this->actingAs($owner)->get(route('reports.export', ['type' => 'pdf', 'batch' => 1]))->assertOk()
+            ->assertHeader('X-Export-Batch', '1')
+            ->assertHeader('X-Export-Total-Batches', '2')
+            ->assertHeader('X-Export-Total-Reports', '101');
+        $this->assertStringStartsWith('%PDF-', $first->getContent());
+
+        $second = $this->actingAs($owner)->get(route('reports.export', ['type' => 'pdf', 'batch' => 2]))->assertOk()
+            ->assertHeader('X-Export-Batch', '2');
+        $this->assertStringStartsWith('%PDF-', $second->getContent());
+        $this->actingAs($owner)->getJson(route('reports.export', ['type' => 'pdf', 'batch' => 3]))
+            ->assertUnprocessable()->assertJsonValidationErrors('batch');
+    }
+
+    public function test_export_filters_type_and_issue_status_within_the_users_scope(): void
+    {
+        $this->seed(RoleSeeder::class);
+        $owner = User::factory()->create()->assignRole('USER');
+        $owner->givePermissionTo('reports.export');
+        $other = User::factory()->create()->assignRole('USER');
+        [$area, $subArea, $activity, $issue] = $this->context('Export types');
+        $observation = $activity->children()->create(['name' => 'Observation', 'category' => 'REPORT']);
+        $this->report($owner, $area, $subArea, $issue, 'Open issue');
+        $this->report($owner, $area, $subArea, $issue, 'Closed issue')->update(['status' => 'closed']);
+        $this->report($owner, $area, $subArea, $observation, 'Report observation');
+        $this->report($other, $area, $subArea, $issue, 'Hidden issue');
+
+        foreach ([
+            [['category' => 'ISSUE'], ['Open issue', 'Closed issue']],
+            [['category' => 'ISSUE', 'status' => 'open'], ['Open issue']],
+            [['category' => 'ISSUE', 'status' => 'closed'], ['Closed issue']],
+            [['category' => 'REPORT'], ['Report observation']],
+            [[], ['Open issue', 'Closed issue', 'Report observation']],
+        ] as [$filters, $expected]) {
+            $response = $this->actingAs($owner)->get(route('reports.export', ['type' => 'excel', ...$filters]))->assertOk();
+            $sheet = IOFactory::load($response->baseResponse->getFile()->getPathname())->getActiveSheet();
+            $issues = [];
+            for ($row = 2; $row <= $sheet->getHighestRow(); $row++) {
+                $issues[] = $sheet->getCell("E{$row}")->getValue();
+            }
+            $this->assertEqualsCanonicalizing($expected, $issues);
+        }
+        $this->actingAs($owner)->getJson(route('reports.export', ['type' => 'excel', 'category' => 'REPORT', 'status' => 'closed']))
+            ->assertUnprocessable()->assertJsonValidationErrors('category');
+    }
+
     public function test_excel_photos_fit_their_own_cells_and_report_category_has_report_status(): void
     {
         Storage::fake('public');
@@ -60,16 +113,28 @@ class PermissionSurfaceTest extends TestCase
         $sheet = IOFactory::load($response->baseResponse->getFile()->getPathname())->getActiveSheet();
         $this->assertEqualsCanonicalizing(['REPORT', 'CLOSED'], [$sheet->getCell('H2')->getValue(), $sheet->getCell('H3')->getValue()]);
         $photoRow = $sheet->getCell('H2')->getValue() === 'CLOSED' ? 2 : 3;
-        $this->assertSame(120.0, $sheet->getRowDimension($photoRow)->getRowHeight());
+        $this->assertSame(165.0, $sheet->getRowDimension($photoRow)->getRowHeight());
         $drawings = iterator_to_array($sheet->getDrawingCollection());
         $this->assertCount(2, $drawings);
+        $archive = new \ZipArchive;
+        $this->assertTrue($archive->open($response->baseResponse->getFile()->getPathname()));
+        $embeddedPhotos = 0;
+        for ($index = 0; $index < $archive->numFiles; $index++) {
+            if (str_starts_with($archive->getNameIndex($index), 'xl/media/')) {
+                $embeddedPhotos++;
+            }
+        }
+        $archive->close();
+        $this->assertSame(2, $embeddedPhotos);
         $this->assertEqualsCanonicalizing(["F{$photoRow}", "G{$photoRow}"], array_map(fn ($drawing) => $drawing->getCoordinates(), $drawings));
         foreach ($drawings as $drawing) {
-            $this->assertLessThanOrEqual(184, $drawing->getWidth());
-            $this->assertLessThanOrEqual(144, $drawing->getHeight());
+            $this->assertLessThanOrEqual(250, $drawing->getWidth());
+            $this->assertLessThanOrEqual(200, $drawing->getHeight());
             $this->assertSame(8, $drawing->getOffsetX());
             $this->assertSame(8, $drawing->getOffsetY());
         }
+        $pdf = $this->actingAs($owner)->get(route('reports.export', ['type' => 'pdf', 'batch' => 1]))->assertOk();
+        $this->assertStringStartsWith('%PDF-', $pdf->getContent());
         $reportOnly = $this->actingAs($owner)->get(route('reports.export', ['type' => 'excel', 'status' => 'report']))->assertOk();
         $reportSheet = IOFactory::load($reportOnly->baseResponse->getFile()->getPathname())->getActiveSheet();
         $this->assertSame(2, $reportSheet->getHighestRow());

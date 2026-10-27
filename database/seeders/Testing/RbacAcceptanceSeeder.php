@@ -70,6 +70,7 @@ class RbacAcceptanceSeeder extends Seeder
                     $child = $children->get($ordinal % $children->count());
                     $closerId = $globalCloser?->id ?? $scopedClosers[$location->id.':'.$child->id] ?? null;
                     $closed = $child->category === 'ISSUE' && $index % 4 === 0 && $closerId !== null;
+                    $photoIndex = $ordinal + $userIndex;
                     $createdAt = now()->subDays([0, 2, 10, 35, 65, 110][$index % 6])->subHours(3)->subMinutes($index);
                     $fixture = $fixtures[$index + 1] ?? new Report;
                     $fixture->fill([
@@ -88,8 +89,8 @@ class RbacAcceptanceSeeder extends Seeder
                         'area_id' => $location->area_id, 'sub_area_id' => $location->id, 'sub_activity_id' => $child->id,
                         'activity' => $index % 3 === 0 ? 'The inspection took place during operating hours. The area team was notified for follow-up.' : null,
                         'status' => $closed ? Report::STATUS_CLOSED : Report::STATUS_OPEN,
-                        'photo_before' => $index % 6 !== 0 ? $photos[$index % count($photos)] : null,
-                        'photo_after' => $closed && $index % 8 !== 0 ? $photos[($index + 1) % count($photos)] : null,
+                        'photo_before' => $photoIndex % 7 !== 0 ? $photos[$photoIndex % count($photos)] : null,
+                        'photo_after' => $closed && $photoIndex % 8 !== 0 ? $photos[($photoIndex + 1) % count($photos)] : null,
                         'close_comment' => $closed ? 'The follow-up is complete and the area has been checked again.' : null,
                         'closed_by' => $closed ? $closerId : null, 'closed_at' => $closed ? $createdAt->copy()->addHour() : null,
                     ]);
@@ -117,6 +118,30 @@ class RbacAcceptanceSeeder extends Seeder
                 $contents = file_get_contents(__DIR__.'/assets/'.$filename);
                 if (! is_string($contents) || ! Storage::disk('public')->put($path, $contents)) {
                     throw new RuntimeException('Gagal menyiapkan foto uji.');
+                }
+            }
+            $paths[] = $path;
+        }
+
+        foreach ([['assembly-line.jpg', 'small-landscape.jpg', 320, 213, false], ['warehouse.jpg', 'small-portrait.jpg', 240, 316, false], ['industrial-equipment.jpg', 'square.jpg', 600, 600, true]] as [$source, $filename, $width, $height, $square]) {
+            $path = "reports/testing/commons/{$filename}";
+            if (! Storage::disk('public')->exists($path)) {
+                $image = imagecreatefromjpeg(__DIR__.'/assets/'.$source);
+                $resized = imagecreatetruecolor($width, $height);
+                if ($image === false || $resized === false) {
+                    throw new RuntimeException('Gagal memproses foto uji.');
+                }
+                $sourceWidth = imagesx($image);
+                $sourceHeight = imagesy($image);
+                $cropSize = min($sourceWidth, $sourceHeight);
+                imagecopyresampled($resized, $image, 0, 0, $square ? intdiv($sourceWidth - $cropSize, 2) : 0, $square ? intdiv($sourceHeight - $cropSize, 2) : 0, $width, $height, $square ? $cropSize : $sourceWidth, $square ? $cropSize : $sourceHeight);
+                ob_start();
+                $encoded = imagejpeg($resized, null, 85);
+                $contents = ob_get_clean();
+                imagedestroy($image);
+                imagedestroy($resized);
+                if (! $encoded || ! is_string($contents) || ! Storage::disk('public')->put($path, $contents)) {
+                    throw new RuntimeException('Gagal menyimpan foto uji.');
                 }
             }
             $paths[] = $path;

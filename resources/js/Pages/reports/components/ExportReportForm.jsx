@@ -12,20 +12,39 @@ const createInitialForm = (canExportAll, canExportArea) => ({
   end_date: "",
   area_ids: [],
   activity_ids: [],
+  category: "",
   status: "",
   author_ids: [],
   my_reports_only: !canExportAll && !canExportArea,
 })
 
+const downloadBlob = (blob, filename) => {
+  const downloadUrl = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.href = downloadUrl
+  link.download = filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
+}
+
+const responseError = async (response) => {
+  const body = await response.json().catch(() => null)
+  return new Error(body?.errors?.export?.[0] || body?.errors?.batch?.[0] || body?.message || "Failed to export reports.")
+}
+
 export default function ExportForm({ isOpen, onClose, areas, activities, users, canExportAll = false, canExportArea = false }) {
   const { setStatusModalProps } = useStatusModal()
   const [processing, setProcessing] = useState(false)
+  const [progress, setProgress] = useState(0)
   const [form, setForm] = useState(() => createInitialForm(canExportAll, canExportArea))
 
   useEffect(() => {
     if (isOpen) {
       setForm(createInitialForm(canExportAll, canExportArea))
       setProcessing(false)
+      setProgress(0)
     }
   }, [isOpen, canExportAll, canExportArea])
 
@@ -45,10 +64,14 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
   ]
 
   const statusOptions = [
-    { label: "All", value: "" },
+    { label: "All statuses", value: "" },
     { label: "Open", value: "open" },
     { label: "Closed", value: "closed" },
-    { label: "Report", value: "report" },
+  ]
+  const categoryOptions = [
+    { label: "All types", value: "" },
+    { label: "Issue", value: "ISSUE" },
+    { label: "Report", value: "REPORT" },
   ]
 
   const handleCheckboxChange = (id, type, checked) => {
@@ -98,6 +121,7 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setProcessing(true)
+    setProgress(0)
 
     const submitForm = {
       ...form,
@@ -114,6 +138,7 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
       submitForm.activity_ids.forEach((id) => params.append("activity_ids[]", id))
     }
     if (submitForm.status) params.append("status", submitForm.status)
+    if (submitForm.category) params.append("category", submitForm.category)
     if (submitForm.author_ids.length > 0) {
       submitForm.author_ids.forEach((id) => params.append("author_ids[]", id))
     }
@@ -122,11 +147,51 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
     const url = `/reports/export/${submitForm.type}?${params.toString()}`
 
     try {
-      window.open(url, "_blank")
-      showStatusModal("success", "Success", "Export started")
+      const response = await fetch(url, { headers: { Accept: "application/json" }, credentials: "same-origin" })
+      if (!response.ok) {
+        throw await responseError(response)
+      }
+
+      if (submitForm.type === "pdf") {
+        const totalBatches = Math.max(1, Number(response.headers.get("X-Export-Total-Batches")) || 1)
+        const firstPart = await response.blob()
+        setProgress(Math.round(90 / totalBatches))
+
+        if (totalBatches === 1) {
+          downloadBlob(firstPart, "Reports.pdf")
+        } else {
+          const { default: JSZip } = await import("jszip")
+          const zip = new JSZip()
+          const digits = String(totalBatches).length
+          zip.file(`Reports_part_${String(1).padStart(digits, "0")}.pdf`, firstPart)
+
+          for (let batch = 2; batch <= totalBatches; batch += 1) {
+            const batchResponse = await fetch(`${url}&batch=${batch}`, { headers: { Accept: "application/json" }, credentials: "same-origin" })
+            if (!batchResponse.ok) throw await responseError(batchResponse)
+            zip.file(`Reports_part_${String(batch).padStart(digits, "0")}.pdf`, await batchResponse.blob())
+            setProgress(Math.round((batch / totalBatches) * 90))
+          }
+
+          const archive = await zip.generateAsync({ type: "blob", compression: "STORE" }, ({ percent }) => {
+            setProgress(90 + Math.round(percent / 10))
+          })
+          const date = new Intl.DateTimeFormat("en-CA").format(new Date())
+          downloadBlob(archive, `Reports_${date}.zip`)
+        }
+        setProgress(100)
+        showStatusModal("success", "Export ready", totalBatches === 1 ? "Your PDF download has started." : `Your ${totalBatches}-part PDF archive has been downloaded.`)
+        onClose()
+        return
+      }
+
+      const blob = await response.blob()
+      const disposition = response.headers.get("Content-Disposition") || ""
+      const filename = disposition.match(/filename="?([^";]+)"?/i)?.[1] || `reports.${submitForm.type === "excel" ? "xlsx" : "pdf"}`
+      downloadBlob(blob, filename)
+      showStatusModal("success", "Export ready", "Your download has started.")
       onClose()
-    } catch {
-      showStatusModal("error", "Error", "Failed to export")
+    } catch (error) {
+      showStatusModal("error", "Export failed", error instanceof Error ? error.message : "Failed to export reports.")
     } finally {
       setProcessing(false)
     }
@@ -145,11 +210,18 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
             itemList={typeOptions}
             required
           />
+          {form.type === "pdf" && <p className="text-xs leading-5 text-muted-foreground">Large exports are processed in smaller parts and combined into one ZIP automatically. Keep this window open until the download starts.</p>}
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <InputDate label="Start date" value={form.start_date} onChange={(event) => setForm((current) => ({ ...current, start_date: event.target.value }))} />
             <InputDate label="End date" value={form.end_date} min={form.start_date || undefined} onChange={(event) => setForm((current) => ({ ...current, end_date: event.target.value }))} />
           </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <InputDropdown label="Type" object={categoryOptions.find((item) => item.value === form.category)} setObject={(item) => setForm((current) => ({ ...current, category: item.value, status: item.value === "REPORT" ? "" : current.status }))} itemList={categoryOptions} />
+            <InputDropdown label="Issue status" object={statusOptions.find((item) => item.value === form.status)} setObject={(item) => setForm((current) => ({ ...current, status: item.value }))} itemList={statusOptions} disabled={form.category === "REPORT"} />
+          </div>
+          <p className="-mt-2 text-xs leading-5 text-muted-foreground">{form.category === "REPORT" ? "Reports do not have an open or closed status." : "Open and closed apply only to issues. All statuses includes reports when all types are selected."}</p>
 
           {users.length > 1 && (
             <div>
@@ -234,8 +306,6 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
             </div>
           </div>
 
-          <InputDropdown label="Status" object={statusOptions.find((item) => item.value === form.status)} setObject={(item) => setForm({ ...form, status: item.value })} itemList={statusOptions} />
-
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
               <input
@@ -258,7 +328,9 @@ export default function ExportForm({ isOpen, onClose, areas, activities, users, 
         </ModalBody>
         <ModalFooter>
           <BtnDefault outline onClick={onClose} className="w-full">Cancel</BtnDefault>
-          <BtnDefault form="export-report-form" type="submit" loading={processing} className="w-full">Export</BtnDefault>
+          <BtnDefault form="export-report-form" type="submit" loading={processing} className="w-full">
+            {processing && form.type === "pdf" ? `Generating${progress > 0 ? ` ${progress}%` : "..."}` : "Export"}
+          </BtnDefault>
         </ModalFooter>
       </ModalPanel>
     </ModalOverlay>

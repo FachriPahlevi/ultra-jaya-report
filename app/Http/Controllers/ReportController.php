@@ -27,7 +27,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
+use PhpOffice\PhpSpreadsheet\Worksheet\MemoryDrawing;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -322,9 +322,14 @@ class ReportController extends Controller
             'activity_ids' => ['sometimes', 'array'], 'activity_ids.*' => ['integer'],
             'author_ids' => ['sometimes', 'array'], 'author_ids.*' => ['integer'],
             'status' => ['nullable', Rule::in(['open', 'closed', 'report'])],
+            'category' => ['nullable', Rule::in(['ISSUE', 'REPORT'])],
             'my_reports_only' => ['nullable', Rule::in(['true', 'false', '1', '0'])],
+            'batch' => ['nullable', 'integer', 'min:1'],
         ]);
         $user = Auth::user();
+        if (($request->category === 'REPORT' && in_array($request->status, ['open', 'closed'], true)) || ($request->category === 'ISSUE' && $request->status === 'report')) {
+            throw ValidationException::withMessages(['category' => 'Open and closed statuses apply only to issues.']);
+        }
         $query = $this->visibleReportsFor($user)
             ->with(['author', 'area', 'activityType', 'subActivity']);
 
@@ -343,6 +348,9 @@ class ReportController extends Controller
         if ($request->filled('activity_ids')) {
             $query->whereIn('activity_id', $request->activity_ids);
         }
+        if ($request->filled('category')) {
+            $query->where('category_snapshot', $request->category);
+        }
         if ($request->status === 'report') {
             $query->where('category_snapshot', 'REPORT');
         } elseif ($request->filled('status')) {
@@ -352,9 +360,26 @@ class ReportController extends Controller
             $query->whereIn('author_id', $request->author_ids);
         }
 
+        if ($type === 'pdf') {
+            $perBatch = 75;
+            $total = (clone $query)->count();
+            $totalBatches = max(1, (int) ceil($total / $perBatch));
+            $batch = $request->integer('batch', 1);
+            if ($batch > $totalBatches) {
+                throw ValidationException::withMessages(['batch' => 'The requested PDF batch does not exist.']);
+            }
+
+            return $this->exportPdf(
+                $query->orderByDesc('created_at')->orderByDesc('id')->forPage($batch, $perBatch)->get(),
+                $batch,
+                $totalBatches,
+                $total,
+            );
+        }
+
         $reports = $query->latest()->get();
 
-        return $type === 'excel' ? $this->exportExcel($reports) : $this->exportPdf($reports);
+        return $this->exportExcel($reports);
     }
 
     private function exportExcel($reports): BinaryFileResponse
@@ -363,23 +388,27 @@ class ReportController extends Controller
         $sheet->fromArray(['No', 'Reporter', 'Area', 'Activity', 'Finding', 'Before Photo', 'After Photo', 'Status', 'Created At'], null, 'A1');
         $sheet->getStyle('A1:I1')->getFont()->setBold(true);
         $sheet->getColumnDimension('E')->setWidth(42);
-        $sheet->getColumnDimension('F')->setWidth(29);
-        $sheet->getColumnDimension('G')->setWidth(29);
+        $sheet->getColumnDimension('F')->setWidth(40);
+        $sheet->getColumnDimension('G')->setWidth(40);
         $sheet->getStyle('E:I')->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
         $sheet->getStyle('E:E')->getAlignment()->setWrapText(true);
         foreach ($reports as $index => $report) {
             $row = $index + 2;
             $displayStatus = $report->category_snapshot === 'REPORT' ? 'REPORT' : strtoupper($report->status);
             $sheet->fromArray([$index + 1, $report->author?->name, $report->area?->area, $report->subActivity?->name ?? $report->activityType?->name, $report->issue, '', '', $displayStatus, $report->created_at?->format('d-m-Y H:i')], null, "A{$row}");
-            $sheet->getRowDimension($row)->setRowHeight(120);
+            $sheet->getRowDimension($row)->setRowHeight(165);
             foreach (['photo_before' => 'F', 'photo_after' => 'G'] as $field => $column) {
-                $path = $report->{$field} && Storage::disk('public')->exists($report->{$field})
-                    ? Storage::disk('public')->path($report->{$field})
+                $photoDisk = Storage::disk(config('reports.photos.disk', 'public'));
+                $contents = $report->{$field} && $photoDisk->exists($report->{$field})
+                    ? $photoDisk->get($report->{$field})
                     : null;
-                if ($path) {
-                    $drawing = new Drawing;
-                    $drawing->setPath($path);
-                    $drawing->setWidthAndHeight(184, 144);
+                $image = is_string($contents) ? @imagecreatefromstring($contents) : false;
+                if ($image !== false) {
+                    $drawing = new MemoryDrawing;
+                    $drawing->setImageResource($image);
+                    $drawing->setRenderingFunction(MemoryDrawing::RENDERING_JPEG);
+                    $drawing->setMimeType(MemoryDrawing::MIMETYPE_JPEG);
+                    $drawing->setWidthAndHeight(250, 200);
                     $drawing->setCoordinates("{$column}{$row}");
                     $drawing->setOffsetX(8);
                     $drawing->setOffsetY(8);
@@ -391,6 +420,53 @@ class ReportController extends Controller
         (new Xlsx($sheet->getParent()))->save($file);
 
         return response()->download($file, 'reports-'.now()->format('Y-m-d_H-i-s').'.xlsx')->deleteFileAfterSend();
+    }
+
+    private function exportPdf($reports, int $batch, int $totalBatches, int $total): \Illuminate\Http\Response
+    {
+        $disk = Storage::disk(config('reports.photos.disk', 'public'));
+        $photos = [];
+        foreach ($reports as $report) {
+            foreach ([$report->photo_before, $report->photo_after] as $path) {
+                if (! $path || array_key_exists($path, $photos)) {
+                    continue;
+                }
+                $photos[$path] = null;
+                if (! $disk->exists($path)) {
+                    continue;
+                }
+                $source = @imagecreatefromstring($disk->get($path));
+                if ($source === false) {
+                    continue;
+                }
+                $scale = min(360 / max(imagesx($source), imagesy($source)), 1);
+                $thumbnail = imagecreatetruecolor(max(1, (int) round(imagesx($source) * $scale)), max(1, (int) round(imagesy($source) * $scale)));
+                imagecopyresampled($thumbnail, $source, 0, 0, 0, 0, imagesx($thumbnail), imagesy($thumbnail), imagesx($source), imagesy($source));
+                ob_start();
+                imagejpeg($thumbnail, null, 75);
+                $encoded = ob_get_clean();
+                imagedestroy($source);
+                imagedestroy($thumbnail);
+                if (is_string($encoded)) {
+                    $photos[$path] = 'data:image/jpeg;base64,'.base64_encode($encoded);
+                }
+            }
+        }
+
+        $pdf = Pdf::loadView('exports.reports', compact('reports', 'photos'))
+            ->setPaper('a4', 'landscape')
+            ->setOptions([
+                'defaultFont' => 'Times New Roman',
+                'isRemoteEnabled' => false,
+                'isHtml5ParserEnabled' => true,
+                'isPhpEnabled' => false,
+            ]);
+        $response = $pdf->download(sprintf('Reports_part_%02d.pdf', $batch));
+        $response->headers->set('X-Export-Batch', (string) $batch);
+        $response->headers->set('X-Export-Total-Batches', (string) $totalBatches);
+        $response->headers->set('X-Export-Total-Reports', (string) $total);
+
+        return $response;
     }
 
     private function exportCsv($reports): StreamedResponse
@@ -418,20 +494,6 @@ class ReportController extends Controller
 
             fclose($handle);
         }, 'reports-'.now()->format('Y-m-d_H-i-s').'.csv');
-    }
-
-    private function exportPdf($reports): \Illuminate\Http\Response
-    {
-        $pdf = Pdf::loadView('exports.reports', ['reports' => $reports]);
-        $pdf->setPaper('a4', 'landscape');
-        $pdf->setOptions([
-            'defaultFont' => 'Times New Roman',
-            'isRemoteEnabled' => false,
-            'isHtml5ParserEnabled' => true,
-            'isPhpEnabled' => false,
-        ]);
-
-        return $pdf->download('Reports_'.date('Y-m-d').'.pdf');
     }
 
     private function storeRules(): array

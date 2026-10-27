@@ -61,10 +61,24 @@
     }
 
     .card {
+      width: 100%;
       border: 1px solid #cccccc;
-      border-radius: 3px;
+      border-collapse: separate;
+      border-spacing: 0;
       margin-bottom: 10px;
       page-break-inside: avoid;
+      page-break-before: auto;
+      page-break-after: auto;
+    }
+
+    .card-row,
+    .card-cell {
+      page-break-inside: avoid;
+    }
+
+    .card-cell {
+      padding: 0;
+      vertical-align: top;
     }
 
     .badge {
@@ -209,15 +223,14 @@
     {{-- CARDS --}}
     @foreach($reports as $report)
     @php
-    $photoBefore=null;
-    if($report->photo_before && file_exists(storage_path('app/public/'.$report->photo_before)))
-    $photoBefore='data:image/jpeg;base64,'.base64_encode(file_get_contents(storage_path('app/public/'.$report->photo_before)));
-    $photoAfter=null;
-    if($report->photo_after && file_exists(storage_path('app/public/'.$report->photo_after)))
-    $photoAfter='data:image/jpeg;base64,'.base64_encode(file_get_contents(storage_path('app/public/'.$report->photo_after)));
+    $photoBefore=$report->photo_before ? ($photos[$report->photo_before] ?? null) : null;
+    $photoAfter=$report->photo_after ? ($photos[$report->photo_after] ?? null) : null;
     $done=$report->status === 'closed';
     @endphp
-    <div class="card">
+    <table class="card" role="presentation">
+      <tbody>
+      <tr class="card-row">
+      <td class="card-cell">
       <table style="width:100%;padding:6px 10px">
         <tr>
           <td style="font-size:9pt;font-weight:bold;color:black;letter-spacing:1.5px;vertical-align:middle">REPORT &nbsp;#{{ sprintf('%04d',$report->id) }}</td>
@@ -295,7 +308,10 @@
           </td>
         </tr>
       </table>
-    </div>
+      </td>
+      </tr>
+      </tbody>
+    </table>
     @endforeach
 
     {{-- SIGNATURE --}}

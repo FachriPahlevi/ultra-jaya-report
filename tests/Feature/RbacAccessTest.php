@@ -13,12 +13,28 @@ use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class RbacAccessTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_retired_permissions_are_not_seeded(): void
+    {
+        $this->seed(RoleSeeder::class);
+
+        $this->assertSame(0, Permission::query()->whereIn('name', [
+            'menu.dashboard',
+            'menu.reports',
+            'menu.areas',
+            'menu.activities',
+            'menu.settings',
+            'areas.assign.supervisor',
+            'settings.manage',
+        ])->count());
+    }
 
     public function test_reseeding_preserves_permissions_changed_in_settings(): void
     {

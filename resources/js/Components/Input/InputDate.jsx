@@ -16,12 +16,14 @@ function toIsoDate(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
 }
 
-function displayDate(value) {
+function displayDate(value, locale) {
   const date = parseDate(value)
-  return date ? new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", year: "numeric" }).format(date) : ""
+  return date ? new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", year: "numeric" }).format(date) : ""
 }
 
-export default function InputDate({ id, label, value = "", onChange, min, max, required = false, disabled = false, error, placeholder = "Select date", className = "" }) {
+export default function InputDate({ id, label, value = "", onChange, min, max, required = false, disabled = false, error, placeholder, locale = "en-US", className = "" }) {
+  const isIndonesian = locale.startsWith("id")
+  const weekdays = isIndonesian ? ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"] : WEEKDAYS
   const generatedId = useId()
   const fieldId = id || generatedId
   const [open, setOpen] = useState(false)
@@ -109,18 +111,18 @@ export default function InputDate({ id, label, value = "", onChange, min, max, r
   const withinRange = (date) => (!min || date >= min) && (!max || date <= max)
 
   const calendar = (
-    <div ref={calendarRef} role="dialog" aria-label={`${label || "Date"} calendar`} className={`w-full overflow-y-auto bg-card p-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-xl sm:p-3 ${mobile ? "max-h-[85dvh] rounded-t-2xl border-t border-border" : "rounded-xl border border-border"}`} style={mobile ? undefined : { width: position?.width }}>
+    <div ref={calendarRef} role="dialog" aria-label={isIndonesian ? `Kalender ${label || "tanggal"}` : `${label || "Date"} calendar`} className={`w-full overflow-y-auto bg-card p-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-xl sm:p-3 ${mobile ? "max-h-[85dvh] rounded-t-2xl border-t border-border" : "rounded-xl border border-border"}`} style={mobile ? undefined : { width: position?.width }}>
       {mobile && <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-border" aria-hidden="true" />}
       <div className="mb-3 flex items-center justify-between gap-2 px-3 sm:px-1">
-        <p className="text-sm font-semibold text-foreground">{new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(month)}</p>
+        <p className="text-sm font-semibold text-foreground">{new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(month)}</p>
         <div className="flex items-center gap-1">
-          <button type="button" onClick={() => setMonth(new Date(year, monthIndex - 1, 1))} aria-label="Previous month" className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary"><ChevronLeft className="h-4 w-4" /></button>
-          <button type="button" onClick={() => setMonth(new Date(year, monthIndex + 1, 1))} aria-label="Next month" className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary"><ChevronRight className="h-4 w-4" /></button>
-          {mobile && <button type="button" onClick={close} aria-label="Close calendar" className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary"><X className="h-4 w-4" /></button>}
+          <button type="button" onClick={() => setMonth(new Date(year, monthIndex - 1, 1))} aria-label={isIndonesian ? "Bulan sebelumnya" : "Previous month"} className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary"><ChevronLeft className="h-4 w-4" /></button>
+          <button type="button" onClick={() => setMonth(new Date(year, monthIndex + 1, 1))} aria-label={isIndonesian ? "Bulan berikutnya" : "Next month"} className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary"><ChevronRight className="h-4 w-4" /></button>
+          {mobile && <button type="button" onClick={close} aria-label={isIndonesian ? "Tutup kalender" : "Close calendar"} className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary"><X className="h-4 w-4" /></button>}
         </div>
       </div>
       <div className="grid grid-cols-7 text-center text-xs font-medium text-muted-foreground sm:px-1">
-        {WEEKDAYS.map((day) => <span key={day} className="py-2">{day}</span>)}
+        {weekdays.map((day) => <span key={day} className="py-2">{day}</span>)}
       </div>
       <div className="grid grid-cols-7 sm:px-1">
         {Array.from({ length: leadingDays }, (_, index) => <span key={`blank-${index}`} aria-hidden="true" />)}
@@ -128,20 +130,20 @@ export default function InputDate({ id, label, value = "", onChange, min, max, r
           const date = new Date(year, monthIndex, index + 1)
           const iso = toIsoDate(date)
           const selected = iso === value
-          return <button key={iso} type="button" disabled={!withinRange(iso)} onClick={() => selectDate(date)} aria-label={new Intl.DateTimeFormat("en-US", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(date)} aria-pressed={selected} className={`min-h-11 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:text-muted-foreground/40 ${selected ? "bg-primary text-primary-foreground" : iso === today ? "bg-primary/10 text-primary hover:bg-primary/15" : "text-foreground hover:bg-muted"}`}>{index + 1}</button>
+          return <button key={iso} type="button" disabled={!withinRange(iso)} onClick={() => selectDate(date)} aria-label={new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(date)} aria-pressed={selected} className={`min-h-11 rounded-lg text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:text-muted-foreground/40 ${selected ? "bg-primary text-primary-foreground" : iso === today ? "bg-primary/10 text-primary hover:bg-primary/15" : "text-foreground hover:bg-muted"}`}>{index + 1}</button>
         })}
       </div>
       <div className="mt-3 flex gap-2 border-t border-border px-3 pt-3 sm:px-0">
-        <button type="button" disabled={!withinRange(today)} onClick={() => selectDate(new Date())} className="min-h-11 flex-1 rounded-lg border border-border text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-40">Today</button>
-        {!required && <button type="button" onClick={() => { onChange({ target: { value: "" } }); close() }} className="min-h-11 flex-1 rounded-lg border border-border text-sm font-semibold text-muted-foreground hover:bg-muted">Clear</button>}
+        <button type="button" disabled={!withinRange(today)} onClick={() => selectDate(new Date())} className="min-h-11 flex-1 rounded-lg border border-border text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-40">{isIndonesian ? "Hari ini" : "Today"}</button>
+        {!required && <button type="button" onClick={() => { onChange({ target: { value: "" } }); close() }} className="min-h-11 flex-1 rounded-lg border border-border text-sm font-semibold text-muted-foreground hover:bg-muted">{isIndonesian ? "Hapus" : "Clear"}</button>}
       </div>
     </div>
   )
 
   return (
     <>
-      <InputText id={fieldId} label={label} value={displayDate(value)} onChange={() => {}} onClick={openCalendar} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openCalendar() } }} icon={CalendarDays} placeholder={placeholder} required={required} disabled={disabled} error={error} className={`min-w-0 ${className}`} readOnly aria-haspopup="dialog" aria-expanded={open} autoComplete="off" />
-      {open && createPortal(mobile ? <div className="fixed inset-0 z-[210] flex items-end"><button type="button" aria-label="Close calendar" onClick={close} className="absolute inset-0 bg-slate-950/55" /><div className="relative w-full">{calendar}</div></div> : <div className="fixed z-[110]" style={position}>{calendar}</div>, document.body)}
+      <InputText id={fieldId} label={label} value={displayDate(value, locale)} onChange={() => {}} onClick={openCalendar} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openCalendar() } }} icon={CalendarDays} placeholder={placeholder ?? (isIndonesian ? "Pilih tanggal" : "Select date")} required={required} disabled={disabled} error={error} className={`min-w-0 ${className}`} readOnly aria-haspopup="dialog" aria-expanded={open} autoComplete="off" />
+      {open && createPortal(mobile ? <div className="fixed inset-0 z-[210] flex items-end"><button type="button" aria-label={isIndonesian ? "Tutup kalender" : "Close calendar"} onClick={close} className="absolute inset-0 bg-slate-950/55" /><div className="relative w-full">{calendar}</div></div> : <div className="fixed z-[110]" style={position}>{calendar}</div>, document.body)}
     </>
   )
 }

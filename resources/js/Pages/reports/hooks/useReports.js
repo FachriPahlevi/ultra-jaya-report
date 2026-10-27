@@ -6,7 +6,7 @@ import { useAuthorization } from "@/hooks/useAuthorization"
 const DEFAULT_PER_PAGE = 10
 
 export function useReports(reports = []) {
-  const { props } = usePage()
+  const { props, url } = usePage()
   const { setStatusModalProps } = useStatusModal()
   const { can } = useAuthorization()
 
@@ -33,16 +33,20 @@ export function useReports(reports = []) {
   const isReportDeletable = (report) => report?.can?.delete === true
 
   const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState([])
+  const initialFilters = new URLSearchParams(url.split("?")[1] || "")
+  const initialStatus = initialFilters.get("status")
+  const initialArea = initialFilters.get("area_id")
+  const initialDate = (name) => /^\d{4}-\d{2}-\d{2}$/.test(initialFilters.get(name) || "") ? initialFilters.get(name) : ""
+  const [statusFilter, setStatusFilter] = useState(() => ["open", "closed", "report"].includes(initialStatus) ? [initialStatus] : [])
   const [typeFilter, setTypeFilter] = useState([])
-  const [areaFilter, setAreaFilter] = useState([])
+  const [areaFilter, setAreaFilter] = useState(() => /^\d+$/.test(initialArea || "") ? [initialArea] : [])
   const [roleFilter, setRoleFilter] = useState([])
   const [authorFilter, setAuthorFilter] = useState([])
   const [subAreaFilter, setSubAreaFilter] = useState([])
   const [photoFilter, setPhotoFilter] = useState("")
   const [sortBy, setSortBy] = useState("latest")
-  const [dateFrom, setDateFrom] = useState("")
-  const [dateTo, setDateTo] = useState("")
+  const [dateFrom, setDateFrom] = useState(() => initialDate("date_from"))
+  const [dateTo, setDateTo] = useState(() => initialDate("date_to"))
   const [myReportsOnly, setMyReportsOnly] = useState(false)
   const [perPage, setPerPage] = useState(DEFAULT_PER_PAGE)
   const [page, setPage] = useState(1)
@@ -98,8 +102,8 @@ export function useReports(reports = []) {
         if (photoFilter === "before" && !r.photo_before) return false
         if (photoFilter === "after" && !r.photo_after) return false
         if (photoFilter === "complete" && (!r.photo_before || !r.photo_after)) return false
-        if (dateFrom && new Date(r.created_at) < new Date(dateFrom)) return false
-        if (dateTo && new Date(r.created_at) > new Date(dateTo + "T23:59:59")) return false
+        if (dateFrom && new Date(r.created_at) < new Date(`${dateFrom}T00:00:00.000Z`)) return false
+        if (dateTo && new Date(r.created_at) > new Date(`${dateTo}T23:59:59.999Z`)) return false
         if (q) {
           const searchable = [r.issue, r.activity, r.author?.name, r.activity_type?.name, r.activity_type?.description, r.sub_activity?.name, r.sub_activity?.description]
             .filter(Boolean)
