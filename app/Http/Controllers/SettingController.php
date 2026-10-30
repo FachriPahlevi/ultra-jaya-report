@@ -6,7 +6,6 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\BusinessException;
 use App\Models\Area;
-use App\Models\SubArea;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -15,7 +14,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Permission;
@@ -314,11 +312,6 @@ class SettingController extends Controller
             if (collect($areaIds)->map(fn ($id) => (int) $id)->sort()->values()->all() !== $existingAreas
                 || collect($subAreaIds)->map(fn ($id) => (int) $id)->sort()->values()->all() !== $existingSubAreas) {
                 throw new BusinessException('Anda tidak memiliki izin untuk mengubah penugasan lokasi.', 403);
-            }
-        }
-        foreach (SubArea::whereIn('id', $subAreaIds)->lockForUpdate()->withCount('supervisors')->get() as $subArea) {
-            if (! $subArea->supervisors()->whereKey($user->id)->exists() && $subArea->supervisors_count >= $subArea->max_personnel) {
-                throw ValidationException::withMessages(['sub_area_ids' => "Kapasitas sub-area {$subArea->name} sudah penuh."]);
             }
         }
         $user->managedAreas()->sync($areaIds);

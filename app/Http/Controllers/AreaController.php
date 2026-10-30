@@ -89,9 +89,6 @@ class AreaController extends Controller
 
         DB::transaction(function () use ($subArea, $ids): void {
             $locked = SubArea::whereKey($subArea->id)->lockForUpdate()->firstOrFail();
-            if (count($ids) > $locked->max_personnel) {
-                throw ValidationException::withMessages(['user_ids' => "This sub-area allows up to {$locked->max_personnel} assignees."]);
-            }
             $locked->supervisors()->sync($ids);
         });
 
@@ -162,13 +159,7 @@ class AreaController extends Controller
     {
         $this->ensureSubAreaBelongsToArea($area, $subArea);
         $validated = $request->validate($this->subAreaRules($area, $subArea));
-        DB::transaction(function () use ($subArea, $validated): void {
-            $locked = SubArea::whereKey($subArea->id)->lockForUpdate()->firstOrFail();
-            if ($validated['max_personnel'] < $locked->supervisors()->count()) {
-                throw ValidationException::withMessages(['max_personnel' => 'Capacity cannot be lower than the number of assigned users.']);
-            }
-            $locked->update($validated);
-        });
+        $subArea->update($validated);
 
         return response()->json(['data' => $subArea->fresh()]);
     }

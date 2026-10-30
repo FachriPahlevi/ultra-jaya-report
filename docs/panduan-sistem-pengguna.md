@@ -121,12 +121,12 @@ Role sistem bawaan tidak dapat diganti nama atau dihapus. Role custom yang masih
 
 ## 4. Alur persiapan oleh pengelola
 
-1. Siapkan Area dan Sub-area beserta kapasitas penanggung jawabnya.
+1. Siapkan Area dan Sub-area.
 2. Buat Aktivitas, lalu tambahkan Sub-aktivitas dari Aktivitas terkait.
 3. Pengguna dengan izin mengatur kategori menentukan kategori setiap Sub-aktivitas; secara bawaan Super Admin.
 4. Buat akun pengguna dan pilih role yang sesuai.
 5. Untuk pengguna dengan izin review, tentukan minimal satu Area pada Pengaturan Pengguna.
-6. Untuk pengguna dengan izin close sesuai penugasan, tentukan minimal satu Sub-area pada Pengaturan Pengguna. Penugasan mengikuti kapasitas Sub-area.
+6. Di halaman Area, gunakan menu Sub-area untuk menugaskan satu atau lebih pengguna dengan izin close.
 7. Di halaman Aktivitas, buka menu titik tiga Aktivitas dan pilih **Atur reviewer** untuk menugaskan pengguna dengan izin review.
 8. Di menu titik tiga Sub-aktivitas, pilih **Atur penutup tiket** untuk menugaskan pengguna dengan izin close.
 

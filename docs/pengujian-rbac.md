@@ -1,6 +1,6 @@
 # Seeder Laporan Pengujian
 
-Seeder pengujian hanya menyiapkan laporan dan foto contoh. Pengguna, role, permission, Area, Sub-area, Aktivitas, Sub-aktivitas, kategori, kapasitas, password, dan penugasan yang sudah ada tidak dibuat, diubah, atau dihapus.
+Seeder pengujian menyiapkan laporan, foto contoh, dan assignment tambahan untuk QA. Pengguna, role, permission, Area, Sub-area, Aktivitas, Sub-aktivitas, kategori, password, dan assignment yang sudah ada tidak dihapus atau ditimpa.
 
 ## Mulai dari database pengujian bersih
 
@@ -42,7 +42,7 @@ Jika belum tersedia, command berhenti tanpa menambahkan data master. Untuk datab
 - Laporan disebarkan bergiliran ke seluruh Sub-area aktif pada Area aktif dan seluruh Sub-aktivitas pada Aktivitas aktif. Dengan demikian, semua Area dan Aktivitas yang memiliki anak yang dapat dipilih mendapat laporan. Jika diperlukan untuk cakupan ini, jumlah laporan per pengguna dapat melebihi minimum yang diminta. Master tanpa anak yang valid perlu dilengkapi terlebih dahulu, bukan dibuat otomatis oleh seeder. Pembatasan visibilitas tetap mengikuti permission dan penugasan pengguna.
 - Kategori mengikuti Sub-aktivitas asli. Jika semua Sub-aktivitas masih ISSUE, laporan uji juga semuanya ISSUE. Atur kategori REPORT sendiri pada data riil jika ingin menguji REPORT.
 - Sebagian ISSUE dibuat selesai hanya jika tersedia pengguna aktif dengan izin close seluruh data atau penugasan close yang sesuai. Jika tidak ada penutup yang memenuhi syarat, laporan tetap terbuka.
-- SPV aktif dengan permission `reports.solve.own.area` diberi assignment Sub-area yang masih memiliki kapasitas dan Sub-activity ISSUE, tanpa menghapus assignment yang ada. Seeder menambahkan ISSUE terbuka dari pengguna lain agar aksi close dapat diuji. Jika tidak ada kapasitas, ISSUE, atau reporter lain, command menampilkan peringatan dan tidak memaksakan assignment.
+- SPV aktif dengan permission `reports.solve.own.area` diberi assignment Sub-area dan Sub-activity ISSUE, tanpa menghapus assignment yang ada. Seeder menambahkan ISSUE terbuka dari pengguna lain agar aksi close dapat diuji. Jika tidak ada ISSUE atau reporter lain, command menampilkan peringatan.
 - Manager aktif dengan permission `reports.review.area` diberi assignment Area dan Activity dari master aktif, tanpa menghapus assignment yang ada. Seeder menambahkan laporan dari pengguna lain untuk menguji akses review. Jika tidak ada reporter lain, command menampilkan peringatan.
 - REPORT selalu terbuka dan tidak diberi data penutupan.
 - Tanggal tersebar dari hari ini hingga sekitar 110 hari lalu.

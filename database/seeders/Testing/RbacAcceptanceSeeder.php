@@ -46,14 +46,8 @@ class RbacAcceptanceSeeder extends Seeder
                 }
                 $location = $subAreas->first(fn (SubArea $area) => $supervisor->supervisedSubAreas->contains('id', $area->id));
                 if (! $location) {
-                    foreach ($subAreas as $candidate) {
-                        $locked = SubArea::whereKey($candidate->id)->lockForUpdate()->firstOrFail();
-                        if ($locked->supervisors()->count() < $locked->max_personnel) {
-                            $locked->supervisors()->syncWithoutDetaching([$supervisor->id]);
-                            $location = $candidate;
-                            break;
-                        }
-                    }
+                    $location = $subAreas->get($supervisor->id % $subAreas->count());
+                    $location->supervisors()->syncWithoutDetaching([$supervisor->id]);
                 }
                 if (! $location) {
                     $unassigned[] = $supervisor->name;
@@ -169,7 +163,7 @@ class RbacAcceptanceSeeder extends Seeder
         });
         $this->command?->info(sprintf('%d laporan dasar untuk %d pengguna dan %d skenario close SPV disiapkan. Assignment uji ditambahkan tanpa menghapus assignment yang ada.', $total, $users->count(), array_sum(array_map('count', $scenarios))));
         if ($unassigned !== []) {
-            $this->command?->warn('SPV tanpa skenario close (kapasitas Sub-area, ISSUE, atau reporter lain tidak tersedia): '.implode(', ', $unassigned));
+            $this->command?->warn('SPV tanpa skenario close (ISSUE atau reporter lain tidak tersedia): '.implode(', ', $unassigned));
         }
         $this->command?->info(sprintf('%d skenario review Manager disiapkan.', array_sum(array_map('count', $reviewScenarios))));
         if ($reviewersWithoutReporter !== []) {
