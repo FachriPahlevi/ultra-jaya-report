@@ -19,7 +19,7 @@ class AreaAssignmentTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_assignment_permissions_candidates_capacity_and_parent_are_enforced(): void
+    public function test_multiple_assignees_and_assignment_permissions_are_enforced(): void
     {
         $this->seed(RoleSeeder::class);
         $admin = User::factory()->create();
@@ -45,8 +45,10 @@ class AreaAssignmentTest extends TestCase
         $this->actingAs($admin)->putJson(route('areas.assignees.update', $area), ['user_ids' => [$supervisor->id]])->assertUnprocessable();
         $this->actingAs($admin)->putJson(route('areas.sub-areas.assignees.update', [$otherArea, $subArea]), ['user_ids' => [$supervisor->id]])->assertNotFound();
         $this->actingAs($admin)->putJson(route('areas.sub-areas.assignees.update', [$area, $subArea]), ['user_ids' => [$supervisor->id]])->assertOk();
-        $this->actingAs($admin)->putJson(route('areas.sub-areas.assignees.update', [$area, $subArea]), ['user_ids' => [$supervisor->id, $otherSupervisor->id]])->assertUnprocessable();
-        $this->assertSame([$supervisor->id], $subArea->supervisors()->pluck('users.id')->all());
+        $this->actingAs($admin)->putJson(route('areas.sub-areas.assignees.update', [$area, $subArea]), ['user_ids' => [$supervisor->id, $otherSupervisor->id]])->assertOk();
+        $this->assertEqualsCanonicalizing([$supervisor->id, $otherSupervisor->id], $subArea->supervisors()->pluck('users.id')->all());
+        $admin->givePermissionTo('areas.edit');
+        $this->actingAs($admin)->putJson(route('areas.sub-areas.update', [$area, $subArea]), ['name' => 'Updated sub-area', 'max_personnel' => 1])->assertOk();
         $this->actingAs($admin)->putJson(route('areas.sub-areas.assignees.update', [$area, $subArea]), ['user_ids' => []])->assertOk();
         $this->assertSame(0, $subArea->supervisors()->count());
     }
@@ -58,18 +60,20 @@ class AreaAssignmentTest extends TestCase
         $admin->givePermissionTo(['areas.view', 'areas.view.all', 'users.assign.area']);
         $supervisor = User::factory()->create();
         $supervisor->assignRole('SUPERVISOR');
+        $otherSupervisor = User::factory()->create()->assignRole('SUPERVISOR');
         $area = Area::create(['area' => 'Test Area', 'is_active' => true]);
         $subArea = SubArea::create(['area_id' => $area->id, 'name' => 'Test Sub-area', 'max_personnel' => 1, 'is_active' => true]);
         $activity = Activity::create(['name' => 'Test Activity', 'is_active' => true]);
         $subActivity = SubActivity::create(['activity_id' => $activity->id, 'name' => 'Test Sub-activity', 'category' => 'ISSUE']);
-        $subActivity->supervisors()->attach($supervisor);
-        $this->actingAs($admin)->putJson(route('areas.sub-areas.assignees.update', [$area, $subArea]), ['user_ids' => [$supervisor->id]])->assertOk();
+        $subActivity->supervisors()->attach([$supervisor->id, $otherSupervisor->id]);
+        $this->actingAs($admin)->putJson(route('areas.sub-areas.assignees.update', [$area, $subArea]), ['user_ids' => [$supervisor->id, $otherSupervisor->id]])->assertOk();
         $this->actingAs($supervisor)->post(route('reports.store'), [
             'area_activity' => $area->id, 'sub_area_id' => $subArea->id,
             'type_activity' => $activity->id, 'sub_activity_id' => $subActivity->id, 'issue' => 'A finding',
         ])->assertRedirect()->assertSessionHasNoErrors();
         $report = Report::firstOrFail();
         $this->assertTrue($supervisor->can('close', $report));
+        $this->assertTrue((new ReportCapabilities($otherSupervisor->fresh()))->close($report));
         $subActivity->supervisors()->detach($supervisor);
         $this->assertFalse((new ReportCapabilities($supervisor->fresh()))->close($report));
         $this->actingAs($supervisor->fresh())->post(route('reports.close', $report), ['close_comment' => 'Resolved'])->assertForbidden();

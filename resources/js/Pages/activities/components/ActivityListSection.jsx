@@ -54,17 +54,13 @@ function ReportSummary({ count }) {
 function AssignmentList({ people = [], emptyLabel = "—", compact = false }) {
   if (people.length === 0) return <span className="text-sm text-slate-400">{emptyLabel}</span>
 
-  const visiblePeople = people.slice(0, 2)
-  const remainingCount = people.length - visiblePeople.length
-
   return (
     <div className={`flex min-w-0 flex-wrap items-center gap-1.5 ${compact ? "mt-1" : ""}`}>
-      {visiblePeople.map((person) => (
-        <span key={person.id} title={person.name} className="max-w-[132px] truncate rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
+      {people.map((person) => (
+        <span key={person.id} className="max-w-full break-words rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
           {person.name}
         </span>
       ))}
-      {remainingCount > 0 && <span className="rounded-md bg-slate-200 px-2 py-1 text-xs font-semibold tabular-nums text-slate-700">+{remainingCount}</span>}
     </div>
   )
 }

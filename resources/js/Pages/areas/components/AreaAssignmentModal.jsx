@@ -12,8 +12,8 @@ export default function AreaAssignmentModal({ target, options, values, onChange,
         <ModalHeader title={isSubArea ? "Assign ticket closers" : "Assign reviewers"} description={isSubArea ? `${target.area.area} / ${target.subArea.name}` : target.area.area} onClose={onClose} />
         <ModalBody>
           <form id="area-assignment-form" onSubmit={onSubmit}>
-            <FilterMultiSelect label={isSubArea ? "Ticket closers" : "Reviewers"} values={values} options={options} onChange={onChange} placeholder="No users assigned" />
-            <p className="mt-3 text-xs leading-5 text-muted-foreground">{isSubArea ? `Capacity: ${target.subArea.max_personnel}. Ticket closers must also be assigned to the matching sub-activity.` : "Select users with review permission for this area."}</p>
+            <FilterMultiSelect label={isSubArea ? "Ticket closers" : "Reviewers"} values={values} options={options} onChange={onChange} placeholder="No users assigned" selectAll />
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">{isSubArea ? "Ticket closers must also be assigned to the matching sub-activity." : "Select users with review permission for this area."}</p>
             {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
           </form>
         </ModalBody>

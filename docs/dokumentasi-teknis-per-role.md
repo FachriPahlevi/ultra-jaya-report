@@ -396,7 +396,7 @@ Konsekuensinya, Supervisor dapat melihat ISSUE pada Sub-area tugasnya tetapi tom
 
 ## 6.7 Pengaturan assignment
 
-Supervisor dapat dibuat sebelum memiliki assignment. Pengguna dengan `users.assign.area` dan akses Area dapat menetapkannya melalui menu Sub-area, sesuai kapasitas dan permission close. Assignment Sub-activity tetap dilakukan pada halaman Activity. Tanpa kedua assignment, Supervisor tidak dapat menutup ISSUE dalam scope tersebut.
+Supervisor dapat dibuat sebelum memiliki assignment. Pengguna dengan `users.assign.area` dan akses Area dapat menetapkan beberapa closer melalui menu Sub-area, sesuai permission close. Assignment Sub-activity tetap dilakukan pada halaman Activity. Tanpa kedua assignment, Supervisor tidak dapat menutup ISSUE dalam scope tersebut.
 
 ---
 

@@ -333,7 +333,7 @@ Modul Activity mengelola struktur dua tingkat Activity → Sub-activity, categor
 
 ## 8.1 Tujuan
 
-Modul Area mengelola struktur Area → Sub-area, kapasitas personnel, PIC/reviewer area, supervisor Sub-area, dan lifecycle archive/restore/delete.
+Modul Area mengelola struktur Area → Sub-area, PIC/reviewer area, supervisor Sub-area, dan lifecycle archive/restore/delete.
 
 ## 8.2 Fitur
 
@@ -344,21 +344,21 @@ Modul Area mengelola struktur Area → Sub-area, kapasitas personnel, PIC/review
 | ARE-03 | Pagination/filter/sort | Mendukung 10, 25, 50, 100, atau seluruh data |
 | ARE-04 | Create Area | Membuat Area aktif dan otomatis membuat Sub-area `General` |
 | ARE-05 | Edit Area | Mengubah nama Area |
-| ARE-06 | Add/Edit Sub-area | Nama unik dalam Area dan kapasitas 1–100 |
+| ARE-06 | Add/Edit Sub-area | Nama unik dalam Area |
 | ARE-07 | Delete Sub-area | Hanya bila belum memiliki report |
 | ARE-08 | Archive Area | Soft delete untuk mempertahankan riwayat |
 | ARE-09 | Restore Area | Mengaktifkan kembali Area yang archived |
 | ARE-10 | Permanent delete | Hanya bila Area tidak memiliki report history |
 | ARE-11 | Scoped visibility | Tanpa `areas.view.all`, hanya Area aktif yang terkait PIC/Sub-area assignment pengguna |
 | ARE-12 | Assign reviewer | Menu Area mengatur pengguna dengan permission `reports.review.area` |
-| ARE-13 | Assign ticket closer | Menu Sub-area mengatur pengguna dengan permission close, sesuai kapasitas |
+| ARE-13 | Assign ticket closer | Menu Sub-area mengatur satu atau lebih pengguna dengan permission close |
 
 ## 8.3 Validasi dan aturan bisnis
 
 - Nama Area unik pada data aktif/non-archived.
-- Create Area selalu membuat Sub-area awal bernama `General` dengan kapasitas satu.
+- Create Area selalu membuat Sub-area awal bernama `General`.
 - Nama Sub-area unik di dalam Area.
-- Kapasitas Sub-area minimal satu dan maksimal 100.
+- Jumlah ticket closer per Sub-area tidak dibatasi oleh `max_personnel`; kolom lama dipertahankan untuk kompatibilitas.
 - Sub-area yang memiliki report tidak dapat dihapus.
 - Area dengan report history tidak dapat dihapus permanen.
 - `areas.view.all` tetap memerlukan `areas.view` untuk membuka halaman.
@@ -552,7 +552,7 @@ Automated QA harus memverifikasi semua lapisan berikut:
 
 ## Assignment lokasi untuk ticket closer
 
-Assignment reviewer Area dan ticket closer Sub-area tersedia melalui menu action pada halaman Area. Assignment Sub-activity tetap dilakukan pada halaman Activity. Keduanya diperlukan untuk menutup ISSUE dengan `reports.solve.own.area`; QA perlu menguji alur Area → Activity → close ISSUE serta batas kapasitas Sub-area.
+Assignment reviewer Area dan ticket closer Sub-area tersedia melalui menu action pada halaman Area. Assignment Sub-activity tetap dilakukan pada halaman Activity. Keduanya diperlukan untuk menutup ISSUE dengan `reports.solve.own.area`; QA perlu menguji alur Area → Activity → close ISSUE untuk beberapa closer.
 
 ## GAP-02 — Konsistensi bahasa response backend
 

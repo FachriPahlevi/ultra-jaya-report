@@ -1,11 +1,11 @@
 import { ChevronDown, Search, X } from "lucide-react"
 import { useMemo, useState } from "react"
 
-export default function FilterMultiSelect({ label, values = [], options = [], onChange, placeholder = "Semua", searchable = true }) {
+export default function FilterMultiSelect({ label, values = [], options = [], onChange, placeholder = "All", searchable = true, selectAll = false }) {
   const [query, setQuery] = useState("")
   const filtered = useMemo(() => options.filter((option) => option.label.toLowerCase().includes(query.trim().toLowerCase())), [options, query])
   const selected = options.filter((option) => values.includes(String(option.value)))
-  const summary = selected.length === 0 ? placeholder : selected.length <= 2 ? selected.map((option) => option.label).join(", ") : `${selected.length} pilihan aktif`
+  const summary = selected.length === 0 ? placeholder : selected.length <= 2 ? selected.map((option) => option.label).join(", ") : `${selected.length} selected`
 
   const toggle = (rawValue) => {
     const value = String(rawValue)
@@ -24,7 +24,7 @@ export default function FilterMultiSelect({ label, values = [], options = [], on
           {searchable && options.length > 6 && (
             <div className="relative mb-2.5">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari pilihan..." className="ui-field min-h-10 pl-9 text-sm" />
+              <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search options..." aria-label={`Search ${label}`} className="ui-field min-h-10 pl-9 text-sm" />
             </div>
           )}
           {selected.length > 0 && (
@@ -34,12 +34,32 @@ export default function FilterMultiSelect({ label, values = [], options = [], on
                   key={option.value}
                   type="button"
                   onClick={() => toggle(option.value)}
+                  aria-label={`Remove ${option.label}`}
                   className="inline-flex min-h-8 items-center gap-1 rounded-lg bg-slate-100 px-2.5 text-xs font-medium text-slate-700"
                 >
                   {option.label}
                   <X className="h-3 w-3" />
                 </button>
               ))}
+            </div>
+          )}
+          {(selectAll || values.length > 0) && (
+            <div className="mb-1 flex items-center justify-between gap-2 border-b border-border pb-1">
+              {values.length > 0 ? (
+                <button type="button" onClick={() => onChange([])} className="min-h-11 rounded-md px-2 text-xs font-semibold text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary">
+                  Clear selection
+                </button>
+              ) : <span />}
+              {selectAll ? (
+                <button
+                  type="button"
+                  onClick={() => onChange([...new Set([...values, ...filtered.map((option) => String(option.value))])])}
+                  disabled={filtered.length === 0 || filtered.every((option) => values.includes(String(option.value)))}
+                  className="min-h-11 rounded-md px-2 text-xs font-semibold text-primary outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary disabled:text-muted-foreground"
+                >
+                  {query.trim() ? "Select all matching" : "Select all"}
+                </button>
+              ) : <span />}
             </div>
           )}
           <div className="max-h-52 space-y-1 overflow-y-auto pr-1">
@@ -55,13 +75,8 @@ export default function FilterMultiSelect({ label, values = [], options = [], on
                 </label>
               )
             })}
-            {filtered.length === 0 && <p className="py-5 text-center text-xs text-muted-foreground">Pilihan tidak ditemukan.</p>}
+            {filtered.length === 0 && <p className="py-5 text-center text-xs text-muted-foreground">No options found.</p>}
           </div>
-          {values.length > 0 && (
-            <button type="button" onClick={() => onChange([])} className="mt-2 min-h-10 text-xs font-semibold text-primary">
-              Kosongkan pilihan
-            </button>
-          )}
         </div>
       </details>
     </fieldset>

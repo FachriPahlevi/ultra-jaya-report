@@ -15,7 +15,7 @@ export default function ActivityAssignmentModal({ isOpen, activity, values, opti
         <ModalHeader title={isSubActivity ? "Assign ticket closers" : "Assign reviewers"} description={activity.name} onClose={onClose} />
         <ModalBody>
           <form id="activity-assignment-form" onSubmit={onSubmit}>
-          <FilterMultiSelect label={roleLabel} values={values} options={options} onChange={onChange} placeholder={`No ${isSubActivity ? "ticket closers" : "reviewers"} assigned`} />
+          <FilterMultiSelect label={roleLabel} values={values} options={options} onChange={onChange} placeholder={`No ${isSubActivity ? "ticket closers" : "reviewers"} assigned`} selectAll />
           <p className="mt-3 text-xs leading-5 text-muted-foreground">
             {isSubActivity
               ? "Select users with permission to close tickets. They must also be assigned to the matching sub-area."

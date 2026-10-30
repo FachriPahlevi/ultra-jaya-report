@@ -181,7 +181,8 @@ class ManagementWorkflowTest extends TestCase
             'password' => 'password',
             'role' => 'SUPERVISOR',
             'sub_area_ids' => [$subArea->id],
-        ])->assertUnprocessable()->assertJsonValidationErrors('sub_area_ids');
+        ])->assertCreated();
+        $this->assertSame(2, $subArea->supervisors()->count());
     }
 
     public function test_default_roles_can_only_open_their_allowed_pages(): void
