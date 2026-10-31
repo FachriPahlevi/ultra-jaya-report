@@ -111,6 +111,7 @@ class ReportController extends Controller
         });
 
         return Inertia::render('reports/Index', [
+            'roleAccessEnabled' => (bool) config('activity_access.role_based'),
             'initialReportId' => $request->integer('selected_report') ?: null,
             'reports' => $reports,
             'areas' => Area::with(['managers:id,name', 'subAreas' => fn ($query) => $query->where('is_active', true)->when(! $canUseForm, fn ($subAreas) => $subAreas->whereIn('id', $visibleSubAreaIds))])
@@ -131,7 +132,7 @@ class ReportController extends Controller
                     ];
                 }),
             'activities' => Activity::with([
-                'children' => fn ($query) => $query->select('id', 'name', 'description', 'activity_id', 'category')->when(! $canUseForm, fn ($children) => $children->whereIn('id', $visibleSubActivityIds)),
+                'children' => fn ($query) => $query->select('id', 'name', 'description', 'activity_id', 'category')->when(! $canUseForm, fn ($children) => $children->whereIn('id', $visibleSubActivityIds))->when($canUseForm && config('activity_access.role_based'), fn ($children) => $children->whereHas('accessRoles', fn ($roles) => $roles->whereIn('roles.id', $user->roles()->select('roles.id')))),
             ])
                 ->where('is_active', true)
                 ->when(! $canUseForm, fn ($query) => $query->whereIn('id', $visibleActivityIds))

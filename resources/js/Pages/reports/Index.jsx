@@ -301,7 +301,7 @@ function ReportDetailModal({ report, isOpen, onClose, onCloseTicket, onEdit, onD
   )
 }
 
-export default function Index({ reports = [], areas = [], activities = [], users = [] }) {
+export default function Index({ reports = [], areas = [], activities = [], users = [], roleAccessEnabled = false }) {
   const r = useReports(reports)
 
   const exportAreas = [...new Map(reports.filter((report) => report.area).map((report) => [report.area.id, report.area])).values()]
@@ -540,7 +540,7 @@ export default function Index({ reports = [], areas = [], activities = [], users
         </div>
       )}
 
-      <ReportForm isOpen={r.isReportModalOpen} onClose={r.closeReportModal} report={r.editReport} areas={areas} activities={activities} users={users} />
+      <ReportForm isOpen={r.isReportModalOpen} onClose={r.closeReportModal} report={r.editReport} areas={areas} activities={activities} users={users} roleAccessEnabled={roleAccessEnabled} />
       <CloseTicketForm isOpen={r.isCloseTicketModalOpen} onClose={r.closeCloseTicketModal} report={r.ticketToClose} />
       <ExportForm
         isOpen={r.isExportModalOpen}

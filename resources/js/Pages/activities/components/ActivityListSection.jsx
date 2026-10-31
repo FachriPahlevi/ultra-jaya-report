@@ -65,7 +65,7 @@ function AssignmentList({ people = [], emptyLabel = "—", compact = false }) {
   )
 }
 
-function ActivityTree({ activities, expandedIds, onToggle, canEdit, canDelete, canAssignManager, canAssignSupervisor, onAddSub, onAssignUsers, onEdit, onDelete }) {
+function ActivityTree({ activities, expandedIds, onToggle, canEdit, canDelete, canAssignManager, canAssignSupervisor, canManageAccessRoles, roleAccessEnabled, onAddSub, onAssignUsers, onAssignRoles, onEdit, onDelete }) {
   return (
     <div>
       <div className="hidden grid-cols-[minmax(320px,40%)_minmax(120px,14%)_minmax(220px,30%)_1fr] border-b border-slate-200 bg-slate-50/80 px-6 py-3 xl:grid">
@@ -92,7 +92,7 @@ function ActivityTree({ activities, expandedIds, onToggle, canEdit, canDelete, c
                   <ReportCount count={activity.usage_count} />
                 </div>
                 <div className="hidden xl:block">
-                  <AssignmentList people={activity.managers} emptyLabel="-" />
+                  {!roleAccessEnabled && <AssignmentList people={activity.managers} emptyLabel="-" />}
                 </div>
                 <div className="flex justify-end">
                   <ActivityActions
@@ -117,8 +117,7 @@ function ActivityTree({ activities, expandedIds, onToggle, canEdit, canDelete, c
                     <span className="text-slate-300" aria-hidden="true">
                       ·
                     </span>
-                    <span className="shrink-0">Reviewer</span>
-                    <AssignmentList people={activity.managers} emptyLabel="-" />
+                    {!roleAccessEnabled && <><span className="shrink-0">Reviewer</span><AssignmentList people={activity.managers} emptyLabel="-" /></>}
                   </div>
                   {activity.children.length === 0 ? (
                     <p className="px-6 py-4 text-sm text-slate-500">No sub-activities yet.</p>
@@ -150,7 +149,9 @@ function ActivityTree({ activities, expandedIds, onToggle, canEdit, canDelete, c
                                 <ReportSummary count={child.usage_count} />
                               </p>
                               <div className="xl:hidden">
-                                <AssignmentList people={child.supervisors} emptyLabel="-" compact />
+                                {!roleAccessEnabled && <AssignmentList people={child.supervisors} emptyLabel="-" compact />}
+                                <p className="mt-1 text-xs text-slate-500">Access roles:</p>
+                                <AssignmentList people={child.access_roles} emptyLabel="Not configured" compact />
                               </div>
                             </div>
                           </div>
@@ -158,7 +159,9 @@ function ActivityTree({ activities, expandedIds, onToggle, canEdit, canDelete, c
                             <ReportCount count={child.usage_count} />
                           </div>
                           <div className="hidden xl:block">
-                            <AssignmentList people={child.supervisors} emptyLabel="-" />
+                            {!roleAccessEnabled && <AssignmentList people={child.supervisors} emptyLabel="-" />}
+                            <p className="mt-1 text-xs text-slate-500">Access roles:</p>
+                            <AssignmentList people={child.access_roles} emptyLabel="Not configured" compact />
                           </div>
                           <div className="flex items-center justify-end">
                             <ActivityActions
@@ -167,7 +170,9 @@ function ActivityTree({ activities, expandedIds, onToggle, canEdit, canDelete, c
                               canDelete={canDelete}
                               canAssignManager={canAssignManager}
                               canAssignSupervisor={canAssignSupervisor}
+                              canManageAccessRoles={canManageAccessRoles}
                               onAssignUsers={onAssignUsers}
+                              onAssignRoles={onAssignRoles}
                               onEdit={onEdit}
                               onDelete={onDelete}
                             />
@@ -277,8 +282,11 @@ export default function ActivityListSection({
   canDelete,
   canAssignManager,
   canAssignSupervisor,
+  canManageAccessRoles,
+  roleAccessEnabled,
   onAddSub,
   onAssignUsers,
+  onAssignRoles,
   onEdit,
   onDelete,
   search,
@@ -347,7 +355,7 @@ export default function ActivityListSection({
       return next
     })
   const handleToggleAll = () => setExpandedIds(allExpanded ? new Set() : new Set(activities.data.map((activity) => activity.id)))
-  const commonProps = { canEdit, canDelete, canAssignManager, canAssignSupervisor, onAddSub, onAssignUsers, onEdit, onDelete }
+  const commonProps = { canEdit, canDelete, canAssignManager, canAssignSupervisor, canManageAccessRoles, roleAccessEnabled, onAddSub, onAssignUsers, onAssignRoles, onEdit, onDelete }
 
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm shadow-slate-950/[0.03]">

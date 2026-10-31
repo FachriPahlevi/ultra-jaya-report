@@ -15,6 +15,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\Permission\Models\Role;
 
 class ActivityController extends Controller
 {
@@ -24,7 +25,7 @@ class ActivityController extends Controller
         $perPage = in_array($perPage, [10, 25, 50, 100, -1], true) ? $perPage : 10;
         $search = trim($request->string('search')->toString());
         $activities = Activity::with(['managers:id,name', 'children' => fn ($query) => $query
-            ->with('supervisors:id,name')->withCount('reportsAsSubType')->orderBy('name')])
+            ->with(['supervisors:id,name', 'accessRoles:id,name'])->withCount('reportsAsSubType')->orderBy('name')])
             ->withCount(['children', 'reportsAsType'])
             ->when($search !== '', fn ($query) => $query->where(fn ($nested) => $nested
                 ->where('name', 'like', "%{$search}%")
@@ -44,6 +45,7 @@ class ActivityController extends Controller
                 'is_active' => $activity->is_active, 'level' => 'sub',
                 'activity' => ['id' => $activity->id, 'name' => $activity->name],
                 'managers' => [], 'supervisors' => $child->supervisors->map(fn (User $user) => ['id' => $user->id, 'name' => $user->name])->values(),
+                'access_roles' => $child->accessRoles->map(fn (Role $role) => ['id' => $role->id, 'name' => $role->name])->values(),
                 'usage_count' => $child->reports_as_sub_type_count,
             ])->values(),
         ]);
@@ -58,6 +60,9 @@ class ActivityController extends Controller
             'canManageActivityCategory' => $request->user()->can('activities.category.manage'),
             'canAssignActivityManager' => $this->canAssign($request, 'manager'),
             'canAssignActivitySupervisor' => $this->canAssign($request, 'supervisor'),
+            'canManageAccessRoles' => $request->user()->can('permissions.manage'),
+            'roleAccessEnabled' => config('activity_access.role_based'),
+            'roleOptions' => $request->user()->can('permissions.manage') ? Role::where('guard_name', 'web')->orderBy('name')->get(['id', 'name']) : collect(),
         ]);
     }
 
@@ -131,6 +136,18 @@ class ActivityController extends Controller
         $subActivity->supervisors()->sync($this->assigneeIds($request, 'supervisor_ids', ['reports.solve.own.area', 'reports.solve.all']));
 
         return response()->json(['message' => 'Ticket closer assignments updated successfully.']);
+    }
+
+    public function updateAccessRoles(Request $request, Activity $activity, SubActivity $subActivity): JsonResponse
+    {
+        $this->ensureBelongsTo($activity, $subActivity);
+        $validated = $request->validate([
+            'role_ids' => ['present', 'array'],
+            'role_ids.*' => ['integer', 'distinct', Rule::exists('roles', 'id')->where('guard_name', 'web')],
+        ]);
+        $subActivity->accessRoles()->sync($validated['role_ids']);
+
+        return response()->json(['message' => 'Sub-activity access roles updated successfully.']);
     }
 
     public function updateStatus(Request $request, Activity $activity): JsonResponse

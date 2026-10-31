@@ -6,6 +6,7 @@ namespace App\Services;
 
 use App\Models\Report;
 use App\Models\User;
+use App\Models\SubActivity;
 
 /** A request-local permission snapshot shared by record policies and report lists. */
 final class ReportCapabilities
@@ -18,9 +19,15 @@ final class ReportCapabilities
 
     private array $activities = [];
 
+    private array $roleSubActivities = [];
+
     public function __construct(private readonly User $user)
     {
         $this->permissions = array_fill_keys($user->getAllPermissions()->pluck('name')->all(), true);
+        if (config('activity_access.role_based')) {
+            $ids = SubActivity::withTrashed()->whereHas('accessRoles', fn ($roles) => $roles->whereIn('roles.id', $user->roles()->select('roles.id')))->pluck('id')->all();
+            $this->roleSubActivities = array_fill_keys($ids, true);
+        }
         if ($this->has('reports.solve.own.area')) {
             $user->loadMissing(['supervisedSubAreas:sub_areas.id', 'assignedSubActivities:sub_activities.id']);
             $this->subAreas = array_fill_keys($user->supervisedSubAreas->modelKeys(), true);
@@ -37,7 +44,7 @@ final class ReportCapabilities
         return $this->has('reports.view.all') || $this->has('reports.solve.all') || $this->has('reports.edit.all') || $this->has('reports.delete.all')
             || ($report->author_id === $this->user->id && ($this->has('reports.view.own') || $this->has('reports.create') || $this->has('reports.edit.own') || $this->has('reports.delete.own')))
             || ($this->has('reports.solve.own.area') && isset($this->subAreas[$report->sub_area_id]))
-            || ($this->has('reports.review.area') && isset($this->activities[$report->activity_id]));
+            || ($this->has('reports.review.area') && (config('activity_access.role_based') ? isset($this->roleSubActivities[$report->sub_activity_id]) : isset($this->activities[$report->activity_id])));
     }
 
     public function update(Report $report): bool
@@ -52,8 +59,15 @@ final class ReportCapabilities
 
     public function close(Report $report): bool
     {
-        return $report->isOpen() && $report->category_snapshot === 'ISSUE'
-            && ($this->has('reports.solve.all') || ($this->has('reports.solve.own.area') && isset($this->subAreas[$report->sub_area_id], $this->subActivities[$report->sub_activity_id])));
+        if (! $report->isOpen() || $report->category_snapshot !== 'ISSUE') {
+            return false;
+        }
+        if (config('activity_access.role_based')) {
+            return isset($this->roleSubActivities[$report->sub_activity_id])
+                && ($this->has('reports.solve.all') || ($this->has('reports.solve.own.area') && isset($this->subAreas[$report->sub_area_id])));
+        }
+
+        return $this->has('reports.solve.all') || ($this->has('reports.solve.own.area') && isset($this->subAreas[$report->sub_area_id], $this->subActivities[$report->sub_activity_id]));
     }
 
     public function actions(Report $report): array

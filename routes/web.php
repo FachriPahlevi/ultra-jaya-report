@@ -93,6 +93,8 @@ Route::middleware(['auth', 'verified'])->group(function (): void {
             ->name('sub-activities.update')->middleware('can:activities.edit');
         Route::put('/{activity}/sub-activities/{subActivity}/assignees', [ActivityController::class, 'updateSubActivityAssignees'])
             ->name('sub-activities.assignees.update')->middleware(['can:activities.view', 'can:activities.assign.supervisor']);
+        Route::put('/{activity}/sub-activities/{subActivity}/access-roles', [ActivityController::class, 'updateAccessRoles'])
+            ->name('sub-activities.access-roles.update')->middleware(['can:activities.view', 'can:permissions.manage']);
         Route::delete('/{activity}/sub-activities/{subActivity}', [ActivityController::class, 'destroySubActivity'])
             ->name('sub-activities.destroy')->middleware('can:activities.delete');
 
