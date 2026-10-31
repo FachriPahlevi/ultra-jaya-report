@@ -1,8 +1,8 @@
 # Akses Sub-activity berdasarkan role
 
-Fitur ini memiliki dua mode. Default `ACTIVITY_ROLE_ACCESS_ENABLED=false` mempertahankan aturan assignment per user yang lama. Role Sub-activity dapat dikonfigurasi pada menu **Activities → Sub-activity → Manage access roles** oleh pengguna yang memiliki `activities.view` dan `permissions.manage`. Role tersedia dari database, termasuk role custom. Assignment user lama tidak dihapus.
+Akses Sub-activity selalu berdasarkan role. Role dapat dikonfigurasi pada menu **Activities → Sub-activity → Manage access roles** oleh pengguna yang memiliki `activities.view` dan `permissions.manage`. Role tersedia dari database, termasuk role custom. Assignment user lama tidak digunakan dan tidak dihapus dari database.
 
-## Matriks saat mode baru aktif
+## Matriks akses
 
 | Aksi | Syarat |
 |---|---|
@@ -28,13 +28,12 @@ Dengan permission bawaan, matriks per role adalah sebagai berikut. Tanda “role
 
 Semua role dengan capability own tetap dapat melihat laporan miliknya sendiri. Permission all memberikan visibility semua laporan, termasuk ketika role tidak dipilih pada Sub-activity; pembatasan role tetap berlaku untuk create dan close.
 
-## Peralihan aman
+## Persiapan
 
 1. Backup database dan uji perubahan pada staging. Jalankan migrasi release; jangan jalankan seeder atau reset database.
-2. Biarkan `ACTIVITY_ROLE_ACCESS_ENABLED=false`, deploy build, lalu isi role pada setiap Sub-activity secara manual sesuai matriks yang disetujui client. Excel client bukan sumber yang otomatis diimpor. Periksa mapping role, termasuk apakah `Super User` sama dengan role aplikasi tertentu.
+2. Isi role pada setiap Sub-activity secara manual sesuai matriks yang disetujui client. Excel client bukan sumber yang otomatis diimpor. Periksa mapping role, termasuk apakah `Super User` sama dengan role aplikasi tertentu.
 3. Jalankan `php artisan activity-access:audit` untuk menemukan Sub-activity aktif yang belum memiliki role. Hasil lolos hanya memeriksa keberadaan konfigurasi, bukan kebenaran bisnis. Tinjau juga izin dan role custom secara manual.
 4. Uji create, review, close, dashboard, detail dan export dengan akun nyata pada staging. Siapkan role pada Sub-activity inactive sebelum mengaktifkannya.
-5. Setelah disetujui, set `ACTIVITY_ROLE_ACCESS_ENABLED=true` dan refresh cache konfigurasi Laravel melalui prosedur deployment. Pada mode ini daftar role kosong berarti akses create/close ditolak.
-6. Bila perlu kembali ke aturan lama, set nilai menjadi `false` dan refresh cache. Assignment user lama tetap tersedia; perubahan yang dibuat saat mode baru aktif tidak mengubah assignment lama.
+5. Daftar role kosong berarti akses create/close ditolak. Konfigurasi berlaku segera setelah disimpan.
 
-Perubahan role berlaku untuk seluruh pengguna dengan role tersebut. Review scope dan agregasi dashboard/export mengikuti perubahan tersebut. Dokumen RBAC lama yang membahas assignment per-user menggambarkan mode lama; bagian ini menjadi acuan ketika mode role diaktifkan.
+Perubahan role berlaku untuk seluruh pengguna dengan role tersebut. Review scope dan agregasi dashboard/export mengikuti perubahan tersebut. Dokumen RBAC lama yang membahas assignment per-user tidak lagi berlaku.

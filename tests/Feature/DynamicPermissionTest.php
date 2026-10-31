@@ -30,8 +30,8 @@ class DynamicPermissionTest extends TestCase
         [$reviewArea, $reviewSubArea, $reviewActivity, $reviewChild] = $this->context('Review');
         [$closeArea, $closeSubArea, $closeActivity, $closeChild] = $this->context('Close');
         [$otherArea, $otherSubArea, $otherActivity, $otherChild] = $this->context('Other');
-        $this->actingAs($admin)->putJson(route('activities.assignees.update', $reviewActivity), ['manager_ids' => [$lead->id]])->assertOk();
-        $this->actingAs($admin)->putJson(route('activities.sub-activities.assignees.update', [$closeActivity, $closeChild]), ['supervisor_ids' => [$lead->id]])->assertOk();
+        $this->actingAs($admin)->putJson(route('activities.sub-activities.access-roles.update', [$reviewActivity, $reviewChild]), ['role_ids' => [$role->id]])->assertOk();
+        $this->actingAs($admin)->putJson(route('activities.sub-activities.access-roles.update', [$closeActivity, $closeChild]), ['role_ids' => [$role->id]])->assertOk();
         $lead->supervisedSubAreas()->attach($closeSubArea);
         $reviewReport = $this->report($admin, $reviewSubArea, $reviewChild);
         $closeReport = $this->report($admin, $closeSubArea, $closeChild);
@@ -47,7 +47,7 @@ class DynamicPermissionTest extends TestCase
         $lead = $lead->fresh();
         $newReport = $this->report($admin, $closeSubArea, $closeChild);
         $this->assertFalse($lead->can('close', $newReport));
-        $this->actingAs($lead)->get(route('reports.index'))->assertInertia(fn (Assert $page) => $page->has('reports', 1));
+        $this->actingAs($lead)->get(route('reports.index'))->assertInertia(fn (Assert $page) => $page->has('reports', 3));
     }
 
     public function test_manager_gains_create_and_global_close_through_settings_without_role_name_changes(): void
@@ -60,6 +60,7 @@ class DynamicPermissionTest extends TestCase
             'permissions' => ['reports.create', 'reports.solve.all', 'reports.export'],
         ])->assertOk();
         [$area, $subArea, $activity, $child] = $this->context('Manager');
+        $child->accessRoles()->attach($role);
         $otherReport = $this->report($admin, $subArea, $child);
         $this->actingAs($manager->fresh())->get(route('reports.index'))->assertOk()->assertInertia(fn (Assert $page) => $page->has('reports', 1));
         $this->actingAs($manager)->postJson(route('reports.store'), [
@@ -85,10 +86,10 @@ class DynamicPermissionTest extends TestCase
         $this->actingAs($admin)->putJson(route('areas.sub-areas.assignees.update', [$area, $subArea]), ['user_ids' => [$quality->id]])->assertOk();
         $this->assertTrue($quality->managedAreas()->whereKey($area->id)->exists());
         $this->assertTrue($quality->supervisedSubAreas()->whereKey($subArea->id)->exists());
-        $this->actingAs($quality)->get(route('activities.index'))->assertInertia(fn (Assert $page) => $page->where('canManageActivityCategory', true)->has('managerOptions', 0));
+        $this->actingAs($quality)->get(route('activities.index'))->assertInertia(fn (Assert $page) => $page->where('canManageActivityCategory', true)->has('roleOptions', 0));
         $this->actingAs($quality)->putJson(route('activities.sub-activities.update', [$activity, $child]), ['name' => $child->name, 'category' => 'REPORT'])->assertOk();
         $this->assertSame('REPORT', $child->fresh()->category);
-        $this->actingAs($quality)->putJson(route('activities.assignees.update', $activity), ['manager_ids' => [$quality->id]])->assertForbidden();
+        $this->actingAs($quality)->putJson(route('activities.sub-activities.access-roles.update', [$activity, $child]), ['role_ids' => [$role->id]])->assertForbidden();
     }
 
     public function test_area_access_and_assignment_management_do_not_bypass_permissions_by_role(): void

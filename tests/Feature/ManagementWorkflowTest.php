@@ -27,6 +27,9 @@ class ManagementWorkflowTest extends TestCase
     {
         $user = $this->userWithPermissions(['reports.create', 'reports.view.own', 'reports.edit.own', 'reports.delete.own']);
         [$area, $subArea, $activity] = $this->reportContext();
+        $role = Role::create(['name' => 'REPORT_CREATOR', 'guard_name' => 'web']);
+        $user->assignRole($role);
+        $activity->children()->firstOrFail()->accessRoles()->attach($role);
 
         $this->actingAs($user)->post(route('reports.store'), [
             'type_activity' => $activity->id,
@@ -219,6 +222,9 @@ class ManagementWorkflowTest extends TestCase
         Storage::fake('public');
         $user = $this->userWithPermissions(['reports.create', 'reports.view.own']);
         [$area, $subArea, $activity] = $this->reportContext();
+        $role = Role::create(['name' => 'PHOTO_CREATOR', 'guard_name' => 'web']);
+        $user->assignRole($role);
+        $activity->children()->firstOrFail()->accessRoles()->attach($role);
 
         $this->actingAs($user)->post(route('reports.store'), [
             'type_activity' => $activity->id,

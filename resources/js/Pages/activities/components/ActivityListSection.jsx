@@ -238,14 +238,13 @@ function ActivitySortOptions({
         variant="chips"
       />
       <FilterChoiceGroup
-        legend="Assignees"
+        legend="Access roles"
         value={assignmentFilter}
         onChange={onAssignmentFilterChange}
         options={[
           ["all", "All"],
-          ["reviewer", "Has reviewer"],
-          ["closer", "Has ticket closer"],
-          ["empty", "Unassigned"],
+          ["configured", "Configured"],
+          ["empty", "Not configured"],
         ]}
         variant="chips"
       />
@@ -306,9 +305,8 @@ export default function ActivityListSection({
       activities.data
         .filter((activity) => childFilter === "all" || (childFilter === "available" ? activity.children_count > 0 : activity.children_count === 0))
         .filter((activity) => {
-          const hasReviewer = activity.managers.length > 0
-          const hasCloser = activity.children.some((child) => child.supervisors.length > 0)
-          return assignmentFilter === "all" || (assignmentFilter === "reviewer" ? hasReviewer : assignmentFilter === "closer" ? hasCloser : !hasReviewer && !hasCloser)
+          const configured = activity.children.some((child) => child.access_roles.length > 0)
+          return assignmentFilter === "all" || (assignmentFilter === "configured" ? configured : !configured)
         })
         .filter((activity) => categoryFilter.length === 0 || activity.children.some((child) => categoryFilter.includes(child.category)))
         .filter((activity) => descriptionFilter === "all" || (descriptionFilter === "available" ? Boolean(activity.description?.trim()) : !activity.description?.trim()))

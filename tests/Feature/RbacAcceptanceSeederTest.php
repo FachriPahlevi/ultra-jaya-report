@@ -21,7 +21,7 @@ class RbacAcceptanceSeederTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_test_seeder_assigns_managers_and_creates_visible_reports_from_other_users(): void
+    public function test_test_seeder_configures_manager_role_and_creates_visible_reports_from_other_users(): void
     {
         Storage::fake('public');
         Storage::fake('local');
@@ -35,16 +35,16 @@ class RbacAcceptanceSeederTest extends TestCase
 
         $this->artisan('app:seed-rbac-test')->assertSuccessful();
         $this->assertTrue($manager->managedAreas()->whereKey($area->id)->exists());
-        $this->assertTrue($manager->assignedActivities()->whereKey($activity->id)->exists());
+        $this->assertTrue($activity->children()->firstOrFail()->accessRoles()->whereKey($manager->roles->first()->id)->exists());
         $this->assertTrue(Report::visibleTo($manager)->where('author_id', $reporter->id)->where('activity_id', $activity->id)->exists());
         $count = Report::count();
         $this->artisan('app:seed-rbac-test')->assertSuccessful();
         $this->assertSame($count, Report::count());
         $this->assertSame(1, $manager->managedAreas()->count());
-        $this->assertSame(1, $manager->assignedActivities()->count());
+        $this->assertSame(1, $activity->children()->firstOrFail()->accessRoles()->whereKey($manager->roles->first()->id)->count());
     }
 
-    public function test_test_seeder_assigns_supervisors_and_creates_closable_reports_from_other_users(): void
+    public function test_test_seeder_configures_supervisor_role_and_creates_closable_reports_from_other_users(): void
     {
         Storage::fake('public');
         Storage::fake('local');
@@ -58,7 +58,7 @@ class RbacAcceptanceSeederTest extends TestCase
 
         $this->artisan('app:seed-rbac-test')->assertSuccessful();
         $this->assertTrue($supervisor->supervisedSubAreas()->whereKey($location->id)->exists());
-        $this->assertTrue($supervisor->assignedSubActivities()->whereKey($child->id)->exists());
+        $this->assertTrue($child->accessRoles()->whereKey($supervisor->roles->first()->id)->exists());
         $capabilities = new ReportCapabilities($supervisor->fresh());
         $this->assertTrue(Report::visibleTo($supervisor)->where('author_id', $reporter->id)->get()->contains(fn (Report $report) => $capabilities->close($report)));
         $count = Report::count();

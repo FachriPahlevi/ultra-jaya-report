@@ -20,7 +20,7 @@ class SubActivityRoleAccessTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_role_matrix_requires_permission_and_does_not_activate_automatically(): void
+    public function test_role_matrix_requires_permission_and_access_is_enabled(): void
     {
         $this->seed(RoleSeeder::class);
         $activity = Activity::create(['name' => 'Safety', 'is_active' => true]);
@@ -32,7 +32,9 @@ class SubActivityRoleAccessTest extends TestCase
         $this->actingAs($user)->putJson($url, ['role_ids' => [$role->id]])->assertForbidden();
         $this->actingAs($admin)->putJson($url, ['role_ids' => [$role->id]])->assertOk();
         $this->assertDatabaseHas('sub_activity_role', ['sub_activity_id' => $sub->id, 'role_id' => $role->id]);
-        $this->assertFalse((bool) config('activity_access.role_based'));
+        $this->assertTrue((bool) config('activity_access.role_based'));
+        $this->actingAs($admin)->putJson('/activities/'.$activity->id.'/assignees', ['manager_ids' => []])->assertNotFound();
+        $this->actingAs($admin)->putJson('/activities/'.$activity->id.'/sub-activities/'.$sub->id.'/assignees', ['supervisor_ids' => []])->assertNotFound();
         $this->actingAs($admin)->putJson($url, ['role_ids' => [999999]])->assertUnprocessable();
     }
 

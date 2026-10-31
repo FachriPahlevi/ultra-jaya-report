@@ -1,6 +1,6 @@
 # Dokumentasi Modul, Fitur, dan Matriks RBAC
 
-> Dokumen ini menjelaskan mode assignment per user (default). Untuk mode baru berdasarkan role Sub-activity, termasuk matriks aksi dan langkah transisi, lihat [Akses Sub-activity berdasarkan role](akses-sub-activity-berdasarkan-role.md).
+> Bagian yang membahas assignment Activity per user sudah tidak berlaku. Untuk aturan terbaru dan matriks akses, lihat [Akses Sub-activity berdasarkan role](akses-sub-activity-berdasarkan-role.md).
 
 **PT Ultrajaya Milk Industry & Trading Company Tbk — Internal Ticketing & Reporting**  
 Versi baseline Automated QA: 27 Oktober 2026

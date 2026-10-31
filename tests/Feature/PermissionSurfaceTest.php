@@ -172,14 +172,14 @@ class PermissionSurfaceTest extends TestCase
         $this->assertSame(1, IOFactory::load($openOnly->baseResponse->getFile()->getPathname())->getActiveSheet()->getHighestRow());
     }
 
-    public function test_crafted_form_input_cannot_bypass_assigned_location_and_activity(): void
+    public function test_crafted_form_input_cannot_bypass_sub_activity_role_scope(): void
     {
         $this->seed(RoleSeeder::class);
         $user = User::factory()->create()->assignRole('SUPERVISOR');
         [$area, $subArea, $activity, $child] = $this->context('Assigned');
         [$outside, $outsideSubArea, $outsideActivity, $outsideChild] = $this->context('Outside');
         $user->supervisedSubAreas()->attach($subArea);
-        $user->assignedSubActivities()->attach($child);
+        $child->accessRoles()->attach($user->roles->modelKeys());
         $payload = ['area_activity' => $outside->id, 'sub_area_id' => $outsideSubArea->id, 'type_activity' => $outsideActivity->id, 'sub_activity_id' => $outsideChild->id, 'issue' => 'Attempt'];
         $this->actingAs($user)->postJson(route('reports.store'), $payload)->assertUnprocessable()->assertJsonValidationErrors('sub_activity_id');
         $this->assertDatabaseCount('reports', 0);
@@ -197,7 +197,8 @@ class PermissionSurfaceTest extends TestCase
         $author = User::factory()->create();
         [$area, $subArea, $activity, $child] = $this->context('Visible');
         [$outside, $outsideSubArea, $outsideActivity, $outsideChild] = $this->context('Hidden');
-        $reviewer->assignedActivities()->attach($activity);
+        $reviewer->assignRole('MANAGER');
+        $child->accessRoles()->attach($reviewer->roles->modelKeys());
         $visible = $this->report($author, $area, $subArea, $child, 'Visible');
         $hidden = $this->report($author, $outside, $outsideSubArea, $outsideChild, 'Hidden');
         $this->actingAs($reviewer)->get(route('reports.index'))->assertInertia(fn (Assert $page) => $page

@@ -23,8 +23,6 @@ return [
         'activities.view' => ['group' => 'Activities', 'label' => 'View activities', 'description' => 'View activities and sub-activities.'],
         'activities.create' => ['group' => 'Activities', 'label' => 'Create activities', 'description' => 'Add activities or sub-activities.'],
         'activities.edit' => ['group' => 'Activities', 'label' => 'Edit activities', 'description' => 'Edit activities and their status.'],
-        'activities.assign.manager' => ['group' => 'Activities', 'label' => 'Assign activity reviewers (legacy)', 'description' => 'Manage per-user reviewer assignments when legacy access is enabled.'],
-        'activities.assign.supervisor' => ['group' => 'Activities', 'label' => 'Assign issue closers (legacy)', 'description' => 'Manage per-user closer assignments when legacy access is enabled.'],
         'activities.delete' => ['group' => 'Activities', 'label' => 'Delete activities', 'description' => 'Delete activities that have not been used in reports.'],
 
         'users.view' => ['group' => 'Users', 'label' => 'View users', 'description' => 'View the user list.'],
@@ -39,14 +37,14 @@ return [
         'roles.create' => ['group' => 'Roles & Permissions', 'label' => 'Create roles', 'description' => 'Create custom roles.'],
         'roles.edit' => ['group' => 'Roles & Permissions', 'label' => 'Edit roles', 'description' => 'Rename custom roles.'],
         'roles.delete' => ['group' => 'Roles & Permissions', 'label' => 'Delete roles', 'description' => 'Delete unused custom roles.'],
-        'permissions.manage' => ['group' => 'Roles & Permissions', 'label' => 'Manage role permissions', 'description' => 'Change the permissions assigned to a role.'],
+        'permissions.manage' => ['group' => 'Roles & Permissions', 'label' => 'Manage role permissions', 'description' => 'Change permissions and sub-activity access assigned to roles.'],
     ],
 
     'roles' => [
         'SUPER_ADMIN' => ['label' => 'Super Admin', 'description' => 'Manage all application and RBAC settings.', 'permissions' => ['*']],
         'ADMIN' => ['label' => 'Admin', 'description' => 'Manage users, areas, activities, and report operations.', 'permissions' => [
             'areas.view', 'areas.view.all', 'areas.create', 'areas.edit', 'areas.delete',
-            'activities.view', 'activities.create', 'activities.edit', 'activities.assign.manager', 'activities.assign.supervisor', 'activities.delete',
+            'activities.view', 'activities.create', 'activities.edit', 'activities.delete',
             'users.view', 'users.create', 'users.edit', 'users.delete', 'users.assign.area', 'users.promote',
             'reports.view.all', 'reports.create', 'reports.export', 'reports.delete.all', 'reports.solve.all', 'settings.view',
             'roles.view', 'roles.create', 'roles.edit', 'roles.delete', 'permissions.manage',

@@ -109,11 +109,7 @@ class Report extends Model
                 $visible->orWhere('author_id', $user->id);
             }
             if ($user->can('reports.review.area')) {
-                if (config('activity_access.role_based')) {
-                    $visible->orWhereHas('subActivity.accessRoles', fn (Builder $roles) => $roles->whereIn('roles.id', $user->roles()->select('roles.id')));
-                } else {
-                    $visible->orWhereHas('activityType.managers', fn (Builder $users) => $users->whereKey($user->id));
-                }
+                $visible->orWhereHas('subActivity.accessRoles', fn (Builder $roles) => $roles->whereIn('roles.id', $user->roles()->select('roles.id')));
             }
             if ($user->can('reports.solve.own.area')) {
                 $visible->orWhereHas('subArea.supervisors', fn (Builder $users) => $users->whereKey($user->id));

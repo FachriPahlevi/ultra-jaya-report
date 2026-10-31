@@ -55,12 +55,11 @@ class TestScenarioSeeder extends Seeder
 
         $manager->managedAreas()->sync([$area->id]);
         $supervisor->supervisedSubAreas()->sync([$subArea->id]);
-        $activity->managers()->sync([$manager->id]);
         $subActivity = SubActivity::withTrashed()->updateOrCreate(
             ['activity_id' => $activity->id, 'name' => 'Sub-aktivitas Uji RBAC'],
             ['category' => 'ISSUE', 'deleted_at' => null],
         );
-        $subActivity->supervisors()->sync([$supervisor->id]);
+        $subActivity->accessRoles()->syncWithoutDetaching($manager->roles->merge($supervisor->roles)->modelKeys());
 
         $this->createReport($user, $area, $subArea, $activity, 'Laporan milik user uji');
         $this->createReport($admin, $area, $subArea, $activity, 'Laporan area supervisor uji');

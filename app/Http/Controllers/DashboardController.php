@@ -100,14 +100,11 @@ class DashboardController extends Controller
 
         $canClose = $user->hasAnyPermission(['reports.solve.all', 'reports.solve.own.area']);
         $attentionQuery = (clone $query)->where('category_snapshot', 'ISSUE')->where('status', 'open');
-        if ($canClose && config('activity_access.role_based')) {
+        if ($canClose) {
             $attentionQuery->whereHas('subActivity.accessRoles', fn (Builder $roles) => $roles->whereIn('roles.id', $user->roles()->select('roles.id')));
         }
         if ($canClose && ! $user->can('reports.solve.all')) {
             $attentionQuery->whereHas('subArea.supervisors', fn (Builder $users) => $users->whereKey($userId));
-            if (! config('activity_access.role_based')) {
-                $attentionQuery->whereHas('subActivity.supervisors', fn (Builder $users) => $users->whereKey($userId));
-            }
         }
         $attentionTickets = $attentionQuery
             ->with(['area:id,area', 'activityType:id,name', 'subActivity:id,name'])

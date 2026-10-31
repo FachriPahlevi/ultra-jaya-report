@@ -53,13 +53,9 @@ class ActivityController extends Controller
         return Inertia::render('activities/Index', [
             'activities' => $activities,
             'parentActivities' => Activity::where('is_active', true)->orderBy('name')->get(['id', 'name']),
-            'managerOptions' => $this->canAssign($request, 'manager') ? User::permission('reports.review.area')->where('is_active', true)->orderBy('name')->get(['id', 'name']) : collect(),
-            'supervisorOptions' => $this->canAssign($request, 'supervisor') ? User::permission(['reports.solve.own.area', 'reports.solve.all'])->where('is_active', true)->orderBy('name')->get(['id', 'name']) : collect(),
             'activityTotals' => ['all' => Activity::count() + SubActivity::count(), 'main' => Activity::count(), 'sub' => SubActivity::count(), 'active' => Activity::where('is_active', true)->count()],
             'filters' => ['search' => $search, 'per_page' => $perPage],
             'canManageActivityCategory' => $request->user()->can('activities.category.manage'),
-            'canAssignActivityManager' => $this->canAssign($request, 'manager'),
-            'canAssignActivitySupervisor' => $this->canAssign($request, 'supervisor'),
             'canManageAccessRoles' => $request->user()->can('permissions.manage'),
             'roleAccessEnabled' => config('activity_access.role_based'),
             'roleOptions' => $request->user()->can('permissions.manage') ? Role::where('guard_name', 'web')->orderBy('name')->get(['id', 'name']) : collect(),
@@ -120,24 +116,6 @@ class ActivityController extends Controller
         return $this->saved($request, 'Sub-activity updated successfully.');
     }
 
-    public function updateAssignees(Request $request, Activity $activity): JsonResponse
-    {
-        abort_unless($this->canAssign($request, 'manager'), 403);
-        $ids = $this->assigneeIds($request, 'manager_ids', ['reports.review.area']);
-        $activity->managers()->sync($ids);
-
-        return response()->json(['message' => 'Reviewer assignments updated successfully.']);
-    }
-
-    public function updateSubActivityAssignees(Request $request, Activity $activity, SubActivity $subActivity): JsonResponse
-    {
-        $this->ensureBelongsTo($activity, $subActivity);
-        abort_unless($this->canAssign($request, 'supervisor'), 403);
-        $subActivity->supervisors()->sync($this->assigneeIds($request, 'supervisor_ids', ['reports.solve.own.area', 'reports.solve.all']));
-
-        return response()->json(['message' => 'Ticket closer assignments updated successfully.']);
-    }
-
     public function updateAccessRoles(Request $request, Activity $activity, SubActivity $subActivity): JsonResponse
     {
         $this->ensureBelongsTo($activity, $subActivity);
@@ -190,25 +168,6 @@ class ActivityController extends Controller
             'parent_id' => ['prohibited'], 'activity_id' => ['prohibited'], 'category' => ['prohibited'],
             'manager_ids' => ['prohibited'], 'supervisor_ids' => ['prohibited'],
         ];
-    }
-
-    private function assigneeIds(Request $request, string $field, array $permissions): array
-    {
-        $validated = $request->validate([
-            $field => ['present', 'array'],
-            $field.'.*' => ['integer', 'distinct', Rule::exists('users', 'id')->whereNull('deleted_at')->where('is_active', true)],
-        ]);
-        $ids = $validated[$field];
-        if (User::permission($permissions)->whereIn('id', $ids)->count() !== count($ids)) {
-            throw ValidationException::withMessages([$field => 'Select active users with permission for this assignment.']);
-        }
-
-        return $ids;
-    }
-
-    private function canAssign(Request $request, string $role): bool
-    {
-        return $request->user()->can('activities.assign.'.$role);
     }
 
     private function ensureBelongsTo(Activity $activity, SubActivity $subActivity): void
