@@ -1,6 +1,6 @@
 # Dokumentasi Teknis Per Role
 
-> Matriks di bawah berlaku untuk mode assignment per user (default). Jika mode role Sub-activity diaktifkan, gunakan [matriks dan panduan transisi](akses-sub-activity-berdasarkan-role.md).
+> Bagian yang membahas assignment Activity per user sudah tidak berlaku. Gunakan [matriks akses Sub-activity](akses-sub-activity-berdasarkan-role.md).
 
 **PT Ultrajaya Milk Industry & Trading Company Tbk — Internal Ticketing & Reporting**  
 Baseline implementasi: 27 Oktober 2026

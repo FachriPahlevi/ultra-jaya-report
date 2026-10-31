@@ -26,7 +26,7 @@ class RbacAcceptanceSeeder extends Seeder
             throw new RuntimeException('Jumlah laporan uji minimal 30 dan maksimal 365 per pengguna.');
         }
 
-        $users = User::with(['roles.permissions', 'permissions', 'managedAreas', 'supervisedSubAreas', 'assignedActivities', 'assignedSubActivities'])->orderBy('id')->get();
+        $users = User::with(['roles.permissions', 'permissions', 'managedAreas', 'supervisedSubAreas'])->orderBy('id')->get();
         $subAreas = SubArea::where('is_active', true)->whereHas('area', fn ($query) => $query->where('is_active', true))->orderBy('id')->get();
         $children = SubActivity::whereHas('activity', fn ($query) => $query->where('is_active', true)->whereNull('deleted_at'))->orderBy('id')->get();
         if ($users->isEmpty() || $subAreas->isEmpty() || $children->isEmpty()) {
@@ -54,9 +54,9 @@ class RbacAcceptanceSeeder extends Seeder
 
                     continue;
                 }
-                $child = $issueChildren->first(fn (SubActivity $item) => $supervisor->assignedSubActivities->contains('id', $item->id)) ?? $issueChildren->get($supervisor->id % $issueChildren->count());
-                $supervisor->assignedSubActivities()->syncWithoutDetaching([$child->id]);
-                $supervisor->load('supervisedSubAreas', 'assignedSubActivities');
+                $child = $issueChildren->get($supervisor->id % $issueChildren->count());
+                $child->accessRoles()->syncWithoutDetaching($supervisor->roles->modelKeys());
+                $supervisor->load('supervisedSubAreas');
                 $scenarios[$reporter->id][] = ['location' => $location, 'child' => $child];
             }
         });
@@ -67,10 +67,10 @@ class RbacAcceptanceSeeder extends Seeder
             $activities = $children->pluck('activity_id')->unique()->values();
             foreach ($users->filter(fn (User $user) => $user->is_active && $user->hasRole('MANAGER') && $user->can('reports.review.area')) as $index => $manager) {
                 $location = $subAreas->first(fn (SubArea $item) => $manager->managedAreas->contains('id', $item->area_id)) ?? $subAreas->get($index % $subAreas->count());
-                $activityId = $activities->first(fn ($id) => $manager->assignedActivities->contains('id', $id)) ?? $activities->get($index % $activities->count());
+                $activityId = $activities->get($index % $activities->count());
                 $child = $children->first(fn (SubActivity $item) => $item->activity_id === $activityId);
+                $child->accessRoles()->syncWithoutDetaching($manager->roles->modelKeys());
                 $manager->managedAreas()->syncWithoutDetaching([$location->area_id]);
-                $manager->assignedActivities()->syncWithoutDetaching([$activityId]);
 
                 $reporter = $users->first(fn (User $user) => $user->id !== $manager->id);
                 if (! $reporter) {
@@ -87,7 +87,7 @@ class RbacAcceptanceSeeder extends Seeder
         foreach ($users as $user) {
             if ($user->is_active && $user->can('reports.solve.own.area')) {
                 foreach ($user->supervisedSubAreas as $location) {
-                    foreach ($user->assignedSubActivities as $child) {
+                    foreach ($children->filter(fn (SubActivity $child) => $child->accessRoles()->whereIn('roles.id', $user->roles->modelKeys())->exists()) as $child) {
                         $scopedClosers[$location->id.':'.$child->id] ??= $user->id;
                     }
                 }

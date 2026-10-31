@@ -59,9 +59,8 @@ export function ScopeAccess({ activity, compact = false, chips = false }) {
   )
 }
 
-export function ActivityActions({ activity, canEdit, canDelete, canAssignManager, canAssignSupervisor, canManageAccessRoles, onAddSub, onAssignUsers, onAssignRoles, onEdit, onDelete }) {
+export function ActivityActions({ activity, canEdit, canDelete, canManageAccessRoles, onAddSub, onAssignRoles, onEdit, onDelete }) {
   const canAddSub = canEdit && !activity.activity_id && activity.is_active
-  const canAssignUsers = (!activity.activity_id && canAssignManager) || (activity.activity_id && canAssignSupervisor)
   const [open, setOpen] = useState(false)
   const [position, setPosition] = useState({ top: 0, right: 0 })
   const buttonRef = useRef(null)
@@ -99,7 +98,7 @@ export function ActivityActions({ activity, canEdit, canDelete, canAssignManager
     }
   }, [open])
 
-  if (!canAddSub && !canAssignUsers && !canEdit && !canDelete && !(activity.activity_id && canManageAccessRoles)) return null
+  if (!canAddSub && !canEdit && !canDelete && !(activity.activity_id && canManageAccessRoles)) return null
   const runAction = (action) => {
     setOpen(false)
     action(activity)
@@ -138,17 +137,6 @@ export function ActivityActions({ activity, canEdit, canDelete, canAssignManager
               >
                 <HiOutlinePlus className="h-4 w-4" />
                 Add sub-activity
-              </button>
-            )}
-            {canAssignUsers && (
-              <button
-                role="menuitem"
-                type="button"
-                onClick={() => runAction(onAssignUsers)}
-                className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-medium text-slate-700 outline-none hover:bg-slate-50 focus-visible:bg-blue-50 focus-visible:text-blue-800"
-              >
-                <HiOutlineUserAdd className="h-4 w-4" />
-                {activity.activity_id ? "Assign ticket closers" : "Assign reviewers"}
               </button>
             )}
             {activity.activity_id && canManageAccessRoles && (
