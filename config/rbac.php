@@ -10,9 +10,9 @@ return [
         'reports.edit.all' => ['group' => 'Reports', 'label' => 'Edit all reports', 'description' => 'Edit open reports created by any user.'],
         'reports.delete.own' => ['group' => 'Reports', 'label' => 'Delete own reports', 'description' => 'Delete open reports created by the current user.'],
         'reports.delete.all' => ['group' => 'Reports', 'label' => 'Delete all reports', 'description' => 'Delete open reports created by any user.'],
-        'reports.solve.own.area' => ['group' => 'Reports', 'label' => 'Close assigned issues', 'description' => 'Close an open issue when assigned to its sub-area and sub-activity.'],
+        'reports.solve.own.area' => ['group' => 'Reports', 'label' => 'Close assigned issues', 'description' => 'Close an open issue in an assigned sub-area, subject to the active sub-activity access rules.'],
         'reports.solve.all' => ['group' => 'Reports', 'label' => 'Close all issues', 'description' => 'Close issues in every area.'],
-        'reports.review.area' => ['group' => 'Reports', 'label' => 'Review assigned activity reports', 'description' => 'View reports for activities assigned to the user as a reviewer.'],
+        'reports.review.area' => ['group' => 'Reports', 'label' => 'Review activity reports', 'description' => 'View reports within the active reviewer access scope.'],
         'activities.category.manage' => ['group' => 'Activities', 'label' => 'Manage sub-activity categories', 'description' => 'Set a sub-activity as ISSUE or REPORT; requires permission to create or edit sub-activities.'],
 
         'areas.view' => ['group' => 'Areas', 'label' => 'View areas', 'description' => 'View the list of accessible areas.'],
@@ -23,8 +23,8 @@ return [
         'activities.view' => ['group' => 'Activities', 'label' => 'View activities', 'description' => 'View activities and sub-activities.'],
         'activities.create' => ['group' => 'Activities', 'label' => 'Create activities', 'description' => 'Add activities or sub-activities.'],
         'activities.edit' => ['group' => 'Activities', 'label' => 'Edit activities', 'description' => 'Edit activities and their status.'],
-        'activities.assign.manager' => ['group' => 'Activities', 'label' => 'Assign activity reviewers', 'description' => 'Assign users with review permission to activities, including custom roles.'],
-        'activities.assign.supervisor' => ['group' => 'Activities', 'label' => 'Assign issue closers', 'description' => 'Assign users with close permission to sub-activities, including custom roles.'],
+        'activities.assign.manager' => ['group' => 'Activities', 'label' => 'Assign activity reviewers (legacy)', 'description' => 'Manage per-user reviewer assignments when legacy access is enabled.'],
+        'activities.assign.supervisor' => ['group' => 'Activities', 'label' => 'Assign issue closers (legacy)', 'description' => 'Manage per-user closer assignments when legacy access is enabled.'],
         'activities.delete' => ['group' => 'Activities', 'label' => 'Delete activities', 'description' => 'Delete activities that have not been used in reports.'],
 
         'users.view' => ['group' => 'Users', 'label' => 'View users', 'description' => 'View the user list.'],

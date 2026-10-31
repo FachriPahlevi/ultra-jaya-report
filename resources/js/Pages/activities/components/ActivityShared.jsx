@@ -59,7 +59,7 @@ export function ScopeAccess({ activity, compact = false, chips = false }) {
   )
 }
 
-export function ActivityActions({ activity, canEdit, canDelete, canAssignManager, canAssignSupervisor, onAddSub, onAssignUsers, onEdit, onDelete }) {
+export function ActivityActions({ activity, canEdit, canDelete, canAssignManager, canAssignSupervisor, canManageAccessRoles, onAddSub, onAssignUsers, onAssignRoles, onEdit, onDelete }) {
   const canAddSub = canEdit && !activity.activity_id && activity.is_active
   const canAssignUsers = (!activity.activity_id && canAssignManager) || (activity.activity_id && canAssignSupervisor)
   const [open, setOpen] = useState(false)
@@ -99,7 +99,7 @@ export function ActivityActions({ activity, canEdit, canDelete, canAssignManager
     }
   }, [open])
 
-  if (!canAddSub && !canAssignUsers && !canEdit && !canDelete) return null
+  if (!canAddSub && !canAssignUsers && !canEdit && !canDelete && !(activity.activity_id && canManageAccessRoles)) return null
   const runAction = (action) => {
     setOpen(false)
     action(activity)
@@ -149,6 +149,11 @@ export function ActivityActions({ activity, canEdit, canDelete, canAssignManager
               >
                 <HiOutlineUserAdd className="h-4 w-4" />
                 {activity.activity_id ? "Assign ticket closers" : "Assign reviewers"}
+              </button>
+            )}
+            {activity.activity_id && canManageAccessRoles && (
+              <button role="menuitem" type="button" onClick={() => runAction(onAssignRoles)} className="flex min-h-11 w-full items-center gap-2.5 rounded-lg px-3 text-left text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:bg-blue-50">
+                <HiOutlineUserAdd className="h-4 w-4" /> Manage access roles
               </button>
             )}
             {canEdit && (

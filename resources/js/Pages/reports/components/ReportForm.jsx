@@ -12,7 +12,7 @@ import { HiOutlinePhotograph } from "react-icons/hi"
 import { Camera, FileImage, ImagePlus } from "lucide-react"
 import { createEmptyReportForm, createReportForm, createReportSelections } from "@/Pages/reports/utils/reportForm"
 
-export default function ReportForm({ isOpen, onClose, areas = [], activities = [], report = null }) {
+export default function ReportForm({ isOpen, onClose, areas = [], activities = [], report = null, roleAccessEnabled = false }) {
   const { setStatusModalProps } = useStatusModal()
   const { auth } = usePage().props
   const currentUser = auth?.user
@@ -27,8 +27,8 @@ export default function ReportForm({ isOpen, onClose, areas = [], activities = [
   const permissions = new Set(currentUser?.permissions ?? [])
   const canSubmit = report ? report.can?.update === true : permissions.has("reports.create")
   const hasGlobalScope = ["reports.view.all", "reports.solve.all", "reports.edit.all", "reports.delete.all"].some((permission) => permissions.has(permission))
-  const hasManagerScope = !hasGlobalScope && permissions.has("reports.review.area")
-  const hasSupervisorScope = !hasGlobalScope && permissions.has("reports.solve.own.area")
+  const hasManagerScope = !roleAccessEnabled && !hasGlobalScope && permissions.has("reports.review.area")
+  const hasSupervisorScope = !roleAccessEnabled && !hasGlobalScope && permissions.has("reports.solve.own.area")
 
   const { data, setData, post, put, processing, errors, reset, clearErrors } = useForm(createEmptyReportForm(currentUser?.id))
 

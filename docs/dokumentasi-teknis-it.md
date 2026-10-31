@@ -1,5 +1,7 @@
 # Dokumentasi Teknis dan Operasional untuk Tim IT
 
+> Untuk konfigurasi dan aktivasi akses Sub-activity berdasarkan role, lihat [panduan transisi dan matriks](akses-sub-activity-berdasarkan-role.md). Mode lama tetap menjadi default hingga diaktifkan secara eksplisit.
+
 **PT Ultrajaya Milk Industry & Trading Company Tbk — Internal Ticketing & Reporting**  
 Baseline kode workspace: 27 Oktober 2026
 

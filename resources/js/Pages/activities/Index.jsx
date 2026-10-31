@@ -26,6 +26,9 @@ export default function Index({
   parentActivities = [],
   managerOptions = [],
   supervisorOptions = [],
+  roleOptions = [],
+  canManageAccessRoles = false,
+  roleAccessEnabled = false,
   filters = {},
   canManageActivityCategory = false,
   canAssignActivityManager = false,
@@ -43,6 +46,7 @@ export default function Index({
   const [form, setForm] = useState(INITIAL_FORM)
   const [errors, setErrors] = useState({})
   const [assignmentTarget, setAssignmentTarget] = useState(null)
+  const [roleMode, setRoleMode] = useState(false)
   const [assignmentValues, setAssignmentValues] = useState([])
   const [assignmentProcessing, setAssignmentProcessing] = useState(false)
   const [isBulkSubMode, setIsBulkSubMode] = useState(false)
@@ -129,8 +133,15 @@ export default function Index({
   }
 
   const openAssignment = (activity) => {
+    setRoleMode(false)
     setAssignmentTarget(activity)
     setAssignmentValues((activity.activity_id ? activity.supervisors : activity.managers).map((user) => String(user.id)))
+  }
+
+  const openRoleAssignment = (activity) => {
+    setRoleMode(true)
+    setAssignmentTarget(activity)
+    setAssignmentValues((activity.access_roles ?? []).map((role) => String(role.id)))
   }
 
   const closeAssignment = () => {
@@ -146,9 +157,9 @@ export default function Index({
     setAssignmentProcessing(true)
     const isSubActivity = Boolean(assignmentTarget.activity_id)
     try {
-      const assignmentUrl = isSubActivity ? `/activities/${assignmentTarget.activity_id}/sub-activities/${assignmentTarget.id}/assignees` : `/activities/${assignmentTarget.id}/assignees`
+      const assignmentUrl = roleMode ? `/activities/${assignmentTarget.activity_id}/sub-activities/${assignmentTarget.id}/access-roles` : isSubActivity ? `/activities/${assignmentTarget.activity_id}/sub-activities/${assignmentTarget.id}/assignees` : `/activities/${assignmentTarget.id}/assignees`
       await http.put(assignmentUrl, {
-        ...(isSubActivity ? { supervisor_ids: assignmentValues.map(Number) } : { manager_ids: assignmentValues.map(Number) }),
+        ...(roleMode ? { role_ids: assignmentValues.map(Number) } : isSubActivity ? { supervisor_ids: assignmentValues.map(Number) } : { manager_ids: assignmentValues.map(Number) }),
       })
       showStatusModal("success", "Success", `Assignees for “${assignmentTarget.name}” updated successfully.`)
       reloadActivities()
@@ -298,10 +309,13 @@ export default function Index({
           activities={activities}
           canEdit={canEdit}
           canDelete={canDelete}
-          canAssignManager={canAssignActivityManager}
-          canAssignSupervisor={canAssignActivitySupervisor}
+          canAssignManager={!roleAccessEnabled && canAssignActivityManager}
+          canAssignSupervisor={!roleAccessEnabled && canAssignActivitySupervisor}
+          canManageAccessRoles={canManageAccessRoles}
+          roleAccessEnabled={roleAccessEnabled}
           onAddSub={openAdd}
           onAssignUsers={openAssignment}
+          onAssignRoles={openRoleAssignment}
           onEdit={openEdit}
           onDelete={confirmDelete}
           search={listSearch}
@@ -329,7 +343,8 @@ export default function Index({
         isOpen={Boolean(assignmentTarget)}
         activity={assignmentTarget}
         values={assignmentValues}
-        options={(assignmentTarget?.activity_id ? supervisorOptions : managerOptions).map((user) => ({ value: String(user.id), label: user.name }))}
+        options={(roleMode ? roleOptions : assignmentTarget?.activity_id ? supervisorOptions : managerOptions).map((user) => ({ value: String(user.id), label: user.name }))}
+        roleMode={roleMode}
         processing={assignmentProcessing}
         onChange={setAssignmentValues}
         onClose={closeAssignment}
