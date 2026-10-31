@@ -33,6 +33,8 @@ class SubActivityRoleAccessTest extends TestCase
         $this->actingAs($admin)->putJson($url, ['role_ids' => [$role->id]])->assertOk();
         $this->assertDatabaseHas('sub_activity_role', ['sub_activity_id' => $sub->id, 'role_id' => $role->id]);
         $this->assertTrue((bool) config('activity_access.role_based'));
+        $this->actingAs($admin)->putJson('/activities/'.$activity->id.'/assignees', ['manager_ids' => []])->assertNotFound();
+        $this->actingAs($admin)->putJson('/activities/'.$activity->id.'/sub-activities/'.$sub->id.'/assignees', ['supervisor_ids' => []])->assertNotFound();
         $this->actingAs($admin)->putJson($url, ['role_ids' => [999999]])->assertUnprocessable();
     }
 

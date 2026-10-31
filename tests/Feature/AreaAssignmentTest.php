@@ -65,7 +65,7 @@ class AreaAssignmentTest extends TestCase
         $subArea = SubArea::create(['area_id' => $area->id, 'name' => 'Test Sub-area', 'max_personnel' => 1, 'is_active' => true]);
         $activity = Activity::create(['name' => 'Test Activity', 'is_active' => true]);
         $subActivity = SubActivity::create(['activity_id' => $activity->id, 'name' => 'Test Sub-activity', 'category' => 'ISSUE']);
-        $subActivity->supervisors()->attach([$supervisor->id, $otherSupervisor->id]);
+        $subActivity->accessRoles()->attach($supervisor->roles->modelKeys());
         $this->actingAs($admin)->putJson(route('areas.sub-areas.assignees.update', [$area, $subArea]), ['user_ids' => [$supervisor->id, $otherSupervisor->id]])->assertOk();
         $this->actingAs($supervisor)->post(route('reports.store'), [
             'area_activity' => $area->id, 'sub_area_id' => $subArea->id,
@@ -74,10 +74,10 @@ class AreaAssignmentTest extends TestCase
         $report = Report::firstOrFail();
         $this->assertTrue($supervisor->can('close', $report));
         $this->assertTrue((new ReportCapabilities($otherSupervisor->fresh()))->close($report));
-        $subActivity->supervisors()->detach($supervisor);
+        $subArea->supervisors()->detach($supervisor);
         $this->assertFalse((new ReportCapabilities($supervisor->fresh()))->close($report));
         $this->actingAs($supervisor->fresh())->post(route('reports.close', $report), ['close_comment' => 'Resolved'])->assertForbidden();
-        $subActivity->supervisors()->attach($supervisor);
+        $subArea->supervisors()->attach($supervisor);
         $this->actingAs($supervisor->fresh())->post(route('reports.close', $report), ['close_comment' => 'Resolved'])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame(Report::STATUS_CLOSED, $report->fresh()->status);
     }

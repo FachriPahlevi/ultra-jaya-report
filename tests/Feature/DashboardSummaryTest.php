@@ -70,10 +70,11 @@ class DashboardSummaryTest extends TestCase
             ->has('analytics.dailyTrend', 2)->where('analytics.dailyTrend.0.total', 0));
     }
 
-    public function test_close_queue_requires_both_sub_area_and_sub_activity_assignments(): void
+    public function test_close_queue_requires_sub_area_assignment_and_allowed_role(): void
     {
         $this->seed(RoleSeeder::class);
         $closer = User::factory()->create();
+        $closer->assignRole('SUPERVISOR');
         $closer->givePermissionTo('reports.solve.own.area');
         $author = User::factory()->create();
         $area = Area::create(['area' => 'Area', 'is_active' => true]);
@@ -83,7 +84,7 @@ class DashboardSummaryTest extends TestCase
         $unassigned = $activity->children()->create(['name' => 'Other', 'category' => 'ISSUE']);
         $observation = $activity->children()->create(['name' => 'Observation', 'category' => 'REPORT']);
         $closer->supervisedSubAreas()->attach($location);
-        $closer->assignedSubActivities()->attach($assigned);
+        $assigned->accessRoles()->attach($closer->roles->modelKeys());
         foreach ([$assigned, $unassigned, $observation] as $child) {
             Report::create(['author_id' => $author->id, 'area_id' => $area->id, 'sub_area_id' => $location->id, 'sub_activity_id' => $child->id, 'issue' => $child->name, 'status' => 'open']);
         }
@@ -93,21 +94,26 @@ class DashboardSummaryTest extends TestCase
             ->where('attentionCanClose', true)->has('attentionTickets', 1)->where('attentionTickets.0.issue', 'Assigned'));
     }
 
-    public function test_review_and_global_permissions_drive_dashboard_scope_without_role_names(): void
+    public function test_review_and_global_permissions_follow_sub_activity_role_scope(): void
     {
         $this->seed(RoleSeeder::class);
         $reviewer = User::factory()->create();
+        $reviewer->assignRole('MANAGER');
         $reviewer->givePermissionTo('reports.review.area');
         $globalCloser = User::factory()->create();
+        $globalCloser->assignRole('ADMIN');
         $globalCloser->givePermissionTo('reports.solve.all');
         $author = User::factory()->create();
         $area = Area::create(['area' => 'Area', 'is_active' => true]);
         $location = SubArea::create(['area_id' => $area->id, 'name' => 'Sub-area', 'is_active' => true]);
         $assigned = Activity::create(['name' => 'Assigned', 'is_active' => true]);
         $outside = Activity::create(['name' => 'Other', 'is_active' => true]);
-        $reviewer->assignedActivities()->attach($assigned);
         foreach ([$assigned, $outside] as $activity) {
             $child = $activity->children()->create(['name' => $activity->name, 'category' => 'ISSUE']);
+            $child->accessRoles()->attach($globalCloser->roles->modelKeys());
+            if ($activity->is($assigned)) {
+                $child->accessRoles()->attach($reviewer->roles->modelKeys());
+            }
             Report::create(['author_id' => $author->id, 'area_id' => $area->id, 'sub_area_id' => $location->id, 'sub_activity_id' => $child->id, 'issue' => $activity->name, 'status' => 'open']);
         }
 

@@ -128,7 +128,7 @@ class RbacAccessTest extends TestCase
         $assignedSubArea->supervisors()->attach($pic);
         $activity = Activity::create(['name' => 'Aktivitas Uji', 'is_active' => true]);
         $assignedSubActivity = SubActivity::create(['activity_id' => $activity->id, 'name' => 'Sub Uji']);
-        $assignedSubActivity->supervisors()->attach($pic);
+        $assignedSubActivity->accessRoles()->attach($pic->roles->modelKeys());
         $unassignedActivity = Activity::create(['name' => 'Aktivitas Tidak Ditugaskan', 'is_active' => true]);
 
         $assignedReport = Report::create([

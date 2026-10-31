@@ -50,7 +50,7 @@ class ActivityStructureTest extends TestCase
         $this->assertSoftDeleted($child);
     }
 
-    public function test_multiple_managers_and_supervisors_are_assigned_with_separate_permissions(): void
+    public function test_sub_activity_roles_require_permission_and_reject_duplicates(): void
     {
         $editor = $this->user('USER');
         $editor->givePermissionTo(['activities.view', 'activities.edit']);
@@ -58,25 +58,14 @@ class ActivityStructureTest extends TestCase
         $child = $activity->children()->create(['name' => 'Observation']);
         $managers = [$this->user('MANAGER'), $this->user('MANAGER')];
         $supervisors = [$this->user('SUPERVISOR'), $this->user('SUPERVISOR')];
-        $managerIds = array_map(fn (User $user) => $user->id, $managers);
-        $supervisorIds = array_map(fn (User $user) => $user->id, $supervisors);
-        $managerUrl = route('activities.assignees.update', $activity);
-        $supervisorUrl = route('activities.sub-activities.assignees.update', [$activity, $child]);
-
-        $this->actingAs($editor)->putJson($managerUrl, ['manager_ids' => $managerIds])->assertForbidden();
-        $this->actingAs($editor)->putJson($supervisorUrl, ['supervisor_ids' => $supervisorIds])->assertForbidden();
-        $editor->givePermissionTo('activities.assign.manager');
-        $this->actingAs($editor)->putJson($managerUrl, ['manager_ids' => $managerIds])->assertOk();
-        $this->actingAs($editor)->putJson($supervisorUrl, ['supervisor_ids' => $supervisorIds])->assertForbidden();
-        $editor->givePermissionTo('activities.assign.supervisor');
-        $this->actingAs($editor)->putJson($supervisorUrl, ['supervisor_ids' => $supervisorIds])->assertOk();
-        $this->assertDatabaseCount('activity_managers', 2);
-        $this->assertDatabaseCount('sub_activity_supervisors', 2);
-        $this->actingAs($editor)->putJson($managerUrl, ['manager_ids' => $supervisorIds])->assertUnprocessable();
-        $this->actingAs($editor)->putJson($supervisorUrl, ['supervisor_ids' => $managerIds])->assertUnprocessable();
-        $this->actingAs($editor)->putJson($managerUrl, ['manager_ids' => [$managerIds[0], $managerIds[0]]])->assertUnprocessable();
-        $this->actingAs($editor)->get(route('activities.index'))->assertInertia(fn (Assert $page) => $page
-            ->has('activities.data.0.managers', 2)->has('activities.data.0.children.0.supervisors', 2));
+        $roleIds = [$managers[0]->roles->first()->id, $supervisors[0]->roles->first()->id];
+        $url = route('activities.sub-activities.access-roles.update', [$activity, $child]);
+        $this->actingAs($editor)->putJson($url, ['role_ids' => $roleIds])->assertForbidden();
+        $editor->givePermissionTo('permissions.manage');
+        $this->actingAs($editor)->putJson($url, ['role_ids' => $roleIds])->assertOk();
+        $this->assertDatabaseCount('sub_activity_role', 2);
+        $this->actingAs($editor)->putJson($url, ['role_ids' => [$roleIds[0], $roleIds[0]]])->assertUnprocessable();
+        $this->actingAs($editor)->get(route('activities.index'))->assertInertia(fn (Assert $page) => $page->has('activities.data.0.children.0.access_roles', 2));
     }
 
     public function test_only_super_admin_sets_category_and_parent_status_controls_report_choices(): void
@@ -103,6 +92,7 @@ class ActivityStructureTest extends TestCase
         $subArea = SubArea::create(['area_id' => $area->id, 'name' => 'Sub-area', 'is_active' => true]);
         $activity = Activity::create(['name' => 'Safety', 'is_active' => true]);
         $child = $activity->children()->create(['name' => 'Observation', 'category' => 'REPORT']);
+        $child->accessRoles()->attach($user->roles->modelKeys());
         $payload = ['type_activity' => $activity->id, 'area_activity' => $area->id, 'sub_area_id' => $subArea->id, 'issue' => 'Bersih'];
         $this->actingAs($user)->postJson(route('reports.store'), $payload)->assertUnprocessable()->assertJsonValidationErrors('sub_activity_id');
         $other = Activity::create(['name' => 'Other', 'is_active' => true]);
